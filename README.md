@@ -60,21 +60,3 @@ Future Enhancements
 - **Team Challenges:** Group habit tracking for friends or corporate teams.
 
 
-
-Viva Preparation (Potential Questions)
-
-**Q1: Why did you use PDO instead of mysqli?**
-> *Answer:* PDO is more secure as it supports Prepared Statements natively, and it is database-agnostic (easier to switch from MySQL to PostgreSQL later).
-
-**Q2: How do you handle password security?**
-> *Answer:* We use `password_hash()` with the Bcrypt algorithm. This includes automatic "salting" so that even identical passwords have different hashes in the database.
-
-**Q3: What is CSRF and how did you prevent it?**
-> *Answer:* CSRF stands for Cross-Site Request Forgery. We prevent it by including a hidden token in every form that must match the token stored in the server session.
-
-**Q4: How does the "Portability" feature work?**
-> *Answer:* The application uses `$_SERVER` variables in `config.php` to detect its current folder and IP address dynamically, meaning there are no "hardcoded" links that break when you move the project.
-
-
-*Compiled by [Your Name] for 4th Sem Submission.*
-# track-habit
