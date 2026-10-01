@@ -16,7 +16,7 @@ export function SubmitButton({ pending, children, pendingLabel = "Working…", c
           exit={{ y: -14, opacity: 0 }}
           transition={{ duration: 0.16 }}
         >
-          {pending && <span className="h-4 w-4 rounded-full border-2 border-white/40 border-t-white [animation:spin-slow_0.7s_linear_infinite]" />}
+          {pending && <span className="h-4 w-4 rounded-full border-2 border-current/40 border-t-current [animation:spin-slow_0.7s_linear_infinite]" />}
           {pending ? pendingLabel : children}
         </motion.span>
       </AnimatePresence>

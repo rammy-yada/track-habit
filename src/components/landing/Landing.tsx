@@ -153,7 +153,15 @@ export function Landing() {
         HabitFlow · Small steps, better flow. · Made by{" "}
         <a href={CREATOR.supportUrl} target="_blank" rel="noopener noreferrer" className="font-semibold text-brand hover:underline">
           {CREATOR.handle}
-        </a>
+        </a>{" "}
+        ·{" "}
+        <Link href="/privacy" className="hover:text-ink hover:underline">
+          Privacy
+        </Link>{" "}
+        ·{" "}
+        <Link href="/terms" className="hover:text-ink hover:underline">
+          Terms
+        </Link>
       </footer>
     </div>
   );

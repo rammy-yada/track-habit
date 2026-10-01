@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { revalidatePath } from "next/cache";
 import { currentUser } from "@/lib/auth";
 import { setHabitDone } from "@/lib/habit-log";
+import { sameOrigin } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
 
@@ -15,10 +16,7 @@ type Op = { habitId: unknown; date: unknown; done: unknown };
  * version of the app must still be accepted after the site has been updated.
  */
 export async function POST(request: NextRequest) {
-  // Only this site's own pages may call this (the session cookie is also SameSite=Lax).
-  const origin = request.headers.get("origin");
-  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
-  if (origin && new URL(origin).host !== host) return NextResponse.json({ error: "Cross-site request refused." }, { status: 403 });
+  if (!sameOrigin(request)) return NextResponse.json({ error: "Cross-site request refused." }, { status: 403 });
 
   const user = await currentUser();
   if (!user) return NextResponse.json({ error: "Not signed in." }, { status: 401 });

@@ -48,7 +48,7 @@ export function WorkoutPicker({ existing }: { existing: string[] }) {
               role="tab"
               aria-selected={selected}
               onClick={() => setCategory(c.id)}
-              className={`relative shrink-0 rounded-full border px-4 py-2 text-[13px] font-semibold transition-colors ${selected ? "border-transparent text-white" : "border-line bg-card text-muted hover:text-ink"}`}
+              className={`relative shrink-0 rounded-full border px-4 py-2 text-[13px] font-semibold transition-colors ${selected ? "border-transparent text-on-brand" : "border-line bg-card text-muted hover:text-ink"}`}
             >
               {selected && <motion.span layoutId="workout-tab" className="absolute inset-0 rounded-full bg-brand-solid" transition={{ type: "spring", stiffness: 440, damping: 34 }} />}
               <span className="relative">
@@ -105,7 +105,7 @@ export function WorkoutPicker({ existing }: { existing: string[] }) {
                   disabled={done || busy !== null}
                   onClick={() => add(workout)}
                   whileTap={done ? undefined : { scale: 0.96 }}
-                  className={`mt-4 w-full overflow-hidden rounded-xl py-2.5 text-[13px] font-semibold transition-colors ${done ? "bg-good-soft text-good" : "bg-brand-solid text-white hover:bg-brand-solid-hover disabled:opacity-60"}`}
+                  className={`mt-4 w-full overflow-hidden rounded-xl py-2.5 text-[13px] font-semibold transition-colors ${done ? "bg-good-soft text-good" : "bg-brand-solid text-on-brand hover:bg-brand-solid-hover disabled:opacity-60"}`}
                 >
                   <AnimatePresence mode="wait" initial={false}>
                     <motion.span key={done ? "done" : busy === workout.id ? "busy" : "idle"} className="block" initial={{ y: 14, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -14, opacity: 0 }} transition={{ duration: 0.15 }}>

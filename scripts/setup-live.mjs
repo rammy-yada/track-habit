@@ -81,7 +81,7 @@ console.log(`\nConnecting to ${uri.hostname}…`);
 await import("./setup-db.mjs"); // exits with an explanation if it can't connect
 
 // Everything the hosting provider needs, in one file that can be imported.
-const live = { ...settings, DB_POOL_SIZE: "3", SESSION_SECRET: randomBytes(32).toString("base64url") };
+const live = { ...settings, DB_POOL_SIZE: "2", SESSION_SECRET: randomBytes(32).toString("base64url") };
 const file = path.join(root, ".env.live.local");
 writeFileSync(
   file,

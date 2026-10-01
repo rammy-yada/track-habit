@@ -61,7 +61,7 @@ export function SupportPanel() {
           <div className="relative mx-auto mb-5 h-24 w-24">
             <span className="absolute inset-0 rounded-full bg-[conic-gradient(from_0deg,var(--brand),transparent_55%,var(--brand))] [animation:spin-slow_5s_linear_infinite]" />
             <motion.span
-              className="absolute inset-[3px] grid place-items-center rounded-full bg-brand-solid font-display text-4xl font-extrabold text-white"
+              className="absolute inset-[3px] grid place-items-center rounded-full bg-brand-solid font-display text-4xl font-extrabold text-on-brand"
               initial={{ scale: 0.5, rotate: -25 }}
               animate={{ scale: 1, rotate: 0 }}
               transition={{ type: "spring", stiffness: 220, damping: 14 }}

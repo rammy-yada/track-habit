@@ -12,7 +12,7 @@ export function WelcomeArt() {
     <div className="relative grid h-full place-items-center">
       <span className="ripple absolute h-20 w-20 rounded-full border border-brand" />
       <span className="ripple absolute h-20 w-20 rounded-full border border-brand [animation-delay:1.2s]" />
-      <span className="relative grid h-20 w-20 place-items-center rounded-3xl bg-brand-solid text-white shadow-[0_18px_40px_-14px_var(--brand-solid)]">
+      <span className="relative grid h-20 w-20 place-items-center rounded-3xl bg-brand-solid text-on-brand shadow-[0_18px_40px_-14px_var(--brand-solid)]">
         <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
           <motion.path d="M2 12h4l3-9 6 18 3-9h4" animate={{ pathLength: [0, 1, 1, 0], opacity: [0, 1, 1, 0] }} transition={{ duration: 2.8, repeat: Infinity, times: [0, 0.45, 0.8, 1] }} />
         </svg>
@@ -26,7 +26,7 @@ export function AddArt() {
   return (
     <div className="mx-auto flex h-full w-full max-w-[250px] flex-col justify-center gap-3">
       <div className="relative self-end">
-        <motion.span className="block rounded-xl bg-brand-solid px-3.5 py-2 text-xs font-semibold text-white" animate={{ scale: [1, 1, 0.9, 1, 1] }} transition={{ ...loop(3), times: [0, 0.2, 0.28, 0.36, 1] }}>
+        <motion.span className="block rounded-xl bg-brand-solid px-3.5 py-2 text-xs font-semibold text-on-brand" animate={{ scale: [1, 1, 0.9, 1, 1] }} transition={{ ...loop(3), times: [0, 0.2, 0.28, 0.36, 1] }}>
           + Add Habit
         </motion.span>
         <span className="pointer-events-none absolute inset-0 grid place-items-center">

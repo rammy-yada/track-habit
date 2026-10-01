@@ -20,8 +20,8 @@ export async function loginAction(_prev: FormState, formData: FormData): Promise
   const password = String(formData.get("password") ?? "");
   if (!identifier || !password) return { error: "Please enter your email/username and password.", fields: { identifier } };
 
-  const user = await queryOne<{ id: number; password: string }>(
-    "SELECT id, password FROM users WHERE (LOWER(email) = LOWER(?) OR LOWER(username) = LOWER(?)) AND is_active = 1 LIMIT 1",
+  const user = await queryOne<{ id: number; password: string; role: string }>(
+    "SELECT id, password, role FROM users WHERE (LOWER(email) = LOWER(?) OR LOWER(username) = LOWER(?)) AND is_active = 1 LIMIT 1",
     [identifier, identifier],
   );
   const valid = await bcrypt.compare(password, user?.password ?? DUMMY_HASH);
@@ -33,7 +33,7 @@ export async function loginAction(_prev: FormState, formData: FormData): Promise
   session.devOtp = undefined;
   await session.save();
   await execute("UPDATE users SET last_login = NOW() WHERE id = ?", [user.id]);
-  redirect("/dashboard");
+  redirect(user.role === "admin" ? "/admin" : "/dashboard");
 }
 
 export async function registerAction(_prev: FormState, formData: FormData): Promise<FormState> {

@@ -8,7 +8,7 @@ import { btnGhost, btnPrimary } from "@/components/ui/styles";
 import { detectDevice, guideSeen, markGuideSeen, onOpenGuide, promptInstall, useCanInstall, type Device } from "@/lib/pwa";
 import { AddArt, InstallArt, NavArt, TickArt, WelcomeArt } from "./illustrations";
 
-type Props = { firstName: string; role: "user" | "admin"; timezone: string };
+type Props = { firstName: string; timezone: string };
 
 /**
  * First-run walkthrough. Opens by itself the first time someone reaches the
@@ -16,7 +16,7 @@ type Props = { firstName: string; role: "user" | "admin"; timezone: string };
  * The wording and pictures switch between phone and desktop, and the last
  * step explains installing HabitFlow as an app on *this* device.
  */
-export function WelcomeGuide({ firstName, role, timezone }: Props) {
+export function WelcomeGuide({ firstName, timezone }: Props) {
   const [open, setOpen] = useState(false);
   const [index, setIndex] = useState(0);
   const [direction, setDirection] = useState(1);
@@ -56,7 +56,7 @@ export function WelcomeGuide({ firstName, role, timezone }: Props) {
   }, [justSignedUp, pathname, router]);
 
   const tap = phone ? "Tap" : "Click";
-  const tabs = phone ? ["Today", "Stats", "Arc", "Month", "Profile", role === "admin" ? "Admin" : "Support"] : ["Dashboard", "Analytics", "Winter Arc", "Monthly View", "Profile"];
+  const tabs = phone ? ["Today", "Stats", "Arc", "Month", "Profile"] : ["Dashboard", "Analytics", "Winter Arc", "Monthly View", "Profile"];
 
   const steps = [
     {
@@ -95,7 +95,7 @@ export function WelcomeGuide({ firstName, role, timezone }: Props) {
         </p>
       ) : (
         <p>
-          The sidebar switches between <b className="text-ink">{tabs.join(", ")}</b>. Analytics shows your weekly pattern; Monthly View is a full grid where you can click any past day to fix a tick you missed. <b className="text-ink">Winter Arc</b> is the seasonal challenge, with a leaderboard and workout ideas.
+          The sidebar switches between <b className="text-ink">{tabs.join(", ")}</b>. Analytics shows your weekly pattern; Monthly View is a full grid where you can click any past day to fix a tick you missed. The round button by your name switches between light, dark and the Winter Arc theme. <b className="text-ink">Winter Arc</b> is the seasonal challenge, with a leaderboard and workout ideas.
         </p>
       ),
     },

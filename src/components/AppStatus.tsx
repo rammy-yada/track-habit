@@ -21,7 +21,8 @@ export function AppStatus({ userId }: { userId: number }) {
 
   useEffect(() => {
     startOffline(userId);
-    saveForOffline();
+    // once the page has settled, quietly (and rarely) refresh the offline copies
+    const warm = setTimeout(() => saveForOffline(), 6000);
 
     // After a sync: show the server's version of the page, and re-save the
     // offline copies so they include what was just synced.
@@ -31,7 +32,7 @@ export function AppStatus({ userId }: { userId: number }) {
       setJustSynced(true);
       clearTimeout(resave);
       resave = setTimeout(() => {
-        saveForOffline();
+        saveForOffline(["/dashboard", "/monthly"]); // the screens that show ticks
         setJustSynced(false);
       }, 2500);
     });
@@ -48,7 +49,7 @@ export function AppStatus({ userId }: { userId: number }) {
     document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("online", check);
     // a new service worker starts with nothing saved: fill it straight away
-    const refill = () => saveForOffline();
+    const refill = () => saveForOffline(undefined, { force: true });
     navigator.serviceWorker?.addEventListener("controllerchange", refill);
 
     // Forms (add habit, profile, admin…) need the server. Offline, stop them
@@ -63,6 +64,7 @@ export function AppStatus({ userId }: { userId: number }) {
 
     return () => {
       stopSynced();
+      clearTimeout(warm);
       clearTimeout(resave);
       clearInterval(interval);
       clearTimeout(recheck);
@@ -96,7 +98,7 @@ export function AppStatus({ userId }: { userId: number }) {
     : queue.status === "signed-out" && waiting
       ? { tone: "bg-warn-soft text-warn", text: `Sign in again to sync ${waiting} change${waiting === 1 ? "" : "s"}` }
       : waiting
-        ? { tone: "bg-brand-solid text-white", text: `Syncing ${waiting} change${waiting === 1 ? "" : "s"}…` }
+        ? { tone: "bg-brand-solid text-on-brand", text: `Syncing ${waiting} change${waiting === 1 ? "" : "s"}…` }
         : justSynced
           ? { tone: "bg-good-soft text-good", text: "All changes synced ✓" }
           : null;
@@ -119,7 +121,7 @@ export function AppStatus({ userId }: { userId: number }) {
               A new version is ready.
               {waiting > 0 && <span className="text-muted"> Your {waiting} unsynced change{waiting === 1 ? "" : "s"} will be sent first.</span>}
             </span>
-            <button type="button" onClick={applyUpdate} disabled={working} className="shrink-0 rounded-xl bg-brand-solid px-3.5 py-2 text-[13px] font-semibold text-white hover:bg-brand-solid-hover disabled:opacity-60">
+            <button type="button" onClick={applyUpdate} disabled={working} className="shrink-0 rounded-xl bg-brand-solid px-3.5 py-2 text-[13px] font-semibold text-on-brand hover:bg-brand-solid-hover disabled:opacity-60">
               {working ? (waiting ? "Syncing…" : "Updating…") : "Update & restart"}
             </button>
           </motion.div>
@@ -165,7 +167,7 @@ export function AppControls({ tone = "theme" }: { tone?: "theme" | "dark" }) {
     <div>
       <div className="flex flex-wrap items-center gap-2">
         {state === "found" ? (
-          <button type="button" className={`${button} ${dark ? "!border-white !bg-white !text-black" : "!border-transparent !bg-brand-solid !text-white"}`} onClick={() => restart(true)}>
+          <button type="button" className={`${button} ${dark ? "!border-white !bg-white !text-black" : "!border-transparent !bg-brand-solid !text-on-brand"}`} onClick={() => restart(true)}>
             Update &amp; restart
           </button>
         ) : (

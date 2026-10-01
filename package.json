@@ -8,7 +8,8 @@
     "start": "next start",
     "db:setup": "node scripts/setup-db.mjs",
     "db:setup:live": "node scripts/setup-live.mjs",
-    "db:local": "node scripts/local-db.mjs"
+    "db:local": "node scripts/local-db.mjs",
+    "admin": "node scripts/make-admin.mjs"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -18,7 +19,8 @@
     "pg": "^8.23.1",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "server-only": "^0.0.1"
+    "server-only": "^0.0.1",
+    "sharp": "^0.35.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",

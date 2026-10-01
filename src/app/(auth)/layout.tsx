@@ -4,7 +4,8 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { currentUser } from "@/lib/auth";
 
 export default async function AuthLayout({ children }: { children: React.ReactNode }) {
-  if (await currentUser()) redirect("/dashboard");
+  const user = await currentUser();
+  if (user) redirect(user.role === "admin" ? "/admin" : "/dashboard");
   return (
     <div className="flex min-h-dvh">
       <AuthAside />

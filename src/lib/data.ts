@@ -13,6 +13,7 @@ type HabitRow = {
   icon: string;
   color: string;
   frequency: "daily" | "weekly" | "monthly";
+  target_count: number;
   reminder_time: string | null;
 };
 
@@ -24,6 +25,10 @@ export type HabitView = {
   color: string;
   frequency: string;
   reminder: string | null;
+  /** Raw values, for the edit form. */
+  description: string;
+  target: number;
+  reminderTime: string;
   doneToday: boolean;
   /** Consecutive completed days ending yesterday; today adds one when done. */
   streakBefore: number;
@@ -41,7 +46,7 @@ export type Category = { id: number; name: string; icon: string };
 
 async function activeHabits(userId: number): Promise<HabitRow[]> {
   const rows = await query<HabitRow>(
-    "SELECT id, name, description, category, icon, color, frequency, reminder_time FROM habits WHERE user_id = ? AND is_active = 1 ORDER BY created_at ASC, id ASC",
+    "SELECT id, name, description, category, icon, color, frequency, target_count, reminder_time FROM habits WHERE user_id = ? AND is_active = 1 ORDER BY created_at ASC, id ASC",
     [userId],
   );
   return rows.map((h) => ({ ...h, name: decodeEntities(h.name), category: decodeEntities(h.category) }));
@@ -96,6 +101,9 @@ export async function getDashboard(user: User) {
       color: h.color,
       frequency: h.frequency,
       reminder: h.reminder_time ? formatTime(h.reminder_time) : null,
+      description: decodeEntities(h.description),
+      target: h.target_count ?? 1,
+      reminderTime: h.reminder_time?.slice(0, 5) ?? "",
       doneToday,
       streakBefore,
       week: [6, 5, 4, 3, 2, 1].map((back) => dates.has(addDays(today, -back))),
@@ -257,57 +265,4 @@ export async function getProfileStats(userId: number) {
     queryOne<{ n: number }>("SELECT COUNT(*) AS n FROM habit_logs WHERE user_id = ? AND completed_count > 0", [userId]),
   ]);
   return { habits: Number(habits?.n ?? 0), checkins: Number(checkins?.n ?? 0) };
-}
-
-// ── Admin ────────────────────────────────────────────────────────────────────
-
-export type AdminUserRow = {
-  id: number;
-  username: string;
-  email: string;
-  full_name: string;
-  avatar_color: string;
-  role: "user" | "admin";
-  is_active: number;
-  created_at: string;
-  habit_count: number;
-  checkin_count: number;
-};
-
-export async function getAdminOverview(search: string) {
-  const num = async (sql: string) => Number((await queryOne<{ n: number | string }>(sql))?.n ?? 0);
-  const like = `%${search.replace(/[\\%_]/g, "\\$&")}%`;
-  const userSql = `SELECT u.id, u.username, u.email, u.full_name, u.avatar_color, u.role, u.is_active, u.created_at,
-       COUNT(DISTINCT h.id) AS habit_count, COUNT(DISTINCT hl.id) AS checkin_count
-     FROM users u
-     LEFT JOIN habits h ON u.id = h.user_id AND h.is_active = 1
-     LEFT JOIN habit_logs hl ON u.id = hl.user_id AND hl.completed_count > 0
-     ${search ? "WHERE u.username ILIKE ? OR u.email ILIKE ? OR u.full_name ILIKE ?" : ""}
-     GROUP BY u.id ORDER BY u.created_at DESC, u.id DESC`;
-
-  const [totalUsers, activeUsers, newToday, activity, popular, users, categories] = await Promise.all([
-    num("SELECT COUNT(*) AS n FROM users"),
-    num("SELECT COUNT(*) AS n FROM users WHERE is_active = 1"),
-    num("SELECT COUNT(*) AS n FROM users WHERE created_at::date = CURRENT_DATE"),
-    query<{ log_date: string; n: number }>(
-      "SELECT log_date, COUNT(*) AS n FROM habit_logs WHERE completed_count > 0 AND log_date >= CURRENT_DATE - 6 GROUP BY log_date",
-    ),
-    query<{ category: string; n: number }>("SELECT category, COUNT(*) AS n FROM habits WHERE is_active = 1 GROUP BY category ORDER BY n DESC LIMIT 5"),
-    query<AdminUserRow>(userSql, search ? [like, like, like] : []),
-    getCategories(),
-  ]);
-
-  const serverToday = (await queryOne<{ d: string }>("SELECT CURRENT_DATE::text AS d"))?.d ?? todayIn("UTC");
-  const activityByDate = new Map(activity.map((a) => [a.log_date, Number(a.n)]));
-
-  return {
-    stats: { totalUsers, activeUsers, newToday },
-    activity: [6, 5, 4, 3, 2, 1, 0].map((back) => {
-      const date = addDays(serverToday, -back);
-      return { label: formatDate(date, { weekday: "short" }), value: activityByDate.get(date) ?? 0 };
-    }),
-    popular: popular.map((p) => ({ label: decodeEntities(p.category), value: Number(p.n) })),
-    users: users.map((u) => ({ ...u, full_name: decodeEntities(u.full_name), habit_count: Number(u.habit_count), checkin_count: Number(u.checkin_count) })),
-    categories,
-  };
 }

@@ -37,7 +37,7 @@ const DAILY_POINTS = `
     AND ABS(completed_at::date - log_date) <= 1
   GROUP BY user_id, log_date`;
 
-type BoardRow = { id: number; username: string; full_name: string; avatar_color: string; points: number | string; active_days: number | string };
+type BoardRow = { id: number; username: string; full_name: string; avatar_color: string; avatar_version: number; points: number | string; active_days: number | string };
 
 /** "Tom Legacy" → "Tom L." — enough to recognise a friend, not a full name. */
 function publicName(fullName: string): string {
@@ -51,13 +51,13 @@ export async function getArc(user: User) {
 
   const [rows, myDays] = await Promise.all([
     query<BoardRow>(
-      `SELECT u.id, u.username, u.full_name, u.avatar_color,
+      `SELECT u.id, u.username, u.full_name, u.avatar_color, u.avatar_version,
               COALESCE(SUM(d.pts), 0) AS points, COUNT(d.log_date) AS active_days
        FROM winter_arc_members m
        JOIN users u ON u.id = m.user_id AND u.is_active = 1
        LEFT JOIN (${DAILY_POINTS}) d ON d.user_id = m.user_id
        WHERE m.season = ?
-       GROUP BY u.id, u.username, u.full_name, u.avatar_color, m.joined_at
+       GROUP BY u.id, u.username, u.full_name, u.avatar_color, u.avatar_version, m.joined_at
        ORDER BY points DESC, active_days DESC, m.joined_at ASC, u.id ASC`,
       [season.start, season.end, season.year],
     ),
@@ -69,6 +69,7 @@ export async function getArc(user: User) {
     name: publicName(row.full_name),
     username: row.username,
     color: row.avatar_color,
+    avatar: { id: row.id, name: publicName(row.full_name), color: row.avatar_color, version: row.avatar_version },
     points: Number(row.points),
     activeDays: Number(row.active_days),
     isMe: row.id === user.id,

@@ -6,23 +6,28 @@ import { Modal } from "@/components/ui/Modal";
 import { Alert } from "@/components/ui/Alert";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { btnPrimary, input, label } from "@/components/ui/styles";
-import { addHabitAction } from "@/lib/actions/habits";
+import { addHabitAction, updateHabitAction } from "@/lib/actions/habits";
 import { HABIT_COLORS, HABIT_ICONS, MOODS, type Mood } from "@/lib/constants";
 import type { Category, HabitView } from "@/lib/data";
 
-export function AddHabitModal({ open, onClose, categories }: { open: boolean; onClose: () => void; categories: Category[] }) {
+/** One dialog for both jobs: pass `habit` to edit it, leave it out to add a new one. */
+export function HabitFormModal({ open, onClose, categories, habit }: { open: boolean; onClose: () => void; categories: Category[]; habit?: HabitView | null }) {
   return (
-    <Modal open={open} onClose={onClose} title="New Habit" width="max-w-lg">
-      <AddHabitForm categories={categories} onDone={onClose} />
+    <Modal open={open} onClose={onClose} title={habit ? "Edit Habit" : "New Habit"} width="max-w-lg">
+      <HabitForm categories={categories} habit={habit ?? null} onDone={onClose} />
     </Modal>
   );
 }
 
-// Lives inside the modal, so it mounts fresh (empty) every time the modal opens.
-function AddHabitForm({ categories, onDone }: { categories: Category[]; onDone: () => void }) {
-  const [state, action, pending] = useActionState(addHabitAction, null);
-  const [icon, setIcon] = useState(HABIT_ICONS[0]);
-  const [color, setColor] = useState(HABIT_COLORS[0]);
+// Lives inside the modal, so it mounts fresh every time the modal opens.
+function HabitForm({ categories, habit, onDone }: { categories: Category[]; habit: HabitView | null; onDone: () => void }) {
+  const [state, action, pending] = useActionState(habit ? updateHabitAction : addHabitAction, null);
+  const [icon, setIcon] = useState(habit?.icon ?? HABIT_ICONS[0]);
+  const [color, setColor] = useState(habit?.color ?? HABIT_COLORS[0]);
+  // a habit made elsewhere (a workout, an older version) may use an icon, colour or category not in the lists
+  const icons = HABIT_ICONS.includes(icon) ? HABIT_ICONS : [icon, ...HABIT_ICONS];
+  const colors = HABIT_COLORS.includes(color) ? HABIT_COLORS : [color, ...HABIT_COLORS];
+  const options = habit && !categories.some((c) => c.name === habit.category) ? [{ id: 0, name: habit.category, icon: "📋" }, ...categories] : categories;
 
   useEffect(() => {
     if (state?.ok) onDone();
@@ -35,17 +40,18 @@ function AddHabitForm({ categories, onDone }: { categories: Category[]; onDone: 
       </Alert>
       <label className="block">
         <span className={label}>Habit name *</span>
-        <input name="name" className={input} placeholder="e.g. Morning Run, Read 30 mins…" maxLength={100} required data-autofocus />
+        <input name="name" className={input} placeholder="e.g. Morning Run, Read 30 mins…" maxLength={100} required data-autofocus defaultValue={habit?.name} />
+        {habit && <input type="hidden" name="habit_id" value={habit.id} />}
       </label>
       <label className="block">
         <span className={label}>Description</span>
-        <textarea name="description" className={`${input} min-h-[64px] resize-y`} placeholder="What does this habit involve?" rows={2} maxLength={1000} />
+        <textarea name="description" className={`${input} min-h-[64px] resize-y`} placeholder="What does this habit involve?" rows={2} maxLength={1000} defaultValue={habit?.description} />
       </label>
       <div className="grid grid-cols-2 gap-3">
         <label className="block">
           <span className={label}>Category</span>
-          <select name="category" className={input}>
-            {categories.map((c) => (
+          <select name="category" className={input} defaultValue={habit?.category}>
+            {options.map((c) => (
               <option key={c.id} value={c.name}>
                 {c.icon} {c.name}
               </option>
@@ -54,7 +60,7 @@ function AddHabitForm({ categories, onDone }: { categories: Category[]; onDone: 
         </label>
         <label className="block">
           <span className={label}>Frequency</span>
-          <select name="frequency" className={input} defaultValue="daily">
+          <select name="frequency" className={input} defaultValue={habit?.frequency ?? "daily"}>
             <option value="daily">Daily</option>
             <option value="weekly">Weekly</option>
             <option value="monthly">Monthly</option>
@@ -62,18 +68,18 @@ function AddHabitForm({ categories, onDone }: { categories: Category[]; onDone: 
         </label>
         <label className="block">
           <span className={label}>Reminder time (optional)</span>
-          <input type="time" name="reminder_time" className={input} />
+          <input type="time" name="reminder_time" className={input} defaultValue={habit?.reminderTime} />
         </label>
         <label className="block">
           <span className={label}>Daily target</span>
-          <input type="number" name="target_count" className={input} defaultValue={1} min={1} max={99} />
+          <input type="number" name="target_count" className={input} defaultValue={habit?.target ?? 1} min={1} max={99} />
         </label>
       </div>
 
       <fieldset>
         <legend className={label}>Icon</legend>
         <div className="flex flex-wrap gap-1.5">
-          {HABIT_ICONS.map((ic) => (
+          {icons.map((ic) => (
             <button key={ic} type="button" onClick={() => setIcon(ic)} aria-pressed={icon === ic} aria-label={`Icon ${ic}`} className="relative grid h-9 w-9 place-items-center rounded-lg bg-raised text-lg">
               {icon === ic && <motion.span layoutId="icon-pick" className="absolute inset-0 rounded-lg border-2 border-brand bg-brand-soft" transition={{ type: "spring", stiffness: 500, damping: 34 }} />}
               <motion.span className="relative" animate={{ scale: icon === ic ? 1.15 : 1 }}>
@@ -88,7 +94,7 @@ function AddHabitForm({ categories, onDone }: { categories: Category[]; onDone: 
       <fieldset>
         <legend className={label}>Color</legend>
         <div className="flex flex-wrap gap-2.5">
-          {HABIT_COLORS.map((c) => (
+          {colors.map((c) => (
             <button key={c} type="button" onClick={() => setColor(c)} aria-pressed={color === c} aria-label={`Color ${c}`} className="relative h-7 w-7 rounded-full" style={{ background: c }}>
               {color === c && <motion.span layoutId="color-pick" className="absolute -inset-1 rounded-full border-2 border-ink" transition={{ type: "spring", stiffness: 500, damping: 34 }} />}
             </button>
@@ -97,8 +103,8 @@ function AddHabitForm({ categories, onDone }: { categories: Category[]; onDone: 
         <input type="hidden" name="color" value={color} />
       </fieldset>
 
-      <SubmitButton pending={pending} pendingLabel="Adding…">
-        Add Habit
+      <SubmitButton pending={pending} pendingLabel={habit ? "Saving…" : "Adding…"}>
+        {habit ? "Save Changes" : "Add Habit"}
       </SubmitButton>
     </form>
   );

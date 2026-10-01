@@ -3,11 +3,12 @@
 import { useState, useTransition } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { AppControls } from "@/components/AppStatus";
+import { replayArcIntro } from "./ArcIntro";
 import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
 import { joinArc, leaveArc } from "@/lib/actions/arc";
 import type { getArc } from "@/lib/arc";
 import { whenOnline } from "@/lib/offline";
-import { initial } from "@/lib/text";
+import { UserAvatar } from "@/components/ui/UserAvatar";
 
 type Arc = Awaited<ReturnType<typeof getArc>>;
 type Entry = Arc["board"][number];
@@ -243,6 +244,9 @@ export function ArcScreen({ arc }: { arc: Arc }) {
           <div className="rounded-xl border border-white/10 p-4">
             <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/80">App</p>
             <AppControls tone="dark" />
+            <button type="button" onClick={replayArcIntro} className="mt-3 rounded-xl border border-white/20 px-3 py-2 text-xs font-semibold text-white/85 hover:bg-white/10">
+              Replay intro
+            </button>
           </div>
         </footer>
       </div>
@@ -287,11 +291,7 @@ function PodiumSpot({ entry, place, first }: { entry: Entry | undefined; place: 
 }
 
 function Avatar({ entry, size, ring = false }: { entry: Entry; size: number; ring?: boolean }) {
-  return (
-    <span className={`relative grid shrink-0 place-items-center rounded-full font-bold text-white ${ring ? "border-2 border-black" : ""}`} style={{ width: size, height: size, background: entry.color, fontSize: size * 0.4 }}>
-      {initial(entry.name)}
-    </span>
-  );
+  return <UserAvatar user={entry.avatar} size={size} className={`relative ${ring ? "border-2 border-black" : ""}`} />;
 }
 
 /**

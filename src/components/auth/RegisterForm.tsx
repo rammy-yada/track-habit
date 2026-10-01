@@ -9,7 +9,9 @@ import { SubmitButton } from "@/components/ui/SubmitButton";
 import { input, label } from "@/components/ui/styles";
 import { registerAction } from "@/lib/actions/auth";
 import { TIMEZONES } from "@/lib/constants";
+import { LegalNote } from "@/components/LegalPage";
 import { AuthCard } from "./AuthCard";
+import { GoogleButton } from "./GoogleButton";
 
 function strength(password: string): number {
   let score = 0;
@@ -23,7 +25,7 @@ function strength(password: string): number {
 const STRENGTH_LABEL = ["Too short", "Okay", "Good", "Strong", "Excellent"];
 const STRENGTH_COLOR = ["var(--bad)", "var(--warn)", "var(--warn)", "var(--good)", "var(--good)"];
 
-export function RegisterForm() {
+export function RegisterForm({ google }: { google: boolean }) {
   const [state, action, pending] = useActionState(registerAction, null);
   const [password, setPassword] = useState("");
   const [timezone, setTimezone] = useState("UTC");
@@ -54,6 +56,7 @@ export function RegisterForm() {
       <Alert kind="error" shakeKey={state}>
         {state?.error}
       </Alert>
+      {google && <GoogleButton label="Sign up with Google" />}
       <form action={action} className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block">
@@ -94,6 +97,7 @@ export function RegisterForm() {
           Create Account
         </SubmitButton>
       </form>
+      <LegalNote />
     </AuthCard>
   );
 }

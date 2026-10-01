@@ -30,7 +30,9 @@ export const viewport: Viewport = {
 };
 
 // Runs before first paint so the saved theme never flashes the wrong way.
-const themeScript = `try{var t=localStorage.getItem("theme");if(t!=="light"&&t!=="dark")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=t}catch(e){}`;
+// With no saved choice: the Winter Arc theme during the season (Oct–Dec),
+// otherwise whatever the device prefers.
+const themeScript = `try{var t=localStorage.getItem("theme");if(t!=="light"&&t!=="dark"&&t!=="arc")t=new Date().getMonth()>=9?"arc":matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=t}catch(e){}`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

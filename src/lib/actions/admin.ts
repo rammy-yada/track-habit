@@ -1,16 +1,24 @@
 "use server";
 
+import { randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "../auth";
+import { arcSeason } from "../arc";
 import { execute, isDuplicateError, queryOne } from "../db";
+import { todayIn } from "../dates";
 import { clean } from "../text";
 import { toId } from "../validation";
+
+// Every action here starts with requireAdmin(): the buttons being hidden from
+// normal users is not what protects these — this check is.
 
 type Result = { ok: true } | { ok: false; error: string };
 export type AdminFormState = { error?: string; ok?: boolean } | null;
 
 const SELF = { ok: false, error: "You can't do that to your own account." } as const;
+const INVALID = { ok: false, error: "Invalid request." } as const;
+const refresh = () => revalidatePath("/admin", "layout");
 
 export async function addUserAction(_prev: AdminFormState, formData: FormData): Promise<AdminFormState> {
   await requireAdmin();
@@ -30,35 +38,29 @@ export async function addUserAction(_prev: AdminFormState, formData: FormData): 
   if (await queryOne("SELECT id FROM users WHERE LOWER(email) = LOWER(?) OR LOWER(username) = LOWER(?)", [email, username])) {
     return { error: "Email or username already exists." };
   }
-  await execute("INSERT INTO users (username, email, password, full_name, role) VALUES (?, ?, ?, ?, ?)", [
-    username,
-    email,
-    await bcrypt.hash(password, 12),
-    fullName,
-    role,
-  ]);
-  revalidatePath("/admin");
+  await execute("INSERT INTO users (username, email, password, full_name, role) VALUES (?, ?, ?, ?, ?)", [username, email, await bcrypt.hash(password, 12), fullName, role]);
+  refresh();
   return { ok: true };
 }
 
 export async function toggleUser(userIdInput: number): Promise<Result> {
   const admin = await requireAdmin();
   const userId = toId(userIdInput);
-  if (!userId) return { ok: false, error: "Invalid request." };
+  if (!userId) return INVALID;
   if (userId === admin.id) return SELF;
   await execute("UPDATE users SET is_active = 1 - is_active WHERE id = ?", [userId]);
-  revalidatePath("/admin");
+  refresh();
   return { ok: true };
 }
 
 export async function deleteUser(userIdInput: number): Promise<Result> {
   const admin = await requireAdmin();
   const userId = toId(userIdInput);
-  if (!userId) return { ok: false, error: "Invalid request." };
+  if (!userId) return INVALID;
   if (userId === admin.id) return SELF;
-  // Foreign keys cascade: the user's habits and logs go with them.
+  // Foreign keys cascade: the user's habits, check-ins, photo and arc entry go with them.
   await execute("DELETE FROM users WHERE id = ?", [userId]);
-  revalidatePath("/admin");
+  refresh();
   return { ok: true };
 }
 
@@ -66,12 +68,40 @@ export async function changeRole(userIdInput: number, roleInput: string): Promis
   const admin = await requireAdmin();
   const userId = toId(userIdInput);
   const role = roleInput === "admin" ? "admin" : "user";
-  if (!userId) return { ok: false, error: "Invalid request." };
+  if (!userId) return INVALID;
   if (userId === admin.id) return SELF;
   await execute("UPDATE users SET role = ? WHERE id = ?", [role, userId]);
-  revalidatePath("/admin");
+  refresh();
   return { ok: true };
 }
+
+/**
+ * For someone who has forgotten their password (there is no email in this
+ * app to send a reset link to). Sets a new random password and returns it
+ * once, for the admin to pass on; only its hash is stored.
+ */
+export async function resetUserPassword(userIdInput: number): Promise<{ ok: true; password: string } | { ok: false; error: string }> {
+  const admin = await requireAdmin();
+  const userId = toId(userIdInput);
+  if (!userId) return INVALID;
+  if (userId === admin.id) return { ok: false, error: "Change your own password from Account." };
+  const password = randomBytes(8).toString("base64url");
+  const changed = await execute("UPDATE users SET password = ? WHERE id = ?", [await bcrypt.hash(password, 12), userId]);
+  if (!changed.rowCount) return { ok: false, error: "User not found." };
+  return { ok: true, password };
+}
+
+export async function removeUserPhoto(userIdInput: number): Promise<Result> {
+  await requireAdmin();
+  const userId = toId(userIdInput);
+  if (!userId) return INVALID;
+  await execute("DELETE FROM avatars WHERE user_id = ?", [userId]);
+  await execute("UPDATE users SET avatar_version = 0 WHERE id = ?", [userId]);
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+// ── Categories ───────────────────────────────────────────────────────────────
 
 export async function addCategoryAction(_prev: AdminFormState, formData: FormData): Promise<AdminFormState> {
   await requireAdmin();
@@ -84,6 +114,54 @@ export async function addCategoryAction(_prev: AdminFormState, formData: FormDat
     if (isDuplicateError(err)) return { error: "Name already exists." };
     throw err;
   }
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+export async function updateCategory(idInput: number, nameInput: string, iconInput: string): Promise<Result> {
+  await requireAdmin();
+  const id = toId(idInput);
+  const name = clean(nameInput, 50);
+  const icon = clean(iconInput, 10) || "📋";
+  if (!id) return INVALID;
+  if (name.length < 2) return { ok: false, error: "Name must be at least 2 characters." };
+  const current = await queryOne<{ name: string }>("SELECT name FROM categories WHERE id = ?", [id]);
+  if (!current) return { ok: false, error: "Category not found." };
+  try {
+    await execute("UPDATE categories SET name = ?, icon = ? WHERE id = ?", [name, icon, id]);
+  } catch (err) {
+    if (isDuplicateError(err)) return { ok: false, error: "Another category already has that name." };
+    throw err;
+  }
+  // habits store the category's name, so a rename has to follow through to them
+  if (current.name !== name) await execute("UPDATE habits SET category = ? WHERE category = ?", [name, current.name]);
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+export async function deleteCategory(idInput: number): Promise<Result> {
+  await requireAdmin();
+  const id = toId(idInput);
+  if (!id) return INVALID;
+  const current = await queryOne<{ name: string }>("SELECT name FROM categories WHERE id = ?", [id]);
+  if (!current) return { ok: true };
+  const left = await queryOne<{ n: number }>("SELECT COUNT(*) AS n FROM categories");
+  if (Number(left?.n ?? 0) <= 1) return { ok: false, error: "Keep at least one category." };
+  await execute("DELETE FROM categories WHERE id = ?", [id]);
+  // nobody's habits are deleted — they move to "General"
+  await execute("UPDATE habits SET category = 'General' WHERE category = ?", [current.name]);
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+// ── Winter Arc ───────────────────────────────────────────────────────────────
+
+/** Take someone off this year's leaderboard (they can join again). */
+export async function removeArcMember(userIdInput: number): Promise<Result> {
+  await requireAdmin();
+  const userId = toId(userIdInput);
+  if (!userId) return INVALID;
+  await execute("DELETE FROM winter_arc_members WHERE user_id = ? AND season = ?", [userId, arcSeason(todayIn("UTC")).year]);
   revalidatePath("/", "layout");
   return { ok: true };
 }

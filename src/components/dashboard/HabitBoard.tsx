@@ -17,7 +17,9 @@ import type { Mood } from "@/lib/constants";
 import type { getDashboard, HabitView } from "@/lib/data";
 import { Confetti, Flame } from "./effects";
 import { HabitRow } from "./HabitRow";
-import { AddHabitModal, NoteModal } from "./HabitModals";
+import { Modal } from "@/components/ui/Modal";
+import { HabitFormModal, NoteModal } from "./HabitModals";
+import { SupportNudge } from "./SupportNudge";
 
 type Op = { type: "remove"; id: number } | { type: "note"; id: number; mood: Mood | null; notes: string };
 type Filter = "all" | "pending" | "done";
@@ -39,6 +41,8 @@ export function HabitBoard({ data }: { data: Awaited<ReturnType<typeof getDashbo
   const [, startTransition] = useTransition();
   const [filter, setFilter] = useState<Filter>("all");
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<HabitView | null>(null);
+  const [menuFor, setMenuFor] = useState<HabitView | null>(null);
   const [noteFor, setNoteFor] = useState<HabitView | null>(null);
   const [deleting, setDeleting] = useState<HabitView | null>(null);
   const [bursts, setBursts] = useState<Record<number, number>>({});
@@ -101,6 +105,8 @@ export function HabitBoard({ data }: { data: Awaited<ReturnType<typeof getDashbo
   }
 
   const closeAdd = useCallback(() => setAdding(false), []);
+  const closeEdit = useCallback(() => setEditing(null), []);
+  const closeMenu = useCallback(() => setMenuFor(null), []);
   const closeNote = useCallback(() => setNoteFor(null), []);
   const closeDelete = useCallback(() => setDeleting(null), []);
 
@@ -174,7 +180,7 @@ export function HabitBoard({ data }: { data: Awaited<ReturnType<typeof getDashbo
                   role="tab"
                   aria-selected={filter === f}
                   onClick={() => setFilter(f)}
-                  className={`relative rounded-full px-3.5 py-1.5 text-xs font-semibold capitalize transition-colors ${filter === f ? "text-white" : "text-muted hover:text-ink"}`}
+                  className={`relative rounded-full px-3.5 py-1.5 text-xs font-semibold capitalize transition-colors ${filter === f ? "text-on-brand" : "text-muted hover:text-ink"}`}
                 >
                   {filter === f && <motion.span layoutId="filter-pill" className="absolute inset-0 rounded-full bg-brand-solid" transition={{ type: "spring", stiffness: 480, damping: 36 }} />}
                   <span className="relative">{f}</span>
@@ -196,13 +202,15 @@ export function HabitBoard({ data }: { data: Awaited<ReturnType<typeof getDashbo
             )}
           </AnimatePresence>
 
+          <SupportNudge show={allDone} today={data.today} />
+
           {total === 0 ? (
             <EmptyState onAdd={() => setAdding(true)} />
           ) : (
             <ul className="space-y-2.5">
               <AnimatePresence mode="popLayout" initial={false}>
                 {visible.map((habit) => (
-                  <HabitRow key={habit.id} habit={habit} burstKey={bursts[habit.id] ?? null} onToggle={() => toggle(habit)} onNote={() => setNoteFor(habit)} onDelete={() => setDeleting(habit)} />
+                  <HabitRow key={habit.id} habit={habit} burstKey={bursts[habit.id] ?? null} onToggle={() => toggle(habit)} onNote={() => setNoteFor(habit)} onEdit={() => setEditing(habit)} onDelete={() => setDeleting(habit)} onMenu={() => setMenuFor(habit)} />
                 ))}
                 {visible.length === 0 && (
                   <motion.li key="none" layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="rounded-2xl border border-dashed border-line px-4 py-8 text-center text-sm text-muted">
@@ -269,7 +277,34 @@ export function HabitBoard({ data }: { data: Awaited<ReturnType<typeof getDashbo
         )}
       </div>
 
-      <AddHabitModal open={adding} onClose={closeAdd} categories={data.categories} />
+      <HabitFormModal open={adding} onClose={closeAdd} categories={data.categories} />
+      <HabitFormModal open={editing !== null} onClose={closeEdit} categories={data.categories} habit={editing} />
+      {/* phone action sheet */}
+      <Modal open={menuFor !== null} onClose={closeMenu} title={menuFor?.name ?? ""} width="max-w-sm">
+        {menuFor && (
+          <div className="space-y-2">
+            {(
+              [
+                ["Add a note or mood", () => setNoteFor(menuFor)],
+                ["Edit habit", () => setEditing(menuFor)],
+                ["Delete habit", () => setDeleting(menuFor)],
+              ] as const
+            ).map(([text, open], i) => (
+              <button
+                key={text}
+                type="button"
+                onClick={() => {
+                  closeMenu();
+                  open();
+                }}
+                className={`w-full rounded-xl border border-line px-4 py-3.5 text-left text-[15px] font-semibold ${i === 2 ? "text-bad" : "text-ink"}`}
+              >
+                {text}
+              </button>
+            ))}
+          </div>
+        )}
+      </Modal>
       <NoteModal habit={noteFor} onClose={closeNote} onSave={saveHabitNote} />
       <ConfirmDialog
         open={deleting !== null}

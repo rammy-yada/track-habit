@@ -5,12 +5,13 @@ import { usePathname } from "next/navigation";
 import { motion } from "motion/react";
 import { Logo } from "./Logo";
 import { ThemeToggle } from "./ThemeToggle";
+import { UserAvatar, type AvatarInfo } from "./ui/UserAvatar";
 import { logoutAction } from "@/lib/actions/auth";
 import { clearOfflineData } from "@/lib/offline";
 import { openGuide } from "@/lib/pwa";
-import { initial } from "@/lib/text";
 
-type NavUser = { name: string; role: "user" | "admin"; color: string };
+type NavUser = AvatarInfo & { role: "user" | "admin" };
+type NavLink = { href: string; label: string; short: string; icon: string; desktopOnly?: boolean };
 
 const ICONS: Record<string, React.ReactNode> = {
   dashboard: <path d="M4 13h6V4H4v9zm0 7h6v-5H4v5zm10 0h6v-9h-6v9zm0-16v5h6V4h-6z" />,
@@ -19,21 +20,29 @@ const ICONS: Record<string, React.ReactNode> = {
   profile: <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-7 9a7 7 0 0 1 14 0" />,
   arc: <path d="M12 2v20M3.3 7l17.4 10M20.7 7L3.3 17M9.5 3.5L12 6l2.5-2.5M9.5 20.5L12 18l2.5 2.5" />,
   donate: <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" />,
-  admin: <path d="M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6l8-3z" />,
+  users: <path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-7 10a7 7 0 0 1 14 0m1-10a3.5 3.5 0 1 0-1.5-6.7M18 14.5a6 6 0 0 1 4 6.5" />,
+  tags: <path d="M3 12V4h8l10 10-8 8L3 12zm4.5-4.5h.01" />,
 };
 
-function links(role: NavUser["role"]) {
-  return [
-    { href: "/dashboard", label: "Dashboard", short: "Today", icon: "dashboard" },
-    { href: "/analytics", label: "Analytics", short: "Stats", icon: "analytics" },
-    { href: "/arc", label: "Winter Arc", short: "Arc", icon: "arc" },
-    { href: "/monthly", label: "Monthly View", short: "Month", icon: "monthly" },
-    { href: "/profile", label: "Profile", short: "Profile", icon: "profile" },
-    role === "admin"
-      ? { href: "/admin", label: "Management", short: "Admin", icon: "admin" }
-      : { href: "/support", label: "Support Us", short: "Support", icon: "donate" },
-  ];
-}
+// A member and an admin get entirely different menus: an admin account
+// manages the site and has no habit screens of its own.
+const MEMBER: NavLink[] = [
+  { href: "/dashboard", label: "Dashboard", short: "Today", icon: "dashboard" },
+  { href: "/analytics", label: "Analytics", short: "Stats", icon: "analytics" },
+  { href: "/arc", label: "Winter Arc", short: "Arc", icon: "arc" },
+  { href: "/monthly", label: "Monthly View", short: "Month", icon: "monthly" },
+  { href: "/profile", label: "Profile", short: "Profile", icon: "profile" },
+  { href: "/support", label: "Support Us", short: "Support", icon: "donate", desktopOnly: true }, // on phones it lives in Profile
+];
+const ADMIN: NavLink[] = [
+  { href: "/admin", label: "Overview", short: "Overview", icon: "dashboard" },
+  { href: "/admin/users", label: "Users", short: "Users", icon: "users" },
+  { href: "/admin/categories", label: "Categories", short: "Categories", icon: "tags" },
+  { href: "/admin/arc", label: "Winter Arc", short: "Arc", icon: "arc" },
+  { href: "/admin/account", label: "My Account", short: "Account", icon: "profile" },
+];
+
+const isActive = (pathname: string, href: string) => (href === "/admin" ? pathname === "/admin" : pathname.startsWith(href));
 
 function Icon({ name }: { name: string }) {
   return (
@@ -43,16 +52,22 @@ function Icon({ name }: { name: string }) {
   );
 }
 
+function AdminBadge() {
+  return <span className="rounded-md bg-ink px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-bg">Admin</span>;
+}
+
 export function Sidebar({ user }: { user: NavUser }) {
   const pathname = usePathname();
+  const admin = user.role === "admin";
   return (
     <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-line bg-card md:flex">
-      <div className="flex items-center justify-between border-b border-line px-5 py-5">
-        <Logo href="/dashboard" />
+      <div className="flex items-center justify-between gap-2 border-b border-line px-5 py-5">
+        <Logo href={admin ? "/admin" : "/dashboard"} />
+        {admin && <AdminBadge />}
       </div>
       <nav className="flex-1 space-y-1 px-3 py-4" aria-label="Main">
-        {links(user.role).map((link) => {
-          const active = pathname.startsWith(link.href);
+        {(admin ? ADMIN : MEMBER).map((link) => {
+          const active = isActive(pathname, link.href);
           return (
             <Link
               key={link.href}
@@ -70,21 +85,21 @@ export function Sidebar({ user }: { user: NavUser }) {
           );
         })}
       </nav>
-      <div className="space-y-3 border-t border-line p-3">
-        <div className="flex items-center gap-2.5 rounded-xl bg-raised px-3 py-2.5">
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[13px] font-bold text-white" style={{ background: user.color }}>
-            {initial(user.name)}
-          </span>
+      <div className="space-y-1 border-t border-line p-3">
+        <div className="mb-2 flex items-center gap-2.5 rounded-xl bg-raised px-3 py-2.5">
+          <UserAvatar user={user} size={32} />
           <span className="min-w-0 flex-1">
             <span className="block truncate text-[13px] font-semibold">{user.name}</span>
-            <span className="block text-[11px] capitalize text-muted">{user.role}</span>
+            <span className="block text-[11px] capitalize text-muted">{admin ? "Administrator" : "Member"}</span>
           </span>
           <ThemeToggle className="h-8 w-8 rounded-lg" />
         </div>
-        <button type="button" onClick={openGuide} className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold text-muted transition-colors hover:bg-raised hover:text-ink">
-          <GuideIcon />
-          Guide
-        </button>
+        {!admin && (
+          <button type="button" onClick={openGuide} className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold text-muted transition-colors hover:bg-raised hover:text-ink">
+            <GuideIcon />
+            Guide
+          </button>
+        )}
         <LogoutButton className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold text-muted transition-colors hover:bg-bad-soft hover:text-bad" />
       </div>
     </aside>
@@ -116,31 +131,41 @@ function LogoutButton({ className, compact = false }: { className: string; compa
 /** Phones get a top bar and a bottom tab bar instead of the sidebar. */
 export function MobileBars({ user }: { user: NavUser }) {
   const pathname = usePathname();
+  const admin = user.role === "admin";
+  const tabs = (admin ? ADMIN : MEMBER).filter((link) => !link.desktopOnly);
+  const iconButton = "grid h-10 w-10 place-items-center rounded-xl border border-line bg-card text-muted";
   return (
     <>
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-card/85 px-4 py-3 backdrop-blur md:hidden">
-        <Logo href="/dashboard" />
+      <header className="sticky top-0 z-30 flex h-[61px] items-center justify-between border-b border-line bg-card/85 px-4 backdrop-blur md:hidden">
+        <span className="flex items-center gap-2">
+          <Logo href={admin ? "/admin" : "/dashboard"} />
+          {admin && <AdminBadge />}
+        </span>
         <div className="flex items-center gap-2">
-          <button type="button" onClick={openGuide} aria-label="Open the welcome guide" className="grid h-9 w-9 place-items-center rounded-xl border border-line bg-card text-muted hover:border-brand hover:text-brand">
-            <GuideIcon />
-          </button>
-          <ThemeToggle />
-          <LogoutButton compact className="grid h-9 w-9 place-items-center rounded-xl border border-line bg-card text-muted hover:border-bad hover:text-bad" />
+          {!admin && (
+            <button type="button" onClick={openGuide} aria-label="Open the welcome guide" className={`${iconButton} hover:border-brand hover:text-brand`}>
+              <GuideIcon />
+            </button>
+          )}
+          <ThemeToggle className="h-10 w-10" />
+          <LogoutButton compact className={`${iconButton} hover:border-bad hover:text-bad`} />
         </div>
       </header>
-      <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-6 border-t border-line bg-card/90 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
-        {links(user.role).map((link) => {
-          const active = pathname.startsWith(link.href);
+      <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-30 grid border-t border-line bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
+        {tabs.map((link) => {
+          const active = isActive(pathname, link.href);
           return (
             <Link
               key={link.href}
               href={link.href}
               aria-current={active ? "page" : undefined}
-              className={`relative flex min-w-0 flex-col items-center gap-1 py-2.5 text-[10px] font-semibold ${active ? "text-brand" : "text-muted"}`}
+              className={`relative flex min-h-[58px] min-w-0 flex-col items-center justify-center gap-1 text-[10.5px] font-semibold ${active ? "text-brand" : "text-muted"}`}
             >
-              {active && <motion.span layoutId="tab-pill" className="absolute top-0 h-0.5 w-9 rounded-full bg-brand" transition={{ type: "spring", stiffness: 420, damping: 34 }} />}
-              <Icon name={link.icon} />
-              {link.short}
+              {active && <motion.span layoutId="tab-pill" className="absolute top-0 h-0.5 w-10 rounded-full bg-brand" transition={{ type: "spring", stiffness: 420, damping: 34 }} />}
+              <motion.span animate={{ y: active ? -1 : 0, scale: active ? 1.12 : 1 }} transition={{ type: "spring", stiffness: 400, damping: 22 }}>
+                <Icon name={link.icon} />
+              </motion.span>
+              <span className="max-w-full truncate px-0.5">{link.short}</span>
             </Link>
           );
         })}

@@ -198,10 +198,24 @@ export async function whenOnline<T extends { ok: boolean }>(run: () => Promise<T
 
 const OFFLINE_PAGES = ["/dashboard", "/arc", "/monthly", "/analytics", "/profile", "/support"];
 
-/** Ask the service worker to save fresh copies of the main screens for offline use. */
-export function saveForOffline(pages: string[] = OFFLINE_PAGES) {
+const SAVED_AT_KEY = "habitflow:saved-at";
+
+/**
+ * Ask the service worker to save fresh copies of screens for offline use.
+ * With no list it saves all the main screens — at most once every 30 minutes,
+ * because each one costs the server a full page load. Pass a list to refresh
+ * just those (after a sync, only the screens that show ticks).
+ */
+export function saveForOffline(pages?: string[], { force = false } = {}) {
   if (!navigator.onLine) return;
-  navigator.serviceWorker?.ready.then((registration) => registration.active?.postMessage({ type: "SAVE_PAGES", pages })).catch(() => {});
+  if (!pages) {
+    try {
+      const last = Number(localStorage.getItem(SAVED_AT_KEY) ?? 0);
+      if (!force && Date.now() - last < 30 * 60_000) return;
+      localStorage.setItem(SAVED_AT_KEY, String(Date.now()));
+    } catch {}
+  }
+  navigator.serviceWorker?.ready.then((registration) => registration.active?.postMessage({ type: "SAVE_PAGES", pages: pages ?? OFFLINE_PAGES })).catch(() => {});
 }
 
 /** On sign-out: forget queued changes and the saved copies of this person's screens. */
@@ -210,6 +224,7 @@ export function clearOfflineData() {
   userId = null;
   try {
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(SAVED_AT_KEY);
   } catch {}
   navigator.serviceWorker?.controller?.postMessage({ type: "FORGET_PAGES" });
 }

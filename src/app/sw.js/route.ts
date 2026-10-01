@@ -42,7 +42,7 @@ self.addEventListener("message", (event) => {
   const message = event.data || {};
   if (message.type === "ACTIVATE") self.skipWaiting();
   if (message.type === "FORGET_PAGES") event.waitUntil(caches.delete(PAGES));
-  if (message.type === "SAVE_PAGES") event.waitUntil(Promise.all((message.pages || []).map(savePage)));
+  if (message.type === "SAVE_PAGES") event.waitUntil(savePages(message.pages || []));
 });
 
 const isAsset = (url) => url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/icons/") || /\.(png|svg|ico|woff2?)$/.test(url.pathname);
@@ -92,6 +92,15 @@ async function remember(url, response) {
   if (!response.ok || response.redirected || !(response.headers.get("content-type") || "").includes("text/html")) return;
   const cache = await caches.open(PAGES);
   await cache.put(pageKey(url), response);
+}
+
+// One screen at a time, with a pause between: each one is a real request to
+// the server (and its database), so they must not arrive as a burst.
+async function savePages(pages) {
+  for (const path of pages) {
+    await savePage(path);
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+  }
 }
 
 // Fetch a screen in the background and keep it, along with every app file it needs.

@@ -17,6 +17,8 @@ export type User = {
   is_active: number;
   created_at: string;
   last_login: string | null;
+  google_id: string | null;
+  avatar_version: number;
 };
 
 /**

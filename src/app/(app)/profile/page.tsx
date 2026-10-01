@@ -17,12 +17,16 @@ export default async function ProfilePage() {
       <ProfileForms
         stats={stats}
         user={{
+          id: user.id,
           fullName: user.full_name,
           username: user.username,
           email: user.email,
           color: user.avatar_color,
           timezone: user.timezone,
           memberSince: formatTimestamp(user.created_at, user.timezone),
+          google: Boolean(user.google_id),
+          photo: user.avatar_version,
+          admin: false,
         }}
       />
     </>

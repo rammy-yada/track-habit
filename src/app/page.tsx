@@ -3,6 +3,7 @@ import { Landing } from "@/components/landing/Landing";
 import { currentUser } from "@/lib/auth";
 
 export default async function HomePage() {
-  if (await currentUser()) redirect("/dashboard");
+  const user = await currentUser();
+  if (user) redirect(user.role === "admin" ? "/admin" : "/dashboard");
   return <Landing />;
 }

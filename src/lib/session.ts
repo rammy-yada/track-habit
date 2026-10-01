@@ -16,6 +16,9 @@ export type SessionData = {
   };
   /** No mail server in this project, so the code is shown on screen instead. */
   devOtp?: string;
+  /** "Sign in with Google" in progress: the value Google must echo back. */
+  oauthState?: string;
+  oauthTimezone?: string;
 };
 
 export const SESSION_LIFETIME = 60 * 60 * 24; // 24 hours

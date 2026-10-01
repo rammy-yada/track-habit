@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
-@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+/* "dark:" styles also apply to the Winter Arc theme, which is dark too */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *, [data-theme="arc"], [data-theme="arc"] *));
 
 /* ── Theme tokens ─────────────────────────────────────────────
    Every colour in the app is one of these roles, so light/dark is
@@ -16,6 +17,7 @@
   --brand: #2563eb;
   --brand-solid: #2563eb;
   --brand-solid-hover: #1d4ed8;
+  --on-brand: #ffffff;
   --brand-soft: #e8f0ff;
   --good: #0b8a5f;
   --good-soft: #dff7ee;
@@ -51,6 +53,33 @@
   --flame: #fb923c;
 }
 
+/* ── Winter Arc: the black-and-white poster look, site-wide ────
+   White is the accent, so text on it is black. A film-grain layer that also
+   drains the colour from everything beneath it is added further down. */
+[data-theme="arc"] {
+  color-scheme: dark;
+  --bg: #050505;
+  --card: #0e0e0e;
+  --raised: #191919;
+  --ink: #f4f4f4;
+  --muted: #9c9c9c;
+  --line: #2a2a2a;
+  --brand: #ffffff;
+  --brand-solid: #f4f4f4;
+  --brand-solid-hover: #d6d6d6;
+  --on-brand: #050505;
+  --brand-soft: #222222;
+  --good: #e8e8e8;
+  --good-soft: #242424;
+  --bad: #bdbdbd;
+  --bad-soft: #1c1c1c;
+  --warn: #d0d0d0;
+  --warn-soft: #202020;
+  --chart: #d9d9d9;
+  --grid: #232323;
+  --flame: #ffffff;
+}
+
 @theme inline {
   --color-bg: var(--bg);
   --color-card: var(--card);
@@ -62,6 +91,7 @@
   --color-brand-solid: var(--brand-solid);
   --color-brand-solid-hover: var(--brand-solid-hover);
   --color-brand-soft: var(--brand-soft);
+  --color-on-brand: var(--on-brand);
   --color-good: var(--good);
   --color-good-soft: var(--good-soft);
   --color-bad: var(--bad);
@@ -88,6 +118,30 @@ body {
   font-family: var(--font-sans);
   min-height: 100dvh;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Everything goes grey (habit colours, avatars, emoji). The filter sits on
+   <html> itself — the one element where it doesn't disturb fixed bars and
+   dialogs — and costs far less than filtering a layer on top of the page. */
+html[data-theme="arc"] {
+  filter: grayscale(1) contrast(1.05);
+}
+/* a fixed sheet of film grain; it ignores the pointer, so everything stays clickable */
+html[data-theme="arc"]::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.28 -0.11'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+/* headings switch to the thin poster capitals */
+html[data-theme="arc"] .font-display {
+  font-family: var(--font-poster);
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  -webkit-text-stroke: 0.35px currentColor; /* the face is very thin at small sizes */
 }
 
 button:not(:disabled),
@@ -228,6 +282,18 @@ summary {
   display: none;
 }
 
+/* ── Loading skeletons ──────────────────────────────────────── */
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+.skeleton {
+  border-radius: 0.75rem;
+  background: linear-gradient(90deg, var(--raised) 25%, color-mix(in srgb, var(--raised) 55%, var(--line)) 50%, var(--raised) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .flame,
   .cell-in,
@@ -237,7 +303,8 @@ summary {
   .snow,
   .aurora,
   .shine,
-  .glint {
+  .glint,
+  .skeleton {
     animation: none;
   }
 }

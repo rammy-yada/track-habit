@@ -37,6 +37,11 @@ export const MOODS = [
 
 export type Mood = (typeof MOODS)[number]["value"];
 
+// Shown on the Privacy and Terms pages. Set CONTACT_EMAIL to a public address
+// people can write to; while it is empty the pages point to the creator's page.
+export const CONTACT_EMAIL = "";
+export const LEGAL_UPDATED = "October 1, 2026";
+
 export const CREATOR = {
   handle: "rammy24d",
   supportUrl: "https://kamaucha.me/rammy24d",

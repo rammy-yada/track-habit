@@ -15,7 +15,19 @@ CREATE TABLE IF NOT EXISTS users (
     is_active      SMALLINT     NOT NULL DEFAULT 1,
     email_verified SMALLINT     DEFAULT 1,
     created_at     TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
-    last_login     TIMESTAMP    NULL
+    last_login     TIMESTAMP    NULL,
+    google_id      VARCHAR(64)  NULL   -- set for accounts created with "Sign in with Google"
+);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id VARCHAR(64);
+CREATE UNIQUE INDEX IF NOT EXISTS users_google_id ON users (google_id);
+-- bumped each time the profile photo changes (0 = no photo); also busts caches
+ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_version INT NOT NULL DEFAULT 0;
+
+-- Profile photos: small WebP images (256px), one per user.
+CREATE TABLE IF NOT EXISTS avatars (
+    user_id    INT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    image      BYTEA NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 -- "Tom" and "tom" are the same account: usernames and emails are unique ignoring case.
 CREATE UNIQUE INDEX IF NOT EXISTS users_username_lower ON users (LOWER(username));
