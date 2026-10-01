@@ -1,0 +1,6 @@
+# This folder is a Next.js app now (run `npm run dev`). XAMPP's Apache still
+# serves htdocs, so block everything except the preserved PHP version.
+<FilesMatch "^\.env">
+    Require all denied
+</FilesMatch>
+RedirectMatch 403 ^/habit-flow/(node_modules|\.next|src|scripts|db)(/|$)
