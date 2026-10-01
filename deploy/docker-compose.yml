@@ -1,0 +1,30 @@
+# HabitFlow behind a load balancer: nginx in front of several identical app
+# containers. From the project root:
+#
+#   cp .env.example deploy/.env      # then fill in DB_* and SESSION_SECRET
+#   docker compose -f deploy/docker-compose.yml up -d --build --scale app=3
+#
+# Change the number after --scale to add or remove containers at any time.
+# The site is served on port 80. Put HTTPS in front of it (your host's proxy,
+# Cloudflare, or Caddy) before using it for real — installs and secure
+# cookies need https.
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    env_file: .env          # every container must share the SAME SESSION_SECRET
+    restart: unless-stopped
+    expose:
+      - "3000"
+
+  lb:
+    image: nginx:1.27-alpine
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    restart: unless-stopped

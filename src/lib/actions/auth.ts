@@ -21,7 +21,7 @@ export async function loginAction(_prev: FormState, formData: FormData): Promise
   if (!identifier || !password) return { error: "Please enter your email/username and password.", fields: { identifier } };
 
   const user = await queryOne<{ id: number; password: string }>(
-    "SELECT id, password FROM users WHERE (email = ? OR username = ?) AND is_active = 1 LIMIT 1",
+    "SELECT id, password FROM users WHERE (LOWER(email) = LOWER(?) OR LOWER(username) = LOWER(?)) AND is_active = 1 LIMIT 1",
     [identifier, identifier],
   );
   const valid = await bcrypt.compare(password, user?.password ?? DUMMY_HASH);
@@ -32,7 +32,7 @@ export async function loginAction(_prev: FormState, formData: FormData): Promise
   session.pendingReg = undefined;
   session.devOtp = undefined;
   await session.save();
-  await execute("UPDATE users SET last_login = UTC_TIMESTAMP() WHERE id = ?", [user.id]);
+  await execute("UPDATE users SET last_login = NOW() WHERE id = ?", [user.id]);
   redirect("/dashboard");
 }
 
@@ -55,7 +55,7 @@ export async function registerAction(_prev: FormState, formData: FormData): Prom
   if (!isValidTimezone(timezone)) errors.push("Unknown timezone.");
   if (errors.length) return { error: errors.join(" "), fields };
 
-  const taken = await queryOne("SELECT id FROM users WHERE email = ? OR username = ?", [email, username]);
+  const taken = await queryOne("SELECT id FROM users WHERE LOWER(email) = LOWER(?) OR LOWER(username) = LOWER(?)", [email, username]);
   if (taken) return { error: "Email or username already in use.", fields };
 
   const colors = ["#3b82f6", "#2563eb", "#1d4ed8", "#1e40af", "#1e3a8a"];
@@ -84,11 +84,11 @@ export async function verifyOtpAction(_prev: FormState, formData: FormData): Pro
 
   let userId: number;
   try {
-    const result = await execute(
-      "INSERT INTO users (username, email, password, full_name, avatar_color, timezone, email_verified, last_login) VALUES (?, ?, ?, ?, ?, ?, 1, UTC_TIMESTAMP())",
+    const result = await execute<{ id: number }>(
+      "INSERT INTO users (username, email, password, full_name, avatar_color, timezone, email_verified, last_login) VALUES (?, ?, ?, ?, ?, ?, 1, NOW()) RETURNING id",
       [reg.username, reg.email, reg.passwordHash, reg.fullName, reg.color, reg.timezone],
     );
-    userId = result.insertId;
+    userId = result.rows[0].id;
   } catch (err) {
     if (isDuplicateError(err)) return { error: "User already exists." };
     throw err;

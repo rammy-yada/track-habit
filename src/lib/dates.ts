@@ -20,15 +20,21 @@ export function addDays(date: string, days: number): string {
   return new Date(toUTC(date).getTime() + days * DAY_MS).toISOString().slice(0, 10);
 }
 
+/** Whole days from `from` to `to` (negative if `to` is earlier). */
+export function diffDays(from: string, to: string): number {
+  return Math.round((toUTC(to).getTime() - toUTC(from).getTime()) / DAY_MS);
+}
+
 export function formatDate(date: string, options: Intl.DateTimeFormatOptions): string {
   return new Intl.DateTimeFormat("en-US", { timeZone: "UTC", ...options }).format(toUTC(date));
 }
 
-/** Formats a MySQL TIMESTAMP string ("2026-10-01 09:30:00") for display. */
-export function formatTimestamp(timestamp: string, withTime = false): string {
-  const date = new Date(timestamp.replace(" ", "T"));
+/** Formats a stored UTC timestamp ("2026-10-01 09:30:00") in the given timezone. */
+export function formatTimestamp(timestamp: string, timezone = "UTC", withTime = false): string {
+  const date = new Date(`${timestamp.replace(" ", "T").replace(/([+-]\d\d(:?\d\d)?|Z)$/, "")}Z`);
   if (Number.isNaN(date.getTime())) return timestamp;
   return new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
     month: "short",
     day: "numeric",
     year: "numeric",

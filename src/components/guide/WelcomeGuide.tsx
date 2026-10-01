@@ -56,7 +56,7 @@ export function WelcomeGuide({ firstName, role, timezone }: Props) {
   }, [justSignedUp, pathname, router]);
 
   const tap = phone ? "Tap" : "Click";
-  const tabs = phone ? ["Today", "Stats", "Month", "Profile", role === "admin" ? "Admin" : "Support"] : ["Dashboard", "Analytics", "Monthly View", "Profile"];
+  const tabs = phone ? ["Today", "Stats", "Arc", "Month", "Profile", role === "admin" ? "Admin" : "Support"] : ["Dashboard", "Analytics", "Winter Arc", "Monthly View", "Profile"];
 
   const steps = [
     {
@@ -91,11 +91,11 @@ export function WelcomeGuide({ firstName, role, timezone }: Props) {
       art: <NavArt phone={phone} tabs={tabs} />,
       body: phone ? (
         <p>
-          The bar at the bottom of the screen switches between <b className="text-ink">{tabs.join(", ")}</b>. In Month, swipe the grid sideways to see every day, and tap any past day to fix a tick you missed. The sun/moon button at the top switches light and dark.
+          The bar at the bottom of the screen switches between <b className="text-ink">{tabs.join(", ")}</b>. In Month, swipe the grid sideways to see every day, and tap any past day to fix a tick you missed. <b className="text-ink">Arc</b> is the Winter Arc challenge: a leaderboard and workout ideas.
         </p>
       ) : (
         <p>
-          The sidebar switches between <b className="text-ink">{tabs.join(", ")}</b>. Analytics shows your weekly pattern; Monthly View is a full grid where you can click any past day to fix a tick you missed. The sun/moon button switches light and dark.
+          The sidebar switches between <b className="text-ink">{tabs.join(", ")}</b>. Analytics shows your weekly pattern; Monthly View is a full grid where you can click any past day to fix a tick you missed. <b className="text-ink">Winter Arc</b> is the seasonal challenge, with a leaderboard and workout ideas.
         </p>
       ),
     },
@@ -179,7 +179,7 @@ function InstallStep({ device, canInstall }: { device: Device; canInstall: boole
   if (result === "installed") return <p>Installed. Look for the HabitFlow icon on your home screen or app list.</p>;
   if (device.installed) return <p>You opened HabitFlow from its own icon, so it&apos;s already installed on this device. Nothing more to do.</p>;
 
-  const benefits = <p className="mt-3">Installed, it opens full screen from its own icon like any other app. It still needs an internet connection — your habits are saved on the server, not on the device.</p>;
+  const benefits = <p className="mt-3">Installed, it opens full screen from its own icon like any other app — and it works offline: ticks you make without a connection are kept on the device and sync when you&apos;re back online.</p>;
 
   if (canInstall) {
     return (

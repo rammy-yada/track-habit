@@ -27,7 +27,7 @@ export async function addUserAction(_prev: AdminFormState, formData: FormData): 
   if (password.length < 6 || password.length > 72) errors.push("Password must be 6-72 characters.");
   if (errors.length) return { error: errors.join(" ") };
 
-  if (await queryOne("SELECT id FROM users WHERE email = ? OR username = ?", [email, username])) {
+  if (await queryOne("SELECT id FROM users WHERE LOWER(email) = LOWER(?) OR LOWER(username) = LOWER(?)", [email, username])) {
     return { error: "Email or username already exists." };
   }
   await execute("INSERT INTO users (username, email, password, full_name, role) VALUES (?, ?, ?, ?, ?)", [

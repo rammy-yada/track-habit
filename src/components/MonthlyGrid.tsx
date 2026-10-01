@@ -1,11 +1,11 @@
 "use client";
 
-import { useMemo, useOptimistic, useState, useTransition } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
 import { PageHeader } from "@/components/PageHeader";
 import { card } from "@/components/ui/styles";
-import { setHabitDone } from "@/lib/actions/habits";
+import { setDone, settle, useOfflineQueue } from "@/lib/offline";
 import type { getMonthly } from "@/lib/data";
 
 type Data = Awaited<ReturnType<typeof getMonthly>>;
@@ -17,16 +17,23 @@ function pill(percent: number) {
 }
 
 export function MonthlyGrid({ data }: { data: Data }) {
+  // Server data with the on-device queue layered on top, so ticks show at
+  // once and keep working with no connection.
+  const queue = useOfflineQueue();
   const base = useMemo(() => new Set(data.done), [data.done]);
-  const [done, apply] = useOptimistic(base, (current: Set<string>, op: { key: string; on: boolean }) => {
-    const next = new Set(current);
-    if (op.on) next.add(op.key);
-    else next.delete(op.key);
-    return next;
-  });
-  const [, startTransition] = useTransition();
+  const done = useMemo(() => {
+    const merged = new Set(base);
+    for (const op of queue.ops.values()) {
+      if (op.done) merged.add(`${op.habitId}:${op.date}`);
+      else merged.delete(`${op.habitId}:${op.date}`);
+    }
+    return merged;
+  }, [base, queue]);
+  useEffect(() => {
+    for (const op of queue.ops.values()) settle(op.habitId, op.date, base.has(`${op.habitId}:${op.date}`));
+  }, [base, queue]);
   const [popped, setPopped] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const error = queue.lastError;
 
   // Slide the month label in from the side you navigated toward.
   const [nav, setNav] = useState({ key: data.key, direction: 1 });
@@ -37,12 +44,7 @@ export function MonthlyGrid({ data }: { data: Data }) {
     const key = `${habitId}:${date}`;
     const on = !done.has(key);
     setPopped(key);
-    setError(null);
-    startTransition(async () => {
-      apply({ key, on });
-      const result = await setHabitDone(habitId, on, date);
-      if (!result.ok) setError(result.error);
-    });
+    setDone(habitId, date, on);
   }
 
   const pastDays = data.days.filter((d) => d.isPast);

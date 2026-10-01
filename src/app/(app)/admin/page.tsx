@@ -19,7 +19,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       selfId={admin.id}
       search={search}
       motto={MOTTOS[new Date().getDate() % MOTTOS.length]}
-      joined={Object.fromEntries(data.users.map((u) => [u.id, formatTimestamp(u.created_at)]))}
+      joined={Object.fromEntries(data.users.map((u) => [u.id, formatTimestamp(u.created_at, admin.timezone)]))}
     />
   );
 }

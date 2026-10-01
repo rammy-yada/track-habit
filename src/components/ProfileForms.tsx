@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { motion } from "motion/react";
+import { AppControls } from "@/components/AppStatus";
 import { Alert } from "@/components/ui/Alert";
 import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
 import { PasswordField } from "@/components/ui/PasswordField";
@@ -108,6 +109,14 @@ export function ProfileForms({ user, stats }: Props) {
               Update Password
             </SubmitButton>
           </form>
+        </section>
+      </Reveal>
+
+      <Reveal>
+        <section className={`${card} p-6 sm:p-7`}>
+          <h2 className="mb-1 text-[15px] font-bold">App</h2>
+          <p className="mb-4 text-[13px] leading-relaxed text-muted">HabitFlow works offline: ticks you make without a connection are kept on this device and synced when you&apos;re back online.</p>
+          <AppControls />
         </section>
       </Reveal>
 

@@ -1,52 +1,98 @@
 # HabitFlow
 
 A habit tracker: add daily/weekly/monthly habits, tick them off, and watch
-streaks and analytics build. It installs on a phone as an app (PWA) and walks
-new users through a short welcome guide. Created by **rammy24d**.
+streaks and analytics build. It installs on a phone as an app, works offline,
+runs a seasonal **Winter Arc** challenge with a leaderboard, and walks new
+users through a short welcome guide. Created by **rammy24d**.
 
-This is the **Next.js** version. The original plain-PHP version is preserved
-unchanged in [`legacy-php/`](legacy-php/) and both run against the **same
-MySQL database** — existing accounts, passwords and history carry over.
+The original plain-PHP version is kept in [`legacy-php/`](legacy-php/) for
+reference. It used MySQL; this app uses PostgreSQL, so the two no longer share
+a database.
 
 | Layer     | Technology |
 |-----------|------------|
 | Framework | Next.js 16 (App Router, React 19, TypeScript) |
-| Database  | MySQL / MariaDB via `mysql2` prepared statements (XAMPP's MySQL works as is) |
+| Database  | PostgreSQL via `pg`, parameterised queries |
 | Auth      | Encrypted cookie session (`iron-session`), bcrypt password hashing |
 | Styling   | Tailwind CSS 4 with light/dark theme tokens |
 | Animation | Motion (`motion/react`), canvas, CSS keyframes, View Transitions API |
-| PWA       | Web app manifest, home-screen icons, a minimal service worker (offline page) |
+| Offline   | Service worker + on-device sync queue; installable (PWA) |
 
 ---
 
-## Run it
+## Run it locally
 
-Needs Node.js 20.9+ and a running MySQL (start it from the XAMPP control panel).
+Needs Node.js 20.9+. Nothing else to install — a local Postgres comes with
+the project.
 
 ```bash
 npm install
-npm run db:setup    # creates the database/tables if missing; never overwrites data
+npm run db:local    # starts Postgres; leave this terminal open
+```
+
+In a second terminal:
+
+```bash
+npm run db:setup    # first time only: creates tables and an admin account
 npm run dev         # http://localhost:3000
 ```
 
-Settings live in `.env.local` (database credentials and the session secret).
-`.env.example` documents every variable.
-
-`npm run db:setup` is safe on an existing database. If there is no admin
-account yet it creates one (`admin`) and prints a generated password — or set
-your own with `ADMIN_PASSWORD='...' npm run db:setup`.
-
-For a production build: `npm run build && npm start`.
+`db:setup` prints the admin password it generated (or set your own with
+`ADMIN_PASSWORD='...' npm run db:setup`). It is safe to re-run; it never
+overwrites data. Local data lives in `.pgdata/`.
 
 **On your phone:** with the phone on the same Wi-Fi, open the "Network"
-address `npm run dev` prints (e.g. `http://192.168.1.20:3000`). Everything
-works there, but a true "Install app" needs **https** — browsers only treat
-`localhost` and https sites as installable. Deploy it, or use an https tunnel,
-to test the installed app on a phone.
+address `npm run dev` prints (e.g. `http://192.168.1.20:3000`). Installing as
+an app and offline use need **https** (or `localhost`), so test those on the
+deployed site.
 
-> The folder still sits inside XAMPP's `htdocs`, but Apache no longer serves
-> the app — Node does. Apache only serves the old version at
-> `http://localhost/habit-flow/legacy-php/`.
+---
+
+## Going live
+
+### 1. Database
+
+Create a PostgreSQL database with any host (Aiven's free plan works), then:
+
+```bash
+npm run db:setup:live
+```
+
+It asks you to paste the database's **Service URI** (`postgres://…`), finds
+the CA certificate in your Downloads folder, creates the tables and the admin
+account, and writes everything your hosting provider needs to
+`.env.live.local` (git-ignored — it contains the database password).
+
+### 2. Environment variables on the host
+
+| Variable | Value |
+|---|---|
+| `DATABASE_URL` | the Service URI |
+| `DB_SSL_CA` | the provider's CA certificate text, if it uses its own (Aiven does) |
+| `SESSION_SECRET` | 32+ random characters; the same on every copy of the app |
+| `DB_POOL_SIZE` | connections per running copy; keep it small (2–3) on free databases |
+
+### 3. Check it: `/api/health`
+
+Open `https://your-site/api/health`. It answers `200 {"status":"ok"}` when the
+session secret and database are both usable, and `503` with a plain-language
+reason when they aren't. It never prints hosts, usernames or secrets. If the
+site shows a generic server error, look here first.
+
+### Load balancing
+
+The app runs as several identical copies behind a load balancer: the session
+is an encrypted cookie (no sticky sessions), all data is in Postgres, and
+`/api/health` tells the balancer which copies may receive traffic. Every copy
+must have the same `SESSION_SECRET` and run the same build.
+
+On Vercel, Render, Railway and similar, this is done for you. To run it
+yourself, `deploy/` has nginx in front of N app containers:
+
+```bash
+cp .env.example deploy/.env        # fill in DATABASE_URL and SESSION_SECRET
+docker compose -f deploy/docker-compose.yml up -d --build --scale app=3
+```
 
 ---
 
@@ -56,107 +102,115 @@ to test the installed app on a phone.
 src/
   app/                    one folder per URL
     page.tsx                /            landing
-    (auth)/                 /login  /register  /verify   (signed-out only)
-    (app)/                  /dashboard  /analytics  /monthly  /profile  /support  /admin
-      layout.tsx              auth check + sidebar for every page in the group
-      template.tsx            page-enter transition
-    manifest.ts             the web app manifest (name, icons, start URL)
+    (auth)/                 /login  /register  /verify
+    (app)/                  /dashboard  /analytics  /arc  /monthly  /profile  /support  /admin
+      layout.tsx              auth check, sidebar, offline status, welcome guide
+    api/health  api/version   status check; which build is running
+    api/sync                  applies habit ticks, including ones made offline
+    sw.js/                    the service worker (served with the build id in it)
+    manifest.ts               web app manifest
   lib/
-    db.ts                 connection pool + query helpers
+    db.ts  db-config.mjs  connection pool, query helpers, connection settings
     session.ts  auth.ts   cookie session, currentUser / requireUser / requireAdmin
-    data.ts               every read query, one function per page
-    actions/              every write, as Server Actions (auth, habits, profile, admin)
-    otp.ts                verification codes
-    pwa.ts                install prompt, device detection, opening the guide
-  components/             UI; charts/ are hand-built SVG; guide/ is the welcome guide
-public/
-  sw.js  offline.html     service worker and the page it shows when offline
-  icons/                  home-screen icons
+    data.ts  arc.ts       every read query
+    habit-log.ts          the one place a habit is marked done / not done
+    actions/              every other write, as Server Actions
+    offline.ts            sync queue, online state, update & restart
+    workouts.ts           the workout catalogue
+  components/             UI; charts/ are hand-built SVG
 db/schema.sql             the full schema
-scripts/setup-db.mjs      `npm run db:setup`
-legacy-php/               the original PHP app, untouched
+scripts/                  db:local, db:setup, db:setup:live
+deploy/                   Dockerfile, nginx load balancer config, docker-compose
+legacy-php/               the original PHP app
 ```
 
-### PHP page → Next.js
-
-| PHP | Now |
-|---|---|
-| `index.php`, `login.php`, `register.php`, `otp_verify.php` | `/`, `/login`, `/register`, `/verify` |
-| `dashboard.php`, `analytics.php`, `monthly.php`, `profile.php` | `/dashboard`, `/analytics`, `/monthly`, `/profile` |
-| `donate.php` | `/support` — a link to the creator's tip page; the eSewa sandbox flow was removed |
-| `admin/index.php` | `/admin` |
-| `logout.php` | `logoutAction` (the Log out button) |
-| `setup.php` | `npm run db:setup` |
-| `includes/config.php` | `src/lib/*` + `.env.local` |
-
-The old `.php` URLs redirect to the new ones.
-
-### How a request works
-
 **Reading.** Each page is a Server Component: it runs on the server, calls
-`requireUser()`, loads its data from `lib/data.ts`, and sends HTML. Database
-code and credentials never reach the browser.
+`requireUser()`, loads its data, and sends HTML. Database code and credentials
+never reach the browser.
 
-**Writing.** Forms and buttons call Server Actions in `lib/actions/`. An
-action re-checks who is calling, validates the input, runs the query, then
-calls `revalidatePath()` so the page re-renders with fresh data. The dashboard
-and monthly grid use `useOptimistic`, so a tick shows instantly and the server
-confirms behind it.
+**Writing.** Forms and buttons call Server Actions in `lib/actions/`, which
+re-check who is calling and validate input. The one exception is ticking a
+habit, described next.
+
+---
+
+## Offline use and syncing
+
+- **Ticking works with no connection.** A tick is written to a small queue on
+  the device first and shown at once, on the dashboard and the monthly grid.
+  The queue survives reloads and restarts.
+- **Sync.** Whenever there is a connection the queue is sent to
+  `POST /api/sync`. Each change says the state it wants ("done" / "not done"
+  for a habit on a day), so sending it twice is harmless.
+- **Screens are saved.** The service worker keeps the app's files and the
+  latest copy of the main screens, and serves them when the network can't.
+  A screen that was never saved shows a short "offline" page.
+- **Everything else needs a connection** — adding or deleting habits, notes,
+  profile, joining the arc. Offline, those say so instead of failing.
+- **A pill at the bottom** shows "Offline · N changes saved on this device",
+  "Syncing…", or "All changes synced".
+- **Sign-out** clears the queue and the saved screens from the device.
+
+### Updates
+
+Each build has an id. The app checks `/api/version` and, when the server is
+running a newer build, shows **"A new version is ready — Update & restart"**.
+Pressing it **syncs pending changes first**; if they can't be synced (no
+connection), the update is refused and the changes stay safely on the device.
+"Check for update" and "Restart app" are also on the Winter Arc screen and in
+Profile.
+
+---
+
+## Winter Arc
+
+`/arc` is a seasonal challenge that runs **Oct 1 – Dec 31** every year.
+
+- **Joining is opt-in** and is what puts someone on the leaderboard, shown as
+  first name + last initial and username. Leaving removes them.
+- **Scoring** (`src/lib/arc.ts`): 10 points per habit ticked, counting at most
+  5 habits a day. A tick only scores if it reached the server within a day of
+  the day it is for — filling in old days fixes the record, not the score.
+  Ties go to more active days, then to whoever joined first.
+- **The look** is a black-and-white poster: film grain, thin tall lettering, a
+  hooded knight resting on a sword (drawn in SVG in `ArcScreen.tsx`), snow and
+  drifting fog. On a phone it is the screen; on desktop it sits in a phone
+  frame.
+- **Workout recommendations** sit beside it, in six categories. "Add as daily
+  habit" puts one on your checklist. The catalogue is a plain list in
+  `src/lib/workouts.ts`.
+
+## Support page
+
+`/support` credits the creator and links to their tip page
+(`https://kamaucha.me/rammy24d`). The app takes no payments itself. The handle
+and link are `CREATOR` in `src/lib/constants.ts`.
+
+## Welcome guide
+
+A five-step walkthrough opens the first time someone reaches the app on a
+device, and right after sign-up. **Guide** (sidebar) or **?** (phone) reopens
+it. Wording switches between phone and desktop, steps can be swiped, and the
+last step gives install instructions for the device it is opened on.
 
 ---
 
 ## Security
 
-| Concern | PHP version | This version |
-|---|---|---|
-| SQL injection | PDO prepared statements | `mysql2` prepared statements — every query in `lib/` is parameterised |
-| Passwords | `password_hash()` bcrypt | `bcryptjs`, cost 12. Existing `$2y$` hashes verify unchanged |
-| Sessions | `$_SESSION` + `PHPSESSID` cookie | One encrypted, tamper-proof cookie; `HttpOnly`, `SameSite=Lax`, 24 h |
-| CSRF | Hidden token in every form | Server Actions only accept same-origin POSTs, plus the `SameSite=Lax` cookie |
-| XSS | `htmlspecialchars()` on output | React escapes all rendered text by default |
-| Authorization | `requireLogin()` / `requireAdmin()` | `requireUser()` / `requireAdmin()` — in every page **and** every action |
-| OTP comparison | `hash_equals()` | `crypto.timingSafeEqual()` |
+| Concern | How it is handled |
+|---|---|
+| SQL injection | Every query is parameterised; values never go into SQL text |
+| Passwords | `bcryptjs`, cost 12 |
+| Sessions | One encrypted, tamper-proof cookie; `HttpOnly`, `SameSite=Lax`, 24 h |
+| CSRF | Server Actions only accept same-origin POSTs; `/api/sync` checks the Origin; `SameSite=Lax` cookie |
+| XSS | React escapes all rendered text |
+| Authorization | `requireUser()` / `requireAdmin()` in every page, action and API route |
+| OTP comparison | `crypto.timingSafeEqual()` |
+| Database connection | TLS with certificate verification for hosted databases |
 
 The user row is re-read from the database on every request, so disabling an
-account or changing its role takes effect immediately.
-
----
-
-## Support page
-
-`/support` credits the creator and links to their tip page
-(`https://kamaucha.me/rammy24d`), opening it in a new tab. The app takes no
-payments itself. The handle and link live in one place: `CREATOR` in
-`src/lib/constants.ts`.
-
-The eSewa sandbox integration from the PHP version was removed from this app
-(it still exists in `legacy-php/`). An existing `donations` table in your
-database is left alone but no longer read or written.
-
----
-
-## Phone app (PWA)
-
-- **Manifest** (`src/app/manifest.ts`): name, colours, icons, `standalone`
-  display, start URL `/dashboard`, and long-press shortcuts.
-- **Icons**: `public/icons/` (192, 512, maskable) and `src/app/apple-icon.png`.
-- **Service worker** (`public/sw.js`): registered in production builds only.
-  It caches nothing private — pages always come fresh from the server. Its one
-  job is to show `offline.html` instead of a browser error when there's no
-  connection.
-- **Install**: on Android/Chrome/Edge the guide shows an **Install app**
-  button when the browser offers one; on iPhone it shows the Share → Add to
-  Home Screen steps.
-
-## Welcome guide
-
-A five-step walkthrough (`src/components/guide/`) opens automatically the
-first time someone reaches the app on a device, and right after sign-up. The
-**Guide** button (sidebar) or **?** (phone top bar) reopens it. Wording and
-illustrations switch between phone and desktop; on a phone the steps can be
-swiped. The last step gives install instructions for the device it's opened on
-— iPhone, Android or desktop — or says so if the app is already installed.
-"Seen" is remembered per browser in `localStorage`.
+account or changing its role takes effect immediately. Verification codes are
+shown on screen because there is no mail server.
 
 ---
 
@@ -164,40 +218,15 @@ swiped. The last step gives install instructions for the device it's opened on
 
 | Where | What |
 |---|---|
-| Landing, sign-in | **Flow field** — canvas particles drifting on a shifting current that bends around the cursor |
-| Landing | Headline words rise from a mask; a hand-drawn underline draws itself; a live demo card ticks itself off and tilts in 3D; magnetic buttons |
-| Theme toggle | The new theme expands as a circle from the button (View Transitions API) |
-| Welcome guide | Looping miniatures of each action (a tap adds a habit, a box ticks itself, the tab highlight walks the bar, the icon drops onto a home screen); steps slide and can be swiped |
-| Support page | Hearts drift up behind the card; the creator badge spins in with a rotating ring |
-| Checking a habit | The tick draws, sparks burst out, colour washes across the row from the checkbox, the name strikes through, the streak counter rolls |
-| Finishing the day | Confetti and a "Perfect day" banner |
-| Dashboard | Count-up numbers, a progress ring, filter pill that glides between tabs, rows that reflow when filtered or deleted |
-| Charts | Lines draw, columns grow in sequence, the radar unfolds from its centre |
-| Monthly grid | Cells arrive in a diagonal wave and pop when toggled; the month label slides in the direction you navigated |
-| Navigation | One shared highlight pill glides between sidebar items; pages fade up on enter |
-| Verify screen | Code digits flip in and type themselves; the boxes shake on a wrong code |
-| Cards | A soft glow follows the cursor |
+| Landing, sign-in | **Flow field** — canvas particles drifting on a current that bends around the cursor |
+| Landing | Headline words rise from a mask; a hand-drawn underline draws itself; a live demo card tilts in 3D; magnetic buttons |
+| Theme toggle | The new theme expands as a circle from the button |
+| Checking a habit | The tick draws, sparks burst out, colour washes across the row, the streak counter rolls; confetti when the day is complete |
+| Winter Arc | Title letters come into focus one by one; the knight rises; a glint runs down the sword; snow falls and fog drifts; podium blocks rise III, II, then I |
+| Workouts | Category pill glides between tabs; cards deal in with a slight flip |
+| Charts | Lines draw, columns grow in sequence, the radar unfolds |
+| Monthly grid | Cells arrive in a diagonal wave and pop when toggled |
+| Welcome guide | Looping miniatures of each action; steps slide and can be swiped |
+| Navigation | One shared highlight pill glides between items; pages fade up |
 
 All of it respects the OS "reduce motion" setting.
-
----
-
-## Differences from the PHP version
-
-- **Notes and moods now save.** The PHP dashboard had the note dialog but no
-  server code behind it; it works now and feeds the mood chart.
-- **Streaks survive until midnight.** A streak used to read 0 until today was
-  ticked; it now shows the run up to yesterday and grows when today is done.
-- **Unchecking keeps a note.** If a day has a note or mood, unchecking only
-  clears the completion.
-- **Counts ignore un-completed rows** consistently (`completed_count > 0`).
-- **Phones get navigation** (top bar + bottom tabs); the PHP version hid the
-  sidebar on small screens with nothing in its place.
-- **Installable as an app**, with a welcome guide for new users.
-- **No in-app payments.** The eSewa test checkout is replaced by a link to the
-  creator's tip page.
-- **Dark theme**, following the OS by default.
-- **Verification codes** are still shown on screen, since there is no mail
-  server. Only sign-up uses them, as before.
-- Text is stored as typed rather than HTML-escaped before storage. Older rows
-  that were stored escaped (`Tom &amp; Jerry`) are decoded when displayed.

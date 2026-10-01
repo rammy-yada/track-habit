@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireUser } from "../auth";
 import { execute, queryOne } from "../db";
-import { isDateString, todayIn } from "../dates";
+import { todayIn } from "../dates";
 import { clean } from "../text";
 import { isHexColor, toId } from "../validation";
 import { MOODS } from "../constants";
@@ -14,38 +14,8 @@ async function ownsHabit(userId: number, habitId: number): Promise<boolean> {
   return (await queryOne("SELECT id FROM habits WHERE id = ? AND user_id = ? AND is_active = 1", [habitId, userId])) !== null;
 }
 
-/**
- * Marks a habit done / not done for a day. The client sends the state it
- * wants (not "toggle"), so a double click or a retried request is harmless.
- */
-export async function setHabitDone(habitIdInput: number, done: boolean, dateInput?: string): Promise<Result> {
-  const user = await requireUser();
-  const habitId = toId(habitIdInput);
-  const today = todayIn(user.timezone);
-  const date = dateInput ?? today;
-  if (!habitId || !isDateString(date)) return { ok: false, error: "Invalid request." };
-  if (date > today) return { ok: false, error: "Cannot log future dates." };
-  if (!(await ownsHabit(user.id, habitId))) return { ok: false, error: "Habit not found." };
-
-  if (done) {
-    await execute(
-      "INSERT INTO habit_logs (habit_id, user_id, log_date, completed_count) VALUES (?, ?, ?, 1) ON DUPLICATE KEY UPDATE completed_count = 1",
-      [habitId, user.id, date],
-    );
-  } else {
-    // Keep the row if it carries a note or mood — only the completion is undone.
-    await execute(
-      "UPDATE habit_logs SET completed_count = 0 WHERE habit_id = ? AND user_id = ? AND log_date = ? AND (mood IS NOT NULL OR COALESCE(notes, '') <> '')",
-      [habitId, user.id, date],
-    );
-    await execute(
-      "DELETE FROM habit_logs WHERE habit_id = ? AND user_id = ? AND log_date = ? AND mood IS NULL AND COALESCE(notes, '') = ''",
-      [habitId, user.id, date],
-    );
-  }
-  revalidatePath("/", "layout");
-  return { ok: true };
-}
+// Ticking a habit is not here: it goes through POST /api/sync so that it also
+// works for changes made offline (see src/lib/offline.ts).
 
 export type HabitFormState = { error?: string; ok?: boolean } | null;
 
@@ -97,7 +67,7 @@ export async function saveNote(habitIdInput: number, moodInput: string, notesInp
 
   await execute(
     `INSERT INTO habit_logs (habit_id, user_id, log_date, completed_count, mood, notes) VALUES (?, ?, ?, 0, ?, ?)
-     ON DUPLICATE KEY UPDATE mood = VALUES(mood), notes = VALUES(notes)`,
+     ON CONFLICT (habit_id, user_id, log_date) DO UPDATE SET mood = EXCLUDED.mood, notes = EXCLUDED.notes`,
     [habitId, user.id, todayIn(user.timezone), mood, notes || null],
   );
   revalidatePath("/", "layout");

@@ -22,7 +22,7 @@ export default async function ProfilePage() {
           email: user.email,
           color: user.avatar_color,
           timezone: user.timezone,
-          memberSince: formatTimestamp(user.created_at),
+          memberSince: formatTimestamp(user.created_at, user.timezone),
         }}
       />
     </>

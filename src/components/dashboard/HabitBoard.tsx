@@ -11,28 +11,31 @@ import { Spotlight } from "@/components/ui/Spotlight";
 import { Reveal } from "@/components/ui/Reveal";
 import { TrendChart } from "@/components/charts/TrendChart";
 import { btnPrimary, card, eyebrow } from "@/components/ui/styles";
-import { deleteHabit, saveNote, setHabitDone } from "@/lib/actions/habits";
+import { deleteHabit, saveNote } from "@/lib/actions/habits";
+import { resolveDone, setDone, settle, useOfflineQueue, whenOnline } from "@/lib/offline";
 import type { Mood } from "@/lib/constants";
 import type { getDashboard, HabitView } from "@/lib/data";
 import { Confetti, Flame } from "./effects";
 import { HabitRow } from "./HabitRow";
 import { AddHabitModal, NoteModal } from "./HabitModals";
 
-type Op = { type: "done"; id: number; done: boolean } | { type: "remove"; id: number } | { type: "note"; id: number; mood: Mood | null; notes: string };
+type Op = { type: "remove"; id: number } | { type: "note"; id: number; mood: Mood | null; notes: string };
 type Filter = "all" | "pending" | "done";
 
 function reduce(habits: HabitView[], op: Op): HabitView[] {
   if (op.type === "remove") return habits.filter((h) => h.id !== op.id);
-  return habits.map((h) => {
-    if (h.id !== op.id) return h;
-    return op.type === "done" ? { ...h, doneToday: op.done } : { ...h, mood: op.mood, notes: op.notes };
-  });
+  return habits.map((h) => (h.id === op.id ? { ...h, mood: op.mood, notes: op.notes } : h));
 }
 
 export function HabitBoard({ data }: { data: Awaited<ReturnType<typeof getDashboard>> }) {
-  // The UI updates the instant you click; the server action catches up behind
-  // it, and React swaps in the real data when it lands.
-  const [habits, apply] = useOptimistic(data.habits, reduce);
+  // A tick is written to the on-device queue first (so it works offline) and
+  // shown at once; what you see is the server's data with the queue on top.
+  const queue = useOfflineQueue();
+  const [optimistic, apply] = useOptimistic(data.habits, reduce);
+  const habits = optimistic.map((h) => ({ ...h, doneToday: resolveDone(queue, h.id, data.today, h.doneToday) }));
+  useEffect(() => {
+    for (const h of data.habits) settle(h.id, data.today, h.doneToday);
+  }, [data.habits, data.today, queue]);
   const [, startTransition] = useTransition();
   const [filter, setFilter] = useState<Filter>("all");
   const [adding, setAdding] = useState(false);
@@ -73,17 +76,15 @@ export function HabitBoard({ data }: { data: Awaited<ReturnType<typeof getDashbo
     const done = !habit.doneToday;
     interacted.current = true;
     if (done) setBursts((b) => ({ ...b, [habit.id]: Date.now() }));
-    startTransition(async () => {
-      apply({ type: "done", id: habit.id, done });
-      const result = await setHabitDone(habit.id, done);
-      if (!result.ok) setToast(result.error);
-    });
+    setDone(habit.id, data.today, done);
   }
 
   function remove(habit: HabitView) {
     startTransition(async () => {
-      apply({ type: "remove", id: habit.id });
-      const result = await deleteHabit(habit.id);
+      const result = await whenOnline(async () => {
+        apply({ type: "remove", id: habit.id });
+        return deleteHabit(habit.id);
+      });
       if (!result.ok) setToast(result.error);
     });
   }
@@ -91,8 +92,10 @@ export function HabitBoard({ data }: { data: Awaited<ReturnType<typeof getDashbo
   function saveHabitNote(habit: HabitView, mood: Mood | null, notes: string) {
     setNoteFor(null);
     startTransition(async () => {
-      apply({ type: "note", id: habit.id, mood, notes });
-      const result = await saveNote(habit.id, mood ?? "", notes);
+      const result = await whenOnline(async () => {
+        apply({ type: "note", id: habit.id, mood, notes });
+        return saveNote(habit.id, mood ?? "", notes);
+      });
       setToast(result.ok ? "Note saved." : result.error);
     });
   }

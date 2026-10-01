@@ -18,6 +18,7 @@ import { EmptyChart } from "@/components/charts/shared";
 import { btnGhost, btnPrimary, btnSmall, card, eyebrow, input, label } from "@/components/ui/styles";
 import { addCategoryAction, addUserAction, changeRole, deleteUser, toggleUser } from "@/lib/actions/admin";
 import type { getAdminOverview } from "@/lib/data";
+import { whenOnline } from "@/lib/offline";
 import { initial } from "@/lib/text";
 
 type Overview = Awaited<ReturnType<typeof getAdminOverview>>;
@@ -34,7 +35,7 @@ export function AdminConsole({ data, selfId, search, motto, joined }: Props) {
   function run(task: () => Promise<{ ok: true } | { ok: false; error: string }>) {
     setError(null);
     startTransition(async () => {
-      const result = await task();
+      const result = await whenOnline(task);
       if (!result.ok) setError(result.error);
     });
   }

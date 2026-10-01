@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Bricolage_Grotesque, Geist, Geist_Mono } from "next/font/google";
+import { Bricolage_Grotesque, Geist, Geist_Mono, Italiana } from "next/font/google";
 import { Providers } from "@/components/Providers";
 import { APP_NAME } from "@/lib/constants";
 import "./globals.css";
@@ -7,6 +7,8 @@ import "./globals.css";
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
 const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" });
 const bricolage = Bricolage_Grotesque({ subsets: ["latin"], variable: "--font-bricolage" });
+// thin, tall capitals — the Winter Arc poster lettering
+const italiana = Italiana({ subsets: ["latin"], weight: "400", variable: "--font-italiana" });
 
 export const metadata: Metadata = {
   title: { default: `${APP_NAME} — Master Your Routine`, template: `%s — ${APP_NAME}` },
@@ -32,7 +34,7 @@ const themeScript = `try{var t=localStorage.getItem("theme");if(t!=="light"&&t!=
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${geist.variable} ${geistMono.variable} ${bricolage.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${geist.variable} ${geistMono.variable} ${bricolage.variable} ${italiana.variable}`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>

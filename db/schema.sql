@@ -1,87 +1,83 @@
 -- ============================================================
--- HabitFlow database (same schema the PHP version used)
+-- HabitFlow database (PostgreSQL)
 -- Applied by `npm run db:setup`; every statement is idempotent.
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS users (
-    id             INT AUTO_INCREMENT PRIMARY KEY,
-    username       VARCHAR(50)  UNIQUE NOT NULL,
-    email          VARCHAR(100) UNIQUE NOT NULL,
+    id             SERIAL PRIMARY KEY,
+    username       VARCHAR(50)  NOT NULL UNIQUE,
+    email          VARCHAR(100) NOT NULL UNIQUE,
     password       VARCHAR(255) NOT NULL,
     full_name      VARCHAR(100) NOT NULL,
     avatar_color   VARCHAR(7)   DEFAULT '#3b82f6',
     timezone       VARCHAR(50)  DEFAULT 'UTC',
-    role           ENUM('user','admin') DEFAULT 'user',
-    is_active      TINYINT(1)   DEFAULT 1,
-    email_verified TINYINT(1)   DEFAULT 1,
+    role           VARCHAR(10)  NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
+    is_active      SMALLINT     NOT NULL DEFAULT 1,
+    email_verified SMALLINT     DEFAULT 1,
     created_at     TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
-    last_login     TIMESTAMP    NULL,
-    INDEX idx_email    (email),
-    INDEX idx_username (username)
+    last_login     TIMESTAMP    NULL
 );
+-- "Tom" and "tom" are the same account: usernames and emails are unique ignoring case.
+CREATE UNIQUE INDEX IF NOT EXISTS users_username_lower ON users (LOWER(username));
+CREATE UNIQUE INDEX IF NOT EXISTS users_email_lower ON users (LOWER(email));
 
 CREATE TABLE IF NOT EXISTS habits (
-    id            INT AUTO_INCREMENT PRIMARY KEY,
-    user_id       INT NOT NULL,
+    id            SERIAL PRIMARY KEY,
+    user_id       INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     name          VARCHAR(100) NOT NULL,
     description   TEXT,
     category      VARCHAR(50)  DEFAULT 'General',
     icon          VARCHAR(10)  DEFAULT '✅',
     color         VARCHAR(7)   DEFAULT '#3b82f6',
-    frequency     ENUM('daily','weekly','monthly') DEFAULT 'daily',
+    frequency     VARCHAR(10)  NOT NULL DEFAULT 'daily' CHECK (frequency IN ('daily', 'weekly', 'monthly')),
     target_count  INT          DEFAULT 1,
     reminder_time TIME         NULL,
-    is_active     TINYINT(1)   DEFAULT 1,
-    created_at    TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    INDEX idx_user_id (user_id)
+    is_active     SMALLINT     NOT NULL DEFAULT 1,
+    created_at    TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
 );
+CREATE INDEX IF NOT EXISTS habits_user ON habits (user_id);
 
+-- One row per habit per day.
 CREATE TABLE IF NOT EXISTS habit_logs (
-    id              INT AUTO_INCREMENT PRIMARY KEY,
-    habit_id        INT NOT NULL,
-    user_id         INT NOT NULL,
+    id              SERIAL PRIMARY KEY,
+    habit_id        INT NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
+    user_id         INT NOT NULL REFERENCES users(id)  ON DELETE CASCADE,
     log_date        DATE NOT NULL,
-    completed_count INT  DEFAULT 0,
+    completed_count INT  NOT NULL DEFAULT 0,
     notes           TEXT,
-    mood            ENUM('great','good','okay','bad') DEFAULT NULL,
+    mood            VARCHAR(10) CHECK (mood IN ('great', 'good', 'okay', 'bad')),
     completed_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id)  REFERENCES users(id)  ON DELETE CASCADE,
-    UNIQUE KEY unique_log (habit_id, user_id, log_date),
-    INDEX idx_log_date    (log_date),
-    INDEX idx_user_date   (user_id, log_date)
+    UNIQUE (habit_id, user_id, log_date)
 );
+CREATE INDEX IF NOT EXISTS habit_logs_user_date ON habit_logs (user_id, log_date);
+CREATE INDEX IF NOT EXISTS habit_logs_date ON habit_logs (log_date);
 
 CREATE TABLE IF NOT EXISTS monthly_goals (
-    id          INT AUTO_INCREMENT PRIMARY KEY,
-    user_id     INT NOT NULL,
-    habit_id    INT NOT NULL,
+    id          SERIAL PRIMARY KEY,
+    user_id     INT NOT NULL REFERENCES users(id)  ON DELETE CASCADE,
+    habit_id    INT NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
     year        INT NOT NULL,
     month       INT NOT NULL,
     target_days INT DEFAULT 20,
     notes       TEXT,
     created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id)  REFERENCES users(id)  ON DELETE CASCADE,
-    FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE,
-    UNIQUE KEY unique_goal (user_id, habit_id, year, month)
+    UNIQUE (user_id, habit_id, year, month)
 );
 
 CREATE TABLE IF NOT EXISTS otp_codes (
-    id         INT AUTO_INCREMENT PRIMARY KEY,
+    id         SERIAL PRIMARY KEY,
     email      VARCHAR(100) NOT NULL,
     otp_code   VARCHAR(6)   NOT NULL,
-    purpose    ENUM('register','login','reset') DEFAULT 'register',
+    purpose    VARCHAR(10)  NOT NULL DEFAULT 'register' CHECK (purpose IN ('register', 'login', 'reset')),
     expires_at TIMESTAMP    NOT NULL,
-    used       TINYINT(1)   DEFAULT 0,
-    attempts   INT          DEFAULT 0,
-    created_at TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_email_otp (email, otp_code),
-    INDEX idx_expires   (expires_at)
+    used       SMALLINT     NOT NULL DEFAULT 0,
+    attempts   INT          NOT NULL DEFAULT 0,
+    created_at TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
 );
+CREATE INDEX IF NOT EXISTS otp_codes_email ON otp_codes (email, purpose);
 
 CREATE TABLE IF NOT EXISTS categories (
-    id         INT AUTO_INCREMENT PRIMARY KEY,
+    id         SERIAL PRIMARY KEY,
     name       VARCHAR(50) NOT NULL UNIQUE,
     icon       VARCHAR(10) DEFAULT '📋',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -90,9 +86,8 @@ CREATE TABLE IF NOT EXISTS categories (
 -- Winter Arc (Oct 1 – Dec 31): one row per user per year they opt in.
 -- Joining is what puts a user on the public leaderboard.
 CREATE TABLE IF NOT EXISTS winter_arc_members (
-    user_id   INT NOT NULL,
+    user_id   INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     season    INT NOT NULL,
     joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (user_id, season),
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    PRIMARY KEY (user_id, season)
 );

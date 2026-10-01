@@ -154,14 +154,14 @@ export async function getAnalytics(user: User) {
     query<{ id: number; name: string; icon: string; color: string; total_done: number; month_done: number }>(
       `SELECT h.id, h.name, h.icon, h.color,
               COUNT(hl.id) AS total_done,
-              COALESCE(SUM(hl.log_date > ?), 0) AS month_done
+              COUNT(hl.id) FILTER (WHERE hl.log_date > ?) AS month_done
        FROM habits h LEFT JOIN habit_logs hl ON h.id = hl.habit_id AND hl.completed_count > 0
        WHERE h.user_id = ? AND h.is_active = 1
        GROUP BY h.id, h.name, h.icon, h.color ORDER BY total_done DESC`,
       [addDays(today, -30), user.id],
     ),
     query<{ dow: number; n: number }>(
-      "SELECT DAYOFWEEK(log_date) - 1 AS dow, COUNT(*) AS n FROM habit_logs WHERE user_id = ? AND completed_count > 0 GROUP BY dow",
+      "SELECT EXTRACT(DOW FROM log_date)::int AS dow, COUNT(*) AS n FROM habit_logs WHERE user_id = ? AND completed_count > 0 GROUP BY dow",
       [user.id],
     ),
     query<{ mood: Mood; n: number }>("SELECT mood, COUNT(*) AS n FROM habit_logs WHERE user_id = ? AND mood IS NOT NULL GROUP BY mood", [user.id]),
@@ -282,22 +282,22 @@ export async function getAdminOverview(search: string) {
      FROM users u
      LEFT JOIN habits h ON u.id = h.user_id AND h.is_active = 1
      LEFT JOIN habit_logs hl ON u.id = hl.user_id AND hl.completed_count > 0
-     ${search ? "WHERE u.username LIKE ? OR u.email LIKE ? OR u.full_name LIKE ?" : ""}
+     ${search ? "WHERE u.username ILIKE ? OR u.email ILIKE ? OR u.full_name ILIKE ?" : ""}
      GROUP BY u.id ORDER BY u.created_at DESC, u.id DESC`;
 
   const [totalUsers, activeUsers, newToday, activity, popular, users, categories] = await Promise.all([
     num("SELECT COUNT(*) AS n FROM users"),
     num("SELECT COUNT(*) AS n FROM users WHERE is_active = 1"),
-    num("SELECT COUNT(*) AS n FROM users WHERE DATE(created_at) = CURRENT_DATE"),
+    num("SELECT COUNT(*) AS n FROM users WHERE created_at::date = CURRENT_DATE"),
     query<{ log_date: string; n: number }>(
-      "SELECT log_date, COUNT(*) AS n FROM habit_logs WHERE completed_count > 0 AND log_date >= (CURRENT_DATE - INTERVAL 6 DAY) GROUP BY log_date",
+      "SELECT log_date, COUNT(*) AS n FROM habit_logs WHERE completed_count > 0 AND log_date >= CURRENT_DATE - 6 GROUP BY log_date",
     ),
     query<{ category: string; n: number }>("SELECT category, COUNT(*) AS n FROM habits WHERE is_active = 1 GROUP BY category ORDER BY n DESC LIMIT 5"),
     query<AdminUserRow>(userSql, search ? [like, like, like] : []),
     getCategories(),
   ]);
 
-  const serverToday = (await queryOne<{ d: string }>("SELECT DATE_FORMAT(CURRENT_DATE, '%Y-%m-%d') AS d"))?.d ?? todayIn("UTC");
+  const serverToday = (await queryOne<{ d: string }>("SELECT CURRENT_DATE::text AS d"))?.d ?? todayIn("UTC");
   const activityByDate = new Map(activity.map((a) => [a.log_date, Number(a.n)]));
 
   return {

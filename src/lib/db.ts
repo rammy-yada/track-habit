@@ -1,63 +1,59 @@
 import "server-only";
-import mysql, { type Pool, type ResultSetHeader, type RowDataPacket } from "mysql2/promise";
+import { Pool, types } from "pg";
+import { connectionConfig } from "./db-config.mjs";
 
 type Param = string | number | null;
+
+// DATE and TIMESTAMP come back as plain strings ("2026-10-01"), not JS Dates,
+// so a habit's log_date can never shift a day through a timezone conversion.
+for (const oid of [types.builtins.DATE, types.builtins.TIMESTAMP, types.builtins.TIMESTAMPTZ]) {
+  types.setTypeParser(oid, (value) => value);
+}
 
 // One pool per process. Stashed on globalThis so dev-mode hot reloads reuse
 // it instead of opening a new set of connections on every edit.
 const globalForDb = globalThis as unknown as { habitflowPool?: Pool; habitflowReady?: Promise<void> };
 
-// Hosted databases (Aiven, TiDB Cloud, …) only accept encrypted connections.
-// DB_SSL=true turns TLS on; DB_SSL_CA is the provider's CA certificate (PEM
-// text) for providers that sign with their own CA rather than a public one.
-function sslOptions() {
-  if (process.env.DB_SSL !== "true") return undefined;
-  const ca = process.env.DB_SSL_CA?.replace(/\\n/g, "\n");
-  return { minVersion: "TLSv1.2" as const, rejectUnauthorized: true, ...(ca ? { ca } : {}) };
-}
-
 function pool(): Pool {
-  globalForDb.habitflowPool ??= mysql.createPool({
-    host: process.env.DB_HOST ?? "127.0.0.1",
-    port: Number(process.env.DB_PORT ?? 3306),
-    user: process.env.DB_USER ?? "root",
-    password: process.env.DB_PASS ?? "",
-    database: process.env.DB_NAME ?? "habitflow",
-    ssl: sslOptions(),
-    charset: "utf8mb4",
-    // Keep this small on serverless hosts: every running instance opens its own pool.
-    connectionLimit: Number(process.env.DB_POOL_SIZE ?? 10),
-    // DATE/TIMESTAMP come back as plain strings ("2026-10-01"), so a habit's
-    // log_date can never shift a day through a JS Date timezone conversion.
-    dateStrings: true,
-  });
+  if (!globalForDb.habitflowPool) {
+    globalForDb.habitflowPool = new Pool({
+      ...connectionConfig(),
+      // Keep this small: every running copy of the app opens its own pool, and
+      // free hosted databases allow only ~20 connections in total.
+      max: Number(process.env.DB_POOL_SIZE ?? 5),
+      idleTimeoutMillis: 10_000,
+      connectionTimeoutMillis: 10_000,
+    });
+    // an idle connection dropping (database restart, network blip) must not crash the server
+    globalForDb.habitflowPool.on("error", () => {});
+  }
   return globalForDb.habitflowPool;
 }
 
-// The PHP app created the categories table lazily on first visit to the admin
-// page. Same idea here, once per process, so an older database that never saw
-// that page still works.
+// Small tables that were added after the first release are created on first
+// use, once per process, so a database set up earlier keeps working.
 function ready(): Promise<void> {
   globalForDb.habitflowReady ??= (async () => {
     const db = pool();
     await db.query(`CREATE TABLE IF NOT EXISTS categories (
-      id INT AUTO_INCREMENT PRIMARY KEY,
+      id SERIAL PRIMARY KEY,
       name VARCHAR(50) NOT NULL UNIQUE,
       icon VARCHAR(10) DEFAULT '📋',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
     // Winter Arc: who has opted in to the challenge (and its public leaderboard) each year.
     await db.query(`CREATE TABLE IF NOT EXISTS winter_arc_members (
-      user_id INT NOT NULL,
+      user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       season INT NOT NULL,
       joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      PRIMARY KEY (user_id, season),
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      PRIMARY KEY (user_id, season)
     )`);
-    const [rows] = await db.query<RowDataPacket[]>("SELECT COUNT(*) AS n FROM categories");
+    const { rows } = await db.query("SELECT COUNT(*) AS n FROM categories");
     if (Number(rows[0].n) === 0) {
-      const defaults = [["Health", "🧘"], ["Productivity", "🎯"], ["Learning", "📚"], ["Finance", "💰"], ["Social", "🤝"], ["Routine", "⏰"]];
-      await db.query("INSERT IGNORE INTO categories (name, icon) VALUES ?", [defaults]);
+      await db.query(
+        `INSERT INTO categories (name, icon) VALUES ('Health','🧘'), ('Productivity','🎯'), ('Learning','📚'), ('Finance','💰'), ('Social','🤝'), ('Routine','⏰')
+         ON CONFLICT (name) DO NOTHING`,
+      );
     }
   })().catch((err) => {
     globalForDb.habitflowReady = undefined; // retry on the next request
@@ -66,24 +62,31 @@ function ready(): Promise<void> {
   return globalForDb.habitflowReady;
 }
 
-/** SELECT → rows. Always parameterised (prepared statement), never string-built. */
+/** Queries are written with `?` placeholders; Postgres wants $1, $2, … */
+function numbered(sql: string): string {
+  let n = 0;
+  return sql.replace(/\?/g, () => `$${++n}`);
+}
+
+/** SELECT → rows. Always parameterised — values are never built into the SQL text. */
 export async function query<T = Record<string, unknown>>(sql: string, params: Param[] = []): Promise<T[]> {
   await ready();
-  const [rows] = await pool().execute<RowDataPacket[]>(sql, params);
-  return rows as T[];
+  const result = await pool().query(numbered(sql), params);
+  return result.rows as T[];
 }
 
 export async function queryOne<T = Record<string, unknown>>(sql: string, params: Param[] = []): Promise<T | null> {
   return (await query<T>(sql, params))[0] ?? null;
 }
 
-/** INSERT / UPDATE / DELETE → { insertId, affectedRows }. */
-export async function execute(sql: string, params: Param[] = []): Promise<ResultSetHeader> {
+/** INSERT / UPDATE / DELETE → how many rows changed (plus any RETURNING rows). */
+export async function execute<T = Record<string, unknown>>(sql: string, params: Param[] = []): Promise<{ rowCount: number; rows: T[] }> {
   await ready();
-  const [result] = await pool().execute<ResultSetHeader>(sql, params);
-  return result;
+  const result = await pool().query(numbered(sql), params);
+  return { rowCount: result.rowCount ?? 0, rows: result.rows as T[] };
 }
 
+/** A UNIQUE constraint was violated (e.g. the username was taken a moment ago). */
 export function isDuplicateError(err: unknown): boolean {
-  return typeof err === "object" && err !== null && (err as { code?: string }).code === "ER_DUP_ENTRY";
+  return typeof err === "object" && err !== null && (err as { code?: string }).code === "23505";
 }
