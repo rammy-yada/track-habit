@@ -23,7 +23,26 @@ export type User = {
   avatar_version: number;
   email_lang: string | null;
   email_reminders: number;
+  /** Motivation notifications a day: 0 (none) to 3. */
+  notify_motivation: number;
+  /** 1: nudge me when I've been away a few days. */
+  notify_comeback: number;
+  app_icon: "auto" | "classic" | "arc";
+  gender: string | null;
+  /** YYYY-MM-DD */
+  birth_date: string | null;
+  /** Two-letter country code. */
+  country: string | null;
+  show_age: number;
+  show_gender: number;
+  show_country: number;
 };
+
+/**
+ * Has this account filled in the details asked for before the app can be
+ * used? (Administrators manage the site and aren't asked.)
+ */
+export const profileComplete = (user: Pick<User, "role" | "gender" | "birth_date" | "country">) => user.role === "admin" || Boolean(user.gender && user.birth_date && user.country);
 
 /**
  * A short fingerprint of the stored password hash, kept in the session cookie.
@@ -47,10 +66,16 @@ export const currentUser = cache(async (): Promise<User | null> => {
   return { ...user, full_name: decodeEntities(user.full_name), timezone: user.timezone || "UTC" };
 });
 
-/** Authentication: are you signed in at all? */
+/**
+ * Authentication: are you signed in — and have you finished setting up?
+ * Someone who hasn't given their details yet is sent to do that first, from
+ * every page and every action that uses this, so the app can't be used
+ * around the question. (/welcome itself reads currentUser() directly.)
+ */
 export async function requireUser(): Promise<User> {
   const user = await currentUser();
   if (!user) redirect("/login");
+  if (!profileComplete(user)) redirect("/welcome");
   return user;
 }
 

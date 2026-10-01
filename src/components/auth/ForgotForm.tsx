@@ -33,6 +33,7 @@ export function ForgotForm() {
         <SubmitButton pending={pending} pendingLabel="Sending…">
           Send reset link
         </SubmitButton>
+        <p className="text-center text-xs leading-relaxed text-muted">The email can take a minute or two. If it isn&apos;t in your inbox, look in your Spam or Junk folder — and mark it “Not spam” so the next one arrives.</p>
       </form>
     </AuthCard>
   );

@@ -5,7 +5,8 @@ import { currentUser } from "@/lib/auth";
 import { APP_NAME, CREATOR } from "@/lib/constants";
 import { SITE_DESCRIPTION, SITE_URL } from "@/lib/site";
 
-export const metadata: Metadata = { alternates: { canonical: "/" } };
+// One site for every country: search engines are told this page is the version for all regions.
+export const metadata: Metadata = { alternates: { canonical: "/", languages: { en: "/", "x-default": "/" } } };
 
 // Structured data: tells search engines in their own vocabulary what this
 // site is (a free web app), so results can show it as one.
@@ -21,6 +22,9 @@ const structuredData = {
       description: SITE_DESCRIPTION,
       applicationCategory: "LifestyleApplication",
       operatingSystem: "Any (web, Android, iOS)",
+      inLanguage: ["en", "ne"],
+      areaServed: "Worldwide",
+      isAccessibleForFree: true,
       browserRequirements: "Requires a modern web browser",
       offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
       featureList: ["Daily, weekly and monthly habits", "Streaks and progress charts", "Works offline and syncs later", "Reminders and notifications", "Winter Arc challenge with a leaderboard", "Installable on phone and desktop"],

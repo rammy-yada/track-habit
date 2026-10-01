@@ -1,6 +1,6 @@
 import "server-only";
 import { query, queryOne } from "./db";
-import { arcSeason } from "./arc";
+import { arcSeason, isArcMember } from "./arc";
 import { countPerfectDays, getMemberPack, getOpenPacks } from "./arc-packs";
 import { getArcSettings } from "./arc-settings";
 import type { User } from "./auth";
@@ -151,9 +151,13 @@ export async function getDashboard(user: User) {
     arc = { pack: pack ? `${pack.icon} ${pack.name}` : null, day: season.day, totalDays: season.totalDays, perfectBefore: countPerfectDays(arcHabits, doneDates, season.start, addDays(today, -1)), surprises: settings.surprises };
   }
 
+  // while the season is running, someone who hasn't joined is shown the way in
+  const arcInvite = season.live && arcHabits.length === 0 && !(await isArcMember(user)) ? { day: season.day, totalDays: season.totalDays } : null;
+
   return {
     today,
     arc,
+    arcInvite,
     packs,
     todayLabel: formatDate(today, { weekday: "short", month: "short", day: "numeric" }),
     monthLabel: formatDate(today, { month: "long", year: "numeric" }),

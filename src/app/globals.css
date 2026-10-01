@@ -39,7 +39,7 @@
   --muted: #98a2b7;
   --line: #242d3f;
   --brand: #6ea0ff;
-  --brand-solid: #3570ee;
+  --brand-solid: #2f6be6;
   --brand-solid-hover: #4a81f5;
   --brand-soft: #16264a;
   --good: #34d399;
@@ -312,4 +312,15 @@ summary {
   .skeleton {
     animation: none;
   }
+}
+
+/* While the on-screen keyboard is open (see keepInputsVisible in Providers):
+   the bottom tab bar and floating prompts step aside, and bottom sheets lift
+   above the keyboard on devices that don't shrink the page themselves. */
+html[data-keyboard] nav[aria-label="Main"].fixed,
+html[data-keyboard] [data-notify-prompt] {
+  display: none;
+}
+html[data-keyboard] [data-sheet] {
+  padding-bottom: var(--keyboard, 0px);
 }

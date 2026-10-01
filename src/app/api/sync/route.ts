@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { revalidatePath } from "next/cache";
-import { currentUser } from "@/lib/auth";
+import { currentUser, profileComplete } from "@/lib/auth";
 import { setHabitDone } from "@/lib/habit-log";
 import { sameOrigin } from "@/lib/http";
 
@@ -20,6 +20,7 @@ export async function POST(request: NextRequest) {
 
   const user = await currentUser();
   if (!user) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+  if (!profileComplete(user)) return NextResponse.json({ error: "Finish setting up your profile first." }, { status: 403 });
 
   let ops: Op[];
   try {

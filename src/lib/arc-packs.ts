@@ -35,13 +35,22 @@ export async function getPacks(options: { activeOnly?: boolean; season?: number;
     .filter((p) => !options.activeOnly || p.habits.length > 0); // an empty pack isn't offered to members
 }
 
-/** The packs for everyone, as one member sees them: which they have added, which they could. */
+/** The packs for everyone, as one member sees them: which they have added, which they could. (One query: this runs on every load of Today.) */
 export async function getOpenPacks(userId: number) {
-  const [packs, mine] = await Promise.all([getPacks({ kind: "open" }), query<{ pack_id: number }>("SELECT pack_id FROM pack_members WHERE user_id = ?", [userId])]);
-  const joined = new Set(mine.map((m) => m.pack_id));
-  return packs
-    .filter((p) => joined.has(p.id) || (p.active && p.habits.length > 0)) // a hidden pack stays visible to those already on it
-    .map((p) => ({ id: p.id, name: p.name, icon: p.icon, tagline: p.tagline, joined: joined.has(p.id), habits: p.habits.map((h) => `${h.icon} ${h.name}`) }));
+  const rows = await query<{ id: number; name: string; icon: string; tagline: string; is_active: number; joined: boolean; habits: string[] }>(
+    `SELECT p.id, p.name, p.icon, p.tagline, p.is_active, (pm.user_id IS NOT NULL) AS joined,
+            COALESCE(json_agg(t.icon || ' ' || t.name ORDER BY t.id) FILTER (WHERE t.id IS NOT NULL), '[]') AS habits
+     FROM arc_packs p
+     LEFT JOIN pack_members pm ON pm.pack_id = p.id AND pm.user_id = ?
+     LEFT JOIN arc_pack_habits t ON t.pack_id = p.id
+     WHERE p.kind = 'open'
+     GROUP BY p.id, pm.user_id
+     ORDER BY p.id`,
+    [userId],
+  );
+  return rows
+    .filter((p) => p.joined || (p.is_active === 1 && p.habits.length > 0)) // a hidden pack stays visible to those already on it
+    .map(({ id, name, icon, tagline, joined, habits }) => ({ id, name, icon, tagline, joined, habits }));
 }
 
 /** The pack this member is on this season (null: not a member, or no pack chosen). */

@@ -4,7 +4,7 @@
 export const SITE_URL = (process.env.APP_URL ?? "https://habitflow.hellnah.dev").replace(/\/$/, "");
 
 export const SITE_DESCRIPTION =
-  "HabitFlow is a free habit tracker that works offline. Build daily routines, keep streaks, see your progress in charts, and take on the Winter Arc challenge with a live leaderboard.";
+  "HabitFlow is a free habit tracker that works offline, in any country and any timezone. Build daily routines, keep streaks, see your progress in charts, and take on the Winter Arc challenge with a live leaderboard.";
 
 // Pages a search engine should list. Everything else is either private
 // (needs sign-in) or a step in a flow (verify, reset), and is marked noindex.

@@ -17,9 +17,11 @@ import { whenOnline } from "@/lib/offline";
 
 const PAGE = 20;
 
-type Props = { users: AdminUserRow[]; selfId: number; search: string; dates: Record<number, { joined: string; seen: string }> };
+type Props = { users: AdminUserRow[]; selfId: number; search: string; dates: Record<number, { joined: string; seen: string }>; /** which screen this is: the members, or the administrators */ kind?: "user" | "admin" };
 
-export function AdminUsers({ users, selfId, search, dates }: Props) {
+export function AdminUsers({ users, selfId, search, dates, kind = "user" }: Props) {
+  const admins = kind === "admin";
+  const here = admins ? "/sigmadev/admins" : "/sigmadev/users";
   const [adding, setAdding] = useState(false);
   const [deleting, setDeleting] = useState<AdminUserRow | null>(null);
   const [resetting, setResetting] = useState<AdminUserRow | null>(null);
@@ -55,20 +57,24 @@ export function AdminUsers({ users, selfId, search, dates }: Props) {
 
   return (
     <>
-      <PageHeader title="Users">
+      <PageHeader title={admins ? "Administrators" : "Users"}>
+        <Link href={admins ? "/sigmadev/users" : "/sigmadev/admins"} className={btnGhost}>
+          {admins ? "Members" : "Administrators"} →
+        </Link>
         <motion.button type="button" className={btnPrimary} onClick={() => setAdding(true)} whileTap={{ scale: 0.95 }}>
-          <span className="text-base leading-none">+</span> Add user
+          <span className="text-base leading-none">+</span> {admins ? "Add admin" : "Add user"}
         </motion.button>
       </PageHeader>
 
       <div className="space-y-4 px-4 py-6 md:px-8 md:py-7">
+        <p className="max-w-2xl text-sm text-muted">{admins ? "People who can manage the site. They don't track habits and never appear among the members or on the leaderboard." : "Everyone who tracks habits. Administrators are kept on their own screen."}</p>
         <form method="GET" className="flex flex-wrap gap-2.5" role="search">
           <input type="search" name="search" defaultValue={search} placeholder="Search name, username or email…" aria-label="Search users" className={`${input} min-w-0 flex-1 sm:max-w-sm`} />
           <button type="submit" className={btnGhost}>
             Search
           </button>
           {search && (
-            <Link href="/sigmadev/users" className={btnGhost}>
+            <Link href={here} className={btnGhost}>
               Clear
             </Link>
           )}
@@ -170,7 +176,7 @@ export function AdminUsers({ users, selfId, search, dates }: Props) {
           </AnimatePresence>
         </ul>
 
-        {users.length === 0 && <p className="rounded-2xl border border-dashed border-line px-4 py-10 text-center text-sm text-muted">No users match “{search}”.</p>}
+        {users.length === 0 && <p className="rounded-2xl border border-dashed border-line px-4 py-10 text-center text-sm text-muted">{search ? `Nobody here matches “${search}”.` : admins ? "No other administrators." : "No members yet."}</p>}
         {users.length > shown && (
           <button type="button" className={`${btnGhost} w-full`} onClick={() => setShown((n) => n + PAGE)}>
             Show {Math.min(PAGE, users.length - shown)} more
@@ -178,8 +184,8 @@ export function AdminUsers({ users, selfId, search, dates }: Props) {
         )}
       </div>
 
-      <Modal open={adding} onClose={closeAdd} title="New user account">
-        <AddUserForm onDone={closeAdd} />
+      <Modal open={adding} onClose={closeAdd} title={admins ? "New administrator" : "New user account"}>
+        <AddUserForm onDone={closeAdd} role={kind} />
       </Modal>
 
       <ConfirmDialog
@@ -219,7 +225,7 @@ export function AdminUsers({ users, selfId, search, dates }: Props) {
   );
 }
 
-function AddUserForm({ onDone }: { onDone: () => void }) {
+function AddUserForm({ onDone, role }: { onDone: () => void; role: "user" | "admin" }) {
   const [state, action, pending] = useActionState(addUserAction, null);
   useEffect(() => {
     if (state?.ok) onDone();
@@ -242,13 +248,9 @@ function AddUserForm({ onDone }: { onDone: () => void }) {
         <input type="email" name="email" className={input} placeholder="user@example.com" required />
       </label>
       <PasswordField name="password" label="Initial password" placeholder="Minimum 8 characters" minLength={8} autoComplete="new-password" />
-      <label className="block">
-        <span className={label}>Account type</span>
-        <select name="role" className={input} defaultValue="user">
-          <option value="user">Member — tracks habits</option>
-          <option value="admin">Administrator — manages the site</option>
-        </select>
-      </label>
+      {/* the kind of account is decided by which screen this is */}
+      <input type="hidden" name="role" value={role} />
+      {role === "admin" && <p className="rounded-xl bg-raised px-3.5 py-2.5 text-xs leading-relaxed text-muted">An administrator can see every account, reset passwords, delete users and change the site.</p>}
       <SubmitButton pending={pending} pendingLabel="Creating…">
         Create account
       </SubmitButton>

@@ -33,6 +33,14 @@ function Words({ text, from = 0 }: { text: string; from?: number }) {
 export function Landing() {
   return (
     <div className="relative flex min-h-dvh flex-col overflow-x-clip">
+      {/* the Winter Arc gets the very top of the page */}
+      <Link href="/winter-arc" className="relative z-10 flex items-center justify-center gap-2 bg-[#050505] px-4 py-2.5 text-center text-[13px] font-semibold text-white">
+        <span aria-hidden>❄</span>
+        <span>
+          The Winter Arc: Oct 1 – Jan 31 <span className="hidden sm:inline">· 123 days, a few habits, every day</span>
+        </span>
+        <span className="rounded-full bg-white px-2.5 py-0.5 text-[11px] font-bold text-black">Join →</span>
+      </Link>
       <header className="relative z-10 flex items-center justify-between px-5 py-5 sm:px-10">
         <Logo />
         <nav className="flex items-center gap-2 sm:gap-3">
@@ -183,7 +191,7 @@ function Feature({ title, label, body, delay, children }: { title: string; label
     <Reveal delay={delay}>
       <Spotlight className={`${card} h-full p-6`}>
         <div className="mb-5 flex h-10 items-center">{children}</div>
-        <h3 className="font-display text-2xl font-bold tracking-tight">{title}</h3>
+        <h2 className="font-display text-2xl font-bold tracking-tight">{title}</h2>
         <p className="text-sm font-medium text-brand">{label}</p>
         <p className="mt-2 text-sm leading-relaxed text-muted">{body}</p>
       </Spotlight>

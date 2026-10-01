@@ -47,7 +47,7 @@ export function NotificationToggle({ publicKey, tone = "theme" }: { publicKey: s
         </span>
         <span className="text-sm">
           <span className="block font-semibold text-ink">{busy ? "One moment…" : on ? "Notifications are on" : "Turn on notifications"}</span>
-          <span className="block text-[13px] text-muted">Habit reminders, a morning quote, and an evening nudge during the Winter Arc.</span>
+          <span className="block text-[13px] text-muted">Habit reminders, motivation through the day, and an evening nudge during the Winter Arc. Choose how often below.</span>
         </span>
       </button>
     </div>

@@ -3,8 +3,10 @@
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { passwordStamp, requireUser } from "../auth";
-import { execute } from "../db";
+import { currentUser, passwordStamp, profileComplete, requireUser } from "../auth";
+import { isDateString, todayIn } from "../dates";
+import { ageOn, isCountry, isGender, MIN_AGE } from "../people";
+import { execute, isDuplicateError, queryOne } from "../db";
 import { getSession } from "../session";
 import { clean } from "../text";
 import { forget, limited, record } from "../throttle";
@@ -84,4 +86,77 @@ export async function deleteAccountAction(_prev: ProfileState, formData: FormDat
   await execute("DELETE FROM users WHERE id = ?", [user.id]);
   (await getSession()).destroy();
   redirect("/?account=deleted");
+}
+
+/** Profile → App: how often motivation arrives, the "come back" nudges, and which app icon to use. */
+export async function updateAppPrefs(input: { motivation: number; comeback: boolean; appIcon: string }): Promise<{ ok: true } | { ok: false; error: string }> {
+  const user = await requireUser();
+  const motivation = Number.isInteger(input?.motivation) && input.motivation >= 0 && input.motivation <= 3 ? input.motivation : null;
+  const appIcon = ["auto", "classic", "arc"].includes(input?.appIcon) ? input.appIcon : null;
+  if (motivation === null || appIcon === null || typeof input?.comeback !== "boolean") return { ok: false, error: "Invalid request." };
+  await execute("UPDATE users SET notify_motivation = ?, notify_comeback = ?, app_icon = ? WHERE id = ?", [motivation, input.comeback ? 1 : 0, appIcon, user.id]);
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+// ── Completing the profile ───────────────────────────────────────────────────
+
+export type WelcomeState = { error?: string; fields?: Record<string, string> } | null;
+
+/** Checks gender, date of birth and country as typed into a form. */
+function readDetails(formData: FormData, today: string) {
+  const gender = clean(formData.get("gender"), 12);
+  const birthDate = clean(formData.get("birth_date"), 10);
+  const country = clean(formData.get("country"), 2).toUpperCase();
+  const errors: string[] = [];
+  if (!isGender(gender)) errors.push("Choose a gender (or \"Rather not say\").");
+  if (!isDateString(birthDate) || birthDate > today) errors.push("Enter your date of birth.");
+  else {
+    const age = ageOn(birthDate, today);
+    if (age < MIN_AGE) errors.push(`You need to be at least ${MIN_AGE} to use HabitFlow.`);
+    if (age > 120) errors.push("That date of birth doesn't look right.");
+  }
+  if (!isCountry(country)) errors.push("Choose your country.");
+  return { gender, birthDate, country, errors };
+}
+
+/**
+ * The questions asked once, before the app can be used: username, gender,
+ * date of birth and country. Reads currentUser() rather than requireUser():
+ * this is the one place a not-yet-complete account is allowed to act.
+ */
+export async function completeProfileAction(_prev: WelcomeState, formData: FormData): Promise<WelcomeState> {
+  const user = await currentUser();
+  if (!user) redirect("/login");
+  if (profileComplete(user)) redirect("/dashboard");
+
+  const username = clean(formData.get("username"), 50);
+  const details = readDetails(formData, todayIn(user.timezone));
+  const fields = { username, gender: details.gender, birth_date: details.birthDate, country: details.country };
+  const errors = [...(/^[a-zA-Z0-9_]{3,20}$/.test(username) ? [] : ["Username: 3-20 characters, letters, numbers and underscore only."]), ...details.errors];
+  if (errors.length) return { error: errors.join(" "), fields };
+
+  if (username.toLowerCase() !== user.username.toLowerCase() && (await queryOne("SELECT id FROM users WHERE LOWER(username) = LOWER(?) AND id <> ?", [username, user.id]))) {
+    return { error: "That username is taken. Try another.", fields };
+  }
+  const show = (name: string) => (formData.get(name) === "on" ? 1 : 0);
+  try {
+    await execute("UPDATE users SET username = ?, gender = ?, birth_date = ?, country = ?, show_age = ?, show_gender = ?, show_country = ? WHERE id = ?", [username, details.gender, details.birthDate, details.country, show("show_age"), show("show_gender"), show("show_country"), user.id]);
+  } catch (err) {
+    if (isDuplicateError(err)) return { error: "That username is taken. Try another.", fields };
+    throw err;
+  }
+  revalidatePath("/", "layout");
+  redirect("/dashboard?welcome=1");
+}
+
+/** Profile → About you: the same details, changed later, and who may see them. */
+export async function updateDetailsAction(_prev: ProfileState, formData: FormData): Promise<ProfileState> {
+  const user = await requireUser();
+  const details = readDetails(formData, todayIn(user.timezone));
+  if (details.errors.length) return { error: details.errors.join(" ") };
+  const show = (name: string) => (formData.get(name) === "on" ? 1 : 0);
+  await execute("UPDATE users SET gender = ?, birth_date = ?, country = ?, show_age = ?, show_gender = ?, show_country = ? WHERE id = ?", [details.gender, details.birthDate, details.country, show("show_age"), show("show_gender"), show("show_country"), user.id]);
+  revalidatePath("/", "layout");
+  return { message: "Saved." };
 }

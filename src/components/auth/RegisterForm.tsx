@@ -8,7 +8,8 @@ import { PasswordField } from "@/components/ui/PasswordField";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { input, label } from "@/components/ui/styles";
 import { registerAction } from "@/lib/actions/auth";
-import { TIMEZONES } from "@/lib/constants";
+import { TimezoneOptions } from "@/components/TimezoneOptions";
+import { rememberTyped } from "@/lib/credentials";
 import { LegalNote } from "@/components/LegalPage";
 import { AuthCard } from "./AuthCard";
 import { GoogleButton } from "./GoogleButton";
@@ -34,10 +35,10 @@ export function RegisterForm({ google, join = false }: { google: boolean; join?:
   // The form (and its password fields) resets after each submit; keep the meter in step.
   useEffect(() => setPassword(""), [state]);
 
-  // Pre-select the browser's timezone when it's one we list.
+  // Pre-select the device's own timezone, wherever in the world that is.
   useEffect(() => {
     const detected = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (TIMEZONES.some((z) => z.value === detected)) setTimezone(detected);
+    if (detected) setTimezone(detected);
   }, []);
 
   return (
@@ -57,7 +58,14 @@ export function RegisterForm({ google, join = false }: { google: boolean; join?:
         {state?.error}
       </Alert>
       {google && <GoogleButton label="Sign up with Google" join={join} />}
-      <form action={action} className="space-y-4">
+      <form
+        action={action}
+        className="space-y-4"
+        onSubmit={(e) => {
+          const data = new FormData(e.currentTarget);
+          rememberTyped(String(data.get("username") ?? ""), String(data.get("password") ?? "")); // offered to the password manager once the account exists
+        }}
+      >
         {join && <input type="hidden" name="join" value="arc" />}
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block">
@@ -86,11 +94,7 @@ export function RegisterForm({ google, join = false }: { google: boolean; join?:
         <label className="block">
           <span className={label}>Timezone</span>
           <select name="timezone" className={input} value={timezone} onChange={(e) => setTimezone(e.target.value)}>
-            {TIMEZONES.map((z) => (
-              <option key={z.value} value={z.value}>
-                {z.label}
-              </option>
-            ))}
+            <TimezoneOptions current={timezone} />
           </select>
           <span className="mt-1.5 block text-[11px] text-muted">Habits reset at midnight in your timezone.</span>
         </label>

@@ -2,15 +2,18 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState, useTransition } from "react";
+import { ConfirmDialog } from "./ui/ConfirmDialog";
 import { motion } from "motion/react";
 import { Logo } from "./Logo";
 import { ThemeToggle } from "./ThemeToggle";
 import { UserAvatar, type AvatarInfo } from "./ui/UserAvatar";
 import { logoutAction } from "@/lib/actions/auth";
 import { clearOfflineData } from "@/lib/offline";
-import { openGuide } from "@/lib/pwa";
 
 type NavUser = AvatarInfo & { role: "user" | "admin" };
+/** Is the Winter Arc season running, and is this person in it? Decides how the Arc entry is dressed. */
+type ArcState = { live: boolean; member: boolean };
 type NavLink = { href: string; label: string; short: string; icon: string; desktopOnly?: boolean };
 
 const ICONS: Record<string, React.ReactNode> = {
@@ -22,6 +25,8 @@ const ICONS: Record<string, React.ReactNode> = {
   donate: <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" />,
   users: <path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-7 10a7 7 0 0 1 14 0m1-10a3.5 3.5 0 1 0-1.5-6.7M18 14.5a6 6 0 0 1 4 6.5" />,
   tags: <path d="M3 12V4h8l10 10-8 8L3 12zm4.5-4.5h.01" />,
+  shield: <path d="M12 3l8 3v6c0 4.5-3.2 7.9-8 9-4.8-1.1-8-4.5-8-9V6l8-3zm-3 9l2 2 4-4" />,
+  bell: <path d="M6 9a6 6 0 1 1 12 0c0 5 2 6 2 6H4s2-1 2-6zm4 9a2 2 0 0 0 4 0" />,
   blog: <path d="M5 4h11l3 3v13H5zM9 9h6M9 13h6M9 17h4" />,
   inbox: <path d="M3 13l3-8h12l3 8v6H3zM3 13h5l1.5 3h5L16 13h5" />,
 };
@@ -39,11 +44,13 @@ const MEMBER: NavLink[] = [
 const ADMIN: NavLink[] = [
   { href: "/sigmadev", label: "Overview", short: "Overview", icon: "dashboard" },
   { href: "/sigmadev/users", label: "Users", short: "Users", icon: "users" },
+  { href: "/sigmadev/admins", label: "Administrators", short: "Admins", icon: "shield", desktopOnly: true },
   { href: "/sigmadev/categories", label: "Categories", short: "Categories", icon: "tags" },
   { href: "/sigmadev/arc", label: "Winter Arc", short: "Arc", icon: "arc" },
   // on phones these two are reached from the Overview screen: five tabs is all a phone's bar holds
   { href: "/sigmadev/blog", label: "Blog", short: "Blog", icon: "blog", desktopOnly: true },
   { href: "/sigmadev/inbox", label: "Inbox", short: "Inbox", icon: "inbox", desktopOnly: true },
+  { href: "/sigmadev/notifications", label: "Notifications", short: "Notify", icon: "bell", desktopOnly: true },
   { href: "/sigmadev/account", label: "My Account", short: "Account", icon: "profile" },
 ];
 
@@ -61,7 +68,7 @@ function AdminBadge() {
   return <span className="rounded-md bg-ink px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-bg">Admin</span>;
 }
 
-export function Sidebar({ user }: { user: NavUser }) {
+export function Sidebar({ user, arc }: { user: NavUser; arc?: ArcState }) {
   const pathname = usePathname();
   const admin = user.role === "admin";
   return (
@@ -78,13 +85,16 @@ export function Sidebar({ user }: { user: NavUser }) {
               key={link.href}
               href={link.href}
               aria-current={active ? "page" : undefined}
-              className={`relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors ${active ? "text-brand" : "text-muted hover:text-ink"}`}
+              className={`relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors ${active ? "text-brand" : link.icon === "arc" && !admin ? "text-ink" : "text-muted hover:text-ink"}`}
             >
+              {/* the Winter Arc stands out from the rest of the menu: an outline that breathes */}
+              {link.icon === "arc" && !admin && !active && <motion.span aria-hidden className="absolute inset-0 rounded-xl border border-brand/50" animate={{ opacity: [0.35, 1, 0.35] }} transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }} />}
               {/* one shared pill that glides between items instead of each item toggling its own background */}
               {active && <motion.span layoutId="sidebar-pill" className="absolute inset-0 rounded-xl bg-brand-soft" transition={{ type: "spring", stiffness: 420, damping: 34 }} />}
-              <span className="relative flex items-center gap-3">
+              <span className="relative flex flex-1 items-center gap-3">
                 <Icon name={link.icon} />
                 {link.label}
+                {link.icon === "arc" && !admin && arc?.live && <span className="ml-auto rounded-md bg-brand-solid px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-on-brand">{arc.member ? "Live" : "Join"}</span>}
               </span>
             </Link>
           );
@@ -99,46 +109,46 @@ export function Sidebar({ user }: { user: NavUser }) {
           </span>
           <ThemeToggle className="h-8 w-8 rounded-lg" />
         </div>
-        {!admin && (
-          <button type="button" onClick={openGuide} className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold text-muted transition-colors hover:bg-raised hover:text-ink">
-            <GuideIcon />
-            Guide
-          </button>
-        )}
         <LogoutButton className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold text-muted transition-colors hover:bg-bad-soft hover:text-bad" />
       </div>
     </aside>
   );
 }
 
-function GuideIcon() {
+/** "Log out", asked about first: one stray tap shouldn't sign anyone out. */
+export function LogoutButton({ className, children }: { className: string; children?: React.ReactNode }) {
+  const [asking, setAsking] = useState(false);
+  const [, startTransition] = useTransition();
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M9.5 9.2a2.6 2.6 0 1 1 3.7 2.4c-.8.4-1.2 1-1.2 1.9M12 17h.01" />
-    </svg>
-  );
-}
-
-function LogoutButton({ className, compact = false }: { className: string; compact?: boolean }) {
-  return (
-    <form action={logoutAction} onSubmit={() => navigator.onLine && clearOfflineData()}>
-      <button type="submit" className={className} aria-label="Log out">
+    <>
+      <button type="button" className={className} onClick={() => setAsking(true)} data-logout>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
           <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4m7 14l5-5-5-5m5 5H9" />
         </svg>
-        {!compact && "Log out"}
+        {children ?? "Log out"}
       </button>
-    </form>
+      <ConfirmDialog
+        open={asking}
+        title="Log out?"
+        body="You'll need your password (or Google) to sign in again. Anything ticked offline that hasn't synced yet stays on this device until you're back."
+        confirmLabel="Log out"
+        onConfirm={() =>
+          startTransition(async () => {
+            if (navigator.onLine) clearOfflineData();
+            await logoutAction();
+          })
+        }
+        onClose={() => setAsking(false)}
+      />
+    </>
   );
 }
 
 /** Phones get a top bar and a bottom tab bar instead of the sidebar. */
-export function MobileBars({ user }: { user: NavUser }) {
+export function MobileBars({ user, arc }: { user: NavUser; arc?: ArcState }) {
   const pathname = usePathname();
   const admin = user.role === "admin";
   const tabs = (admin ? ADMIN : MEMBER).filter((link) => !link.desktopOnly);
-  const iconButton = "grid h-10 w-10 place-items-center rounded-xl border border-line bg-card text-muted";
   return (
     <>
       <header className="sticky top-0 z-30 flex h-[61px] items-center justify-between border-b border-line bg-card/85 px-4 backdrop-blur md:hidden">
@@ -146,19 +156,27 @@ export function MobileBars({ user }: { user: NavUser }) {
           <Logo href={admin ? "/sigmadev" : "/dashboard"} />
           {admin && <AdminBadge />}
         </span>
-        <div className="flex items-center gap-2">
-          {!admin && (
-            <button type="button" onClick={openGuide} aria-label="Open the welcome guide" className={`${iconButton} hover:border-brand hover:text-brand`}>
-              <GuideIcon />
-            </button>
-          )}
-          <ThemeToggle className="h-10 w-10" />
-          <LogoutButton compact className={`${iconButton} hover:border-bad hover:text-bad`} />
-        </div>
+        {/* just the theme switch up here: logging out and the guide live in Profile, where a thumb doesn't hit them by accident */}
+        <ThemeToggle className="h-10 w-10" />
       </header>
       <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-30 grid border-t border-line bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
         {tabs.map((link) => {
           const active = isActive(pathname, link.href);
+          // The Winter Arc is the middle tab, and it is the one that stands
+          // up out of the bar: a raised round button with a ring that pulses.
+          if (link.icon === "arc" && !admin)
+            return (
+              <Link key={link.href} href={link.href} aria-current={active ? "page" : undefined} aria-label={arc?.live ? "Winter Arc (live now)" : "Winter Arc"} className="relative flex min-h-[58px] min-w-0 flex-col items-center justify-end gap-1 pb-[7px] text-[10.5px] font-bold text-ink" data-arc-tab>
+                <span className="absolute -top-5 grid h-[52px] w-[52px] place-items-center rounded-full border-4 border-card bg-ink text-bg shadow-[0_8px_22px_-6px_rgb(0_0_0/0.55)]">
+                  <motion.span aria-hidden className="absolute inset-0 rounded-full border-2 border-brand" animate={{ scale: [1, 1.28], opacity: [0.8, 0] }} transition={{ duration: 1.9, repeat: Infinity, ease: "easeOut" }} />
+                  <motion.span animate={{ rotate: active ? 60 : 0, scale: active ? 1.1 : 1 }} transition={{ type: "spring", stiffness: 260, damping: 16 }}>
+                    <Icon name="arc" />
+                  </motion.span>
+                  {arc?.live && <span aria-hidden className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-card bg-brand-solid" />}
+                </span>
+                <span className={`max-w-full truncate px-0.5 ${active ? "text-brand" : ""}`}>{link.short}</span>
+              </Link>
+            );
           return (
             <Link
               key={link.href}

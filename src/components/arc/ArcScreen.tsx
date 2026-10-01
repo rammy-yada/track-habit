@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
 import { AppControls } from "@/components/AppStatus";
 import { replayArcIntro } from "./ArcIntro";
+import { ProfileSheet } from "./ProfileSheet";
 import { ShareAchievement } from "./ShareAchievement";
 import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -38,6 +39,9 @@ export function ArcScreen({ arc }: { arc: Arc }) {
   const [error, setError] = useState<string | null>(null);
   const [showRules, setShowRules] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  // tapping someone on the leaderboard opens their profile (members only: others are invited to join)
+  const [viewing, setViewing] = useState<number | null>(null);
+  const view = me ? setViewing : undefined;
 
   const run = (action: () => Promise<{ ok: true } | { ok: false; error: string }>) =>
     startTransition(async () => {
@@ -111,7 +115,7 @@ export function ArcScreen({ arc }: { arc: Arc }) {
           <div className="grid grid-cols-3 items-end gap-2.5 border-b border-white/15 px-2 pt-6">
             {podium.map((entry, i) => {
               const place = i === 1 ? 0 : i === 0 ? 1 : 2;
-              return <PodiumSpot key={place} entry={entry} place={PLACES[place]} first={place === 0} />;
+              return <PodiumSpot key={place} entry={entry} place={PLACES[place]} first={place === 0} onView={view} />;
             })}
           </div>
         </section>
@@ -189,6 +193,7 @@ export function ArcScreen({ arc }: { arc: Arc }) {
                   transition={{ delay: Math.min(i, 8) * 0.05, type: "spring", stiffness: 260, damping: 26 }}
                   className={`relative flex items-center gap-3 overflow-hidden rounded-xl border px-3 py-2.5 ${entry.isMe ? "border-white bg-white/10" : "border-white/10"}`}
                 >
+                  {view && <button type="button" className="absolute inset-0 z-10 rounded-xl" aria-label={`View ${entry.name}'s profile`} onClick={() => view(entry.avatar.id)} data-view-profile={entry.username} />}
                   {/* how close this person is to first place */}
                   <motion.span aria-hidden className="absolute inset-y-0 left-0 bg-white/[0.07]" initial={{ width: 0 }} whileInView={{ width: `${(entry.points / topPoints) * 100}%` }} viewport={{ once: true }} transition={{ delay: 0.2 + Math.min(i, 8) * 0.05, duration: 0.7 }} />
                   <span className="relative w-6 text-center text-xs font-bold tabular-nums text-white/55">{entry.rank}</span>
@@ -249,6 +254,7 @@ export function ArcScreen({ arc }: { arc: Arc }) {
           </div>
         </footer>
       </div>
+      <ProfileSheet userId={viewing} onClose={() => setViewing(null)} />
       <ConfirmDialog
         open={leaving}
         title="Leave the Winter Arc?"
@@ -261,9 +267,10 @@ export function ArcScreen({ arc }: { arc: Arc }) {
   );
 }
 
-function PodiumSpot({ entry, place, first }: { entry: Entry | undefined; place: (typeof PLACES)[number]; first: boolean }) {
+function PodiumSpot({ entry, place, first, onView }: { entry: Entry | undefined; place: (typeof PLACES)[number]; first: boolean; onView?: (userId: number) => void }) {
   return (
-    <div className="flex flex-col items-center">
+    <div className="relative flex flex-col items-center">
+      {entry && onView && <button type="button" className="absolute inset-0 z-10" aria-label={`View ${entry.name}'s profile`} onClick={() => onView(entry.avatar.id)} data-view-profile={entry.username} />}
       <motion.div className="relative mb-2 flex flex-col items-center" initial={{ y: -40, opacity: 0, scale: 0.6 }} animate={{ y: 0, opacity: 1, scale: 1 }} transition={{ delay: place.delay + 0.35, type: "spring", stiffness: 300, damping: 15 }}>
         {first && entry && (
           <motion.svg aria-hidden className="absolute -top-6" width="26" height="18" viewBox="0 0 26 18" fill="#fff" animate={{ y: [0, -4, 0], rotate: [-5, 5, -5] }} transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}>

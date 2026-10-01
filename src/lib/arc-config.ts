@@ -112,3 +112,22 @@ export function normalizeSurprises(raw: unknown): string[] {
   const lines = Array.isArray(raw) ? raw.map((line) => cleanLine(line, 160)).filter(Boolean) : [];
   return [...new Set(lines)].slice(0, MAX_SURPRISES);
 }
+
+// ── Badges an admin creates ──────────────────────────────────────────────────
+export const BADGE_RULES = [
+  { value: "perfect", label: "Perfect days", unit: "perfect days", hint: "Days on which every habit of the pack was done" },
+  { value: "streak", label: "Day streak", unit: "days in a row", hint: "Scoring days in a row during the arc" },
+  { value: "points", label: "Points", unit: "points", hint: "Winter Arc points this season" },
+  { value: "manual", label: "Given by hand", unit: "", hint: "You choose who gets it" },
+] as const;
+export type BadgeRule = (typeof BADGE_RULES)[number]["value"];
+
+/** Badges an admin can add with one tap. */
+export const BADGE_SUGGESTIONS: { name: string; icon: string; description: string; rule: BadgeRule; threshold: number }[] = [
+  { name: "Early Bird", icon: "🌅", description: "A full week of perfect days.", rule: "perfect", threshold: 7 },
+  { name: "On Fire", icon: "🔥", description: "Ten scoring days in a row.", rule: "streak", threshold: 10 },
+  { name: "Thousand Club", icon: "💯", description: "1,000 Winter Arc points.", rule: "points", threshold: 1000 },
+  { name: "Iron Will", icon: "🛡️", description: "Thirty perfect days.", rule: "perfect", threshold: 30 },
+  { name: "Community Hero", icon: "🤝", description: "For helping others stay on track.", rule: "manual", threshold: 0 },
+  { name: "Founding Member", icon: "⭐", description: "Here from the very first season.", rule: "manual", threshold: 0 },
+];

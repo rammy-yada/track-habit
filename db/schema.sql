@@ -340,3 +340,56 @@ On HabitFlow you can go back in the monthly view and correct a day you really di
 You are not starting over. You are continuing, with one gap in the middle.')
   ) AS d(slug, title, excerpt, body)
   WHERE NOT EXISTS (SELECT 1 FROM blog_posts);
+
+-- ── Notification and app-icon preferences ────────────────────
+-- notify_motivation: motivation notifications a day (0 = none, up to 3).
+-- notify_comeback:   1 = nudge me when I have been away for a few days.
+-- app_icon:          'auto' (Winter Arc icon while in the arc), 'classic' or 'arc'.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_motivation SMALLINT NOT NULL DEFAULT 2;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_comeback SMALLINT NOT NULL DEFAULT 1;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS app_icon VARCHAR(10) NOT NULL DEFAULT 'auto';
+
+-- ── Winter Arc: personal goals and quote ─────────────────────
+-- arc_goals: what a member wants to have achieved by the end of the season.
+-- winter_arc_members.quote: a line of their own, put on a picture to share.
+CREATE TABLE IF NOT EXISTS arc_goals (
+    id         SERIAL PRIMARY KEY,
+    user_id    INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    season     INT NOT NULL,
+    text       VARCHAR(140) NOT NULL,
+    done       SMALLINT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS arc_goals_user ON arc_goals (user_id, season);
+ALTER TABLE winter_arc_members ADD COLUMN IF NOT EXISTS quote VARCHAR(160) NOT NULL DEFAULT '';
+
+-- ── Profile details, and who may see them ────────────────────
+-- gender, birth_date and country are asked for once, before the app can be
+-- used. On someone's leaderboard profile their age, gender and country are
+-- shown only while the matching show_* switch is on (Profile → Privacy).
+--
+-- ── Winter Arc badges ────────────────────────────────────────
+-- Made by an admin. rule says how one is earned: 'points', 'streak' or
+-- 'perfect' (reached automatically at `threshold`), or 'manual' (given to
+-- chosen people — recorded in user_badges).
+ALTER TABLE users ADD COLUMN IF NOT EXISTS birth_date DATE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS country VARCHAR(2);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS show_age SMALLINT NOT NULL DEFAULT 1;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS show_gender SMALLINT NOT NULL DEFAULT 1;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS show_country SMALLINT NOT NULL DEFAULT 1;
+CREATE TABLE IF NOT EXISTS arc_badges (
+    id          SERIAL PRIMARY KEY,
+    name        VARCHAR(40)  NOT NULL UNIQUE,
+    icon        VARCHAR(10)  NOT NULL DEFAULT '🏅',
+    description VARCHAR(160) NOT NULL DEFAULT '',
+    rule        VARCHAR(10)  NOT NULL DEFAULT 'manual',
+    threshold   INT          NOT NULL DEFAULT 0,
+    created_at  TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS user_badges (
+    user_id    INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    badge_id   INT NOT NULL REFERENCES arc_badges(id) ON DELETE CASCADE,
+    awarded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, badge_id)
+);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS gender VARCHAR(12);

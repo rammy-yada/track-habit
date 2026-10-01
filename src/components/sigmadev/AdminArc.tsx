@@ -11,6 +11,8 @@ import type { getAdminArc } from "@/lib/admin-data";
 import { whenOnline } from "@/lib/offline";
 import type { Pack } from "@/lib/arc-packs";
 import type { ArcIntroSetup } from "@/lib/arc-settings";
+import type { getBadges } from "@/lib/badges";
+import { ArcBadges } from "./ArcBadges";
 import { ArcPacks } from "./ArcPacks";
 import { IntroImages } from "./IntroImages";
 import { IntroSettings } from "./IntroSettings";
@@ -18,9 +20,9 @@ import { IntroSettings } from "./IntroSettings";
 type Data = Awaited<ReturnType<typeof getAdminArc>>;
 type Member = Data["members"][number];
 
-type Props = { data: Data; joined: Record<number, string>; images: { before: string | null; after: string | null }; adminName: string; intro: ArcIntroSetup; surprises: string[]; packs: Pack[] };
+type Props = { data: Data; joined: Record<number, string>; images: { before: string | null; after: string | null }; adminName: string; intro: ArcIntroSetup; surprises: string[]; packs: Pack[]; badges: Awaited<ReturnType<typeof getBadges>> };
 
-export function AdminArc({ data, joined, images, adminName, intro, surprises, packs }: Props) {
+export function AdminArc({ data, joined, images, adminName, intro, surprises, packs, badges }: Props) {
   const { season, members } = data;
   const [removing, setRemoving] = useState<Member | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -58,6 +60,8 @@ export function AdminArc({ data, joined, images, adminName, intro, surprises, pa
         </div>
 
         <ArcPacks packs={packs} />
+
+        <ArcBadges badges={badges} />
 
         <h2 className="pt-2 font-display text-lg font-bold tracking-tight">Opening scene</h2>
         <IntroImages images={images} />

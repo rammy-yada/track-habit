@@ -18,12 +18,14 @@ type Data = Awaited<ReturnType<typeof getAdminOverview>>;
 export function AdminOverview({ data, joined, status }: { data: Data; joined: Record<number, string>; status: { build: string; database: string } }) {
   const { stats } = data;
   const tiles = [
-    { label: "Accounts", value: stats.totalUsers, note: `${stats.newThisWeek} new this week`, href: "/sigmadev/users" },
-    { label: "Active accounts", value: stats.activeUsers, note: stats.disabledUsers ? `${stats.disabledUsers} disabled` : "none disabled", href: "/sigmadev/users" },
+    { label: "Members", value: stats.totalUsers, note: `${stats.newThisWeek} new this week`, href: "/sigmadev/users" },
+    { label: "Active members", value: stats.activeUsers, note: stats.disabledUsers ? `${stats.disabledUsers} disabled` : "none disabled", href: "/sigmadev/users" },
     { label: "Check-ins today", value: stats.checkinsToday, note: `${stats.totalHabits} active habits`, href: null },
     { label: "In the Winter Arc", value: stats.arcMembers, note: data.arcLive ? "season is live" : "season not started", href: "/sigmadev/arc" },
     { label: "New messages", value: stats.newInquiries, note: "Open the inbox →", href: "/sigmadev/inbox" },
     { label: "Blog posts", value: stats.posts, note: "Write or edit →", href: "/sigmadev/blog" },
+    { label: "With notifications on", value: stats.devices, note: "Wording and icons →", href: "/sigmadev/notifications" },
+    { label: "Administrators", value: stats.admins, note: "Manage →", href: "/sigmadev/admins" },
   ];
   // the last 7 of the 14 days fit a phone; the chart shows all 14 on wider screens
   const week = (series: Data["activity"]) => series.slice(-7);
@@ -37,7 +39,7 @@ export function AdminOverview({ data, joined, status }: { data: Data; joined: Re
       </PageHeader>
 
       <div className="space-y-5 px-4 py-6 md:px-8 md:py-7">
-        <motion.div className="grid grid-cols-2 gap-3 lg:grid-cols-3 lg:gap-4" initial="hidden" animate="shown" variants={{ shown: { transition: { staggerChildren: 0.06 } } }}>
+        <motion.div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4" initial="hidden" animate="shown" variants={{ shown: { transition: { staggerChildren: 0.06 } } }}>
           {tiles.map((tile) => {
             const body = (
               <Spotlight className={`${card} h-full p-4 sm:p-5`}>

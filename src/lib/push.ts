@@ -27,7 +27,16 @@ export function validPushEndpoint(endpoint: unknown): endpoint is string {
   }
 }
 
-export type PushMessage = { title: string; body: string; url: string; tag: string };
+export type PushMessage = {
+  title: string;
+  body: string;
+  url: string;
+  tag: string;
+  /** A picture other than the app's usual icon (used by "come back" messages). */
+  icon?: string;
+  /** Habits still open today: shown as a number on the app's icon, where the device supports it. */
+  badge?: number;
+};
 
 let configured = false;
 

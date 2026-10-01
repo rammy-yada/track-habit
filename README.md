@@ -128,6 +128,28 @@ Setup:
 Without these variables the app works as before: codes are shown on screen
 and a forgotten password is reset by an admin.
 
+### Notifications: what is sent, and how people control it
+
+The app asks to turn notifications on a few seconds after it opens (sooner in
+the installed app), explains what will be sent first, and backs off each time
+it is put off (a day, three days, a week, then never).
+
+In **Profile → App** each person chooses:
+
+- **Motivation**: off, or 1–3 a day. The morning quote at 8; with 2 or 3, more
+  in the afternoon — but only while habits are still open.
+- **Nudge me if I stop**: a kind message 2, 4, 7, 14 and 30 days after the
+  last tick, then nothing. One email goes out at a week (if emails are on).
+  After a week away the everyday messages stop too: an app someone has left
+  should go quiet, not louder.
+- **App icon**: automatic (the Winter Arc snowflake while in the arc),
+  HabitFlow, or Winter Arc. It is applied when the app is installed; Android
+  and desktop Chrome pick up a change within a day or so, an iPhone needs the
+  app re-added to the Home Screen. (A website cannot swap its installed icon
+  from one day to the next the way a native app can.)
+- **Number on the icon**: how many of today's habits are still open, where
+  the device supports it; it clears when everything is done.
+
 ### Notifications (optional)
 
 Real push notifications, like a native app — they arrive when the app is
@@ -188,7 +210,7 @@ src/
     (app)/                  the member's screens: /dashboard  /analytics  /arc  /monthly  /profile  /support
       layout.tsx              auth check, sidebar, offline status, welcome guide
       loading.tsx             the skeleton shown while a page's data loads
-    sigmadev/               the admin-only area: /sigmadev  /sigmadev/users  /sigmadev/categories  /sigmadev/arc  /sigmadev/blog  /sigmadev/inbox  /sigmadev/account
+    sigmadev/               the admin-only area: /sigmadev  /sigmadev/users  /sigmadev/admins  /sigmadev/categories  /sigmadev/arc  /sigmadev/blog  /sigmadev/inbox  /sigmadev/notifications  /sigmadev/account
     api/health  api/version   status check; which build is running
     api/sync                  applies habit ticks, including ones made offline
     api/avatar                profile photo upload (→ 256px WebP) and serving
@@ -286,7 +308,25 @@ poster theme (a theme picked by hand with the theme button always wins).
   habit" puts one on your checklist. The catalogue is a plain list in
   `src/lib/workouts.ts`.
 
-### Habit packs
+### The Arc screen
+
+Opening the Winter Arc covers the whole screen (the app's own menu is out of
+the way; an arrow goes back to Today). It starts with a **story** — a few
+full-screen animated cards you tap through: the day, your streak, your rank,
+today's pack, a line for the day. Then four sections:
+
+- **Goals** — up to seven things to have achieved by Jan 31 (private), and
+  the member's pack with today's progress and badges.
+- **Tips** — a tip of the day and the rest by theme, plus workouts to add.
+- **Quote** — write a line of your own; it is drawn onto a picture with your
+  name, photo and day of the arc (`/api/share-card?kind=quote`) to post to
+  Instagram, Facebook or TikTok through the phone's share menu.
+- **Leaderboard** — the poster, podium and ranking.
+
+Someone who hasn't joined sees a shorter story that ends in "Join", and the
+leaderboard. While the season is live the Arc tab is raised and pulsing, and
+Today shows an invitation to non-members.
+
 
 A pack is a ready-made set of habits an admin puts together in
 **Admin → Winter Arc → Habit packs** (three come built in). There are two kinds:
@@ -365,6 +405,36 @@ Three public pages, no account needed:
   email, marked read or deleted; admins are also emailed when email is set up.
   The forms are checked on the server, limited to three messages an hour per
   address, and have a hidden field that catches form-filling programs.
+
+## Signing up, profiles and privacy
+
+- **Finishing the profile.** The first time someone signs in — with a password
+  or with Google — they are asked for a username (a Google sign-up is given a
+  made-up one to change), gender, date of birth and country. Until that is done
+  every signed-in page and action sends them back to `/welcome`
+  (`requireUser()` in `src/lib/auth.ts`). Under-13s are refused.
+- **Leaderboard profiles.** Tapping someone on the Winter Arc leaderboard opens
+  their profile: name, photo, their arc numbers and badges, and their age,
+  gender and country — each only while its owner leaves it switched on
+  (Profile → About you). The date of birth itself is never sent.
+- **Badges.** An admin makes badges in Admin → Winter Arc: earned automatically
+  (perfect days, a streak, points) or given by hand. Members see them in
+  Profile, with progress.
+- **Logging out** is at the end of Profile and asks first. The phone header has
+  only the theme switch.
+- **Saving the password.** Sign-in forms are marked up for password managers,
+  and after a successful sign-in the browser is asked to offer saving it
+  (`src/lib/credentials.ts`; the password is held in memory only until then).
+
+## Storage
+
+Admin → Overview shows how full the database is, against the size of the plan
+(typed in there — the site can't ask the host). Once a day the scheduled job
+checks it: at 80% the admins are emailed; at 95% uploads (photos, pictures,
+sounds) are refused so the site itself keeps working, and the admins are
+emailed again. The same job clears out old sign-in attempts, codes and
+"already sent" records. A profile photo is stored as a 256px WebP of around
+10 KB; a year of daily ticks for one person is a few hundred KB.
 
 ## Search engines and link previews
 

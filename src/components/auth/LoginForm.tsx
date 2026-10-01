@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { rememberTyped } from "@/lib/credentials";
 import Link from "next/link";
 import { Alert } from "@/components/ui/Alert";
 import { PasswordField } from "@/components/ui/PasswordField";
@@ -44,7 +45,14 @@ export function LoginForm({ google, notice, success, join = false }: { google: b
       </Alert>
       <Alert kind="success">{!message && success ? SUCCESS[success] : undefined}</Alert>
       {google && <GoogleButton label="Continue with Google" join={join} />}
-      <form action={action} className="space-y-4">
+      <form
+        action={action}
+        className="space-y-4"
+        onSubmit={(e) => {
+          const data = new FormData(e.currentTarget);
+          rememberTyped(String(data.get("identifier") ?? ""), String(data.get("password") ?? "")); // offered to the password manager if the sign-in works
+        }}
+      >
         {join && <input type="hidden" name="join" value="arc" />}
         <label className="block">
           <span className={label}>Email or username</span>

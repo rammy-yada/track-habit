@@ -52,7 +52,7 @@ export function VerifyForm({ email, devCode }: { email: string; devCode: string 
   }
 
   return (
-    <AuthCard title="Verify your email" subtitle={devCode ? `Confirm the account for ${email}.` : `We sent a 6-digit code to ${email}. Enter it below.`}>
+    <AuthCard title="Verify your email" subtitle={devCode ? `Confirm the account for ${email}.` : `We sent a 6-digit code to ${email}. Enter it below. It can take a minute — if it isn't in your inbox, look in Spam or Junk.`}>
       <Link href="/register" className="mb-5 inline-block text-[13px] font-medium text-muted hover:text-brand">
         ← Change sign-up details
       </Link>

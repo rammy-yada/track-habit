@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin } from "../auth";
 import { parseTags, slugify } from "../blog-format";
 import { execute, isDuplicateError } from "../db";
+import { saveMessages } from "../messages";
+import { setStorageLimit } from "../storage";
 import { clean } from "../text";
 import { toId } from "../validation";
 
@@ -81,6 +83,24 @@ export async function deleteInquiry(idInput: number): Promise<Result> {
   const id = toId(idInput);
   if (!id) return INVALID;
   await execute("DELETE FROM inquiries WHERE id = ?", [id]);
+  refresh();
+  return { ok: true };
+}
+
+/** Admin → Notifications: the wording of the quotes, nudges and "come back" messages. */
+export async function saveMessagesAction(input: unknown): Promise<Result> {
+  await requireAdmin();
+  await saveMessages(input); // normalised there: over-long or unexpected values never reach the database
+  refresh();
+  return { ok: true };
+}
+
+/** Admin → Overview: how much space the database plan allows, in GB. */
+export async function setStorageLimitAction(gbInput: number): Promise<Result> {
+  await requireAdmin();
+  const gb = Number(gbInput);
+  if (!(gb >= 0.01 && gb <= 1024)) return { ok: false, error: "Enter the size of your database plan in GB (for example 1 or 8)." };
+  await setStorageLimit(Math.round(gb * 100) / 100);
   refresh();
   return { ok: true };
 }

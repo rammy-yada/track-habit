@@ -4,6 +4,7 @@ import sharp from "sharp";
 import { currentUser } from "@/lib/auth";
 import { execute } from "@/lib/db";
 import { sameOrigin } from "@/lib/http";
+import { STORAGE_FULL_MESSAGE, storageFull } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,7 @@ export async function POST(request: NextRequest) {
   const user = await currentUser();
   if (!user) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
 
+  if (await storageFull()) return NextResponse.json({ error: STORAGE_FULL_MESSAGE }, { status: 507 });
   const declared = Number(request.headers.get("content-length") ?? 0);
   if (declared > MAX_UPLOAD) return NextResponse.json({ error: "That image is too large." }, { status: 413 });
   const upload = Buffer.from(await request.arrayBuffer());
@@ -33,7 +35,8 @@ export async function POST(request: NextRequest) {
     webp = await sharp(upload, { limitInputPixels: 50_000_000, failOn: "error" })
       .rotate() // honour the phone's orientation flag before it is dropped
       .resize(SIZE, SIZE, { fit: "cover", position: "attention" })
-      .webp({ quality: 82 })
+      // quality 76 at "effort 6" (the slowest, smallest setting): a face at this size comes out around 6–12 KB
+      .webp({ quality: 76, effort: 6, smartSubsample: true })
       .toBuffer();
   } catch {
     return NextResponse.json({ error: "That file isn't an image we can read. Try a JPG or PNG." }, { status: 400 });

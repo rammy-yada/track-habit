@@ -4,8 +4,11 @@ import { useActionState, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
+import { AboutYou, type Details } from "@/components/AboutYou";
+import { LogoutButton } from "@/components/AppNav";
 import { AppControls } from "@/components/AppStatus";
 import { InstallButton } from "@/components/InstallButton";
+import { AppPrefs, type Prefs } from "@/components/AppPrefs";
 import { NotificationToggle } from "@/components/NotificationToggle";
 import { Alert } from "@/components/ui/Alert";
 import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
@@ -16,12 +19,16 @@ import { SubmitButton } from "@/components/ui/SubmitButton";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { btnDanger, btnGhost, btnSmall, card, input, label } from "@/components/ui/styles";
 import { changePasswordAction, deleteAccountAction, updateProfileAction } from "@/lib/actions/profile";
-import { AVATAR_COLORS, CREATOR, TIMEZONES } from "@/lib/constants";
+import { TimezoneOptions } from "@/components/TimezoneOptions";
+import { AVATAR_COLORS, CREATOR } from "@/lib/constants";
 import { clearOfflineData } from "@/lib/offline";
+import { openGuide } from "@/lib/pwa";
 
 type Props = {
-  user: { id: number; fullName: string; username: string; email: string; color: string; timezone: string; memberSince: string; google: boolean; photo: number; admin: boolean; emailLang: string; reminders: boolean; pushKey: string | null };
+  user: { id: number; fullName: string; username: string; email: string; color: string; timezone: string; memberSince: string; google: boolean; photo: number; admin: boolean; emailLang: string; reminders: boolean; pushKey: string | null; prefs?: Prefs; arcMember?: boolean; details?: Details };
   stats: { habits: number; checkins: number };
+  /** The member's Winter Arc badges, if there are any to show. */
+  badges?: React.ReactNode;
 };
 
 /**
@@ -43,7 +50,7 @@ async function shrink(file: File): Promise<Blob> {
   return (webp?.type === "image/webp" ? webp : await encode("image/jpeg", 0.88)) ?? file;
 }
 
-export function ProfileForms({ user, stats }: Props) {
+export function ProfileForms({ user, stats, badges }: Props) {
   const router = useRouter();
   const [profileState, profileAction, profilePending] = useActionState(updateProfileAction, null);
   const [passwordState, passwordAction, passwordPending] = useActionState(changePasswordAction, null);
@@ -54,7 +61,6 @@ export function ProfileForms({ user, stats }: Props) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const palette = AVATAR_COLORS.includes(color) ? AVATAR_COLORS : [color, ...AVATAR_COLORS];
-  const zones = TIMEZONES.some((z) => z.value === user.timezone) ? TIMEZONES : [{ value: user.timezone, label: user.timezone }, ...TIMEZONES];
 
   async function photoRequest(init: RequestInit) {
     if (!navigator.onLine) return setPhotoError("You're offline. Changing your photo needs a connection.");
@@ -163,11 +169,7 @@ export function ProfileForms({ user, stats }: Props) {
             <label className="block">
               <span className={label}>Timezone</span>
               <select name="timezone" className={input} defaultValue={user.timezone}>
-                {zones.map((z) => (
-                  <option key={z.value} value={z.value}>
-                    {z.label}
-                  </option>
-                ))}
+                <TimezoneOptions current={user.timezone} />
               </select>
               {!user.admin && <span className="mt-1.5 block text-[11px] text-muted">Habits reset at midnight in your timezone.</span>}
             </label>
@@ -200,6 +202,17 @@ export function ProfileForms({ user, stats }: Props) {
         </section>
       </Reveal>
 
+      {badges && <Reveal>{badges}</Reveal>}
+
+      {user.details && (
+        <Reveal>
+          <section className={`${card} p-6 sm:p-7`}>
+            <h2 className="mb-5 border-b border-line pb-3 text-[15px] font-bold">About you</h2>
+            <AboutYou details={user.details} />
+          </section>
+        </Reveal>
+      )}
+
       <Reveal>
         <section className={`${card} p-6 sm:p-7`}>
           <h2 className="mb-5 border-b border-line pb-3 text-[15px] font-bold">Change password</h2>
@@ -226,6 +239,7 @@ export function ProfileForms({ user, stats }: Props) {
           </div>
           <InstallButton />
           {!user.admin && <NotificationToggle publicKey={user.pushKey} />}
+          {!user.admin && user.prefs && <AppPrefs prefs={user.prefs} arcMember={user.arcMember === true} />}
           <AppControls />
         </section>
       </Reveal>
@@ -274,6 +288,21 @@ export function ProfileForms({ user, stats }: Props) {
             )}
           </div>
           {user.admin && <p className="mt-3 text-[13px] leading-relaxed text-muted">An administrator account can only be removed by another administrator, from Users.</p>}
+        </section>
+      </Reveal>
+
+      {/* the last things on the screen: the guide, and the way out */}
+      <Reveal>
+        <section className={`${card} divide-y divide-line overflow-hidden`} aria-label="More">
+          {!user.admin && (
+            <button type="button" onClick={openGuide} className="flex w-full items-center gap-3 px-5 py-4 text-left text-sm font-semibold hover:bg-raised" data-open-guide>
+              <span aria-hidden className="grid h-[18px] w-[18px] place-items-center text-base leading-none">
+                ?
+              </span>
+              Show the welcome guide again
+            </button>
+          )}
+          <LogoutButton className="flex w-full items-center gap-3 px-5 py-4 text-left text-sm font-semibold text-bad hover:bg-bad-soft" />
         </section>
       </Reveal>
 

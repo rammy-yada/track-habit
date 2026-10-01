@@ -16,6 +16,7 @@ import { deleteHabit, saveNote } from "@/lib/actions/habits";
 import { resolveDone, setDone, settle, useOfflineQueue, whenOnline } from "@/lib/offline";
 import type { Mood } from "@/lib/constants";
 import type { getDashboard, HabitView } from "@/lib/data";
+import { badgeEnabled } from "@/components/AppPrefs";
 import { MILESTONES } from "@/lib/arc-config";
 import { ArcSurprise, surpriseSeen } from "./ArcSurprise";
 import { Confetti, Flame } from "./effects";
@@ -70,6 +71,14 @@ export function HabitBoard({ data }: { data: Awaited<ReturnType<typeof getDashbo
   const [surprise, setSurprise] = useState(false);
   const closeSurprise = useCallback(() => setSurprise(false), []);
   const todayDay = Number(data.today.slice(8));
+
+  // The number on the app's icon: habits still open today (none when done).
+  useEffect(() => {
+    const nav = navigator as Navigator & { setAppBadge?: (n: number) => Promise<void>; clearAppBadge?: () => Promise<void> };
+    if (!nav.setAppBadge) return;
+    const left = total - doneCount;
+    void (left > 0 && badgeEnabled() ? nav.setAppBadge(left) : nav.clearAppBadge?.())?.catch(() => {});
+  }, [total, doneCount]);
 
   // Celebrate only when *you* just finished the last habit — not on page load.
   const interacted = useRef(false);
@@ -162,6 +171,26 @@ export function HabitBoard({ data }: { data: Awaited<ReturnType<typeof getDashbo
       </PageHeader>
 
       <div className="space-y-7 px-4 py-6 md:px-8 md:py-7">
+        {/* ── the Winter Arc is running and this person isn't in it yet ── */}
+        {data.arcInvite && (
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+            <Link href="/arc" className="relative flex items-center gap-4 overflow-hidden rounded-2xl bg-ink px-5 py-4 text-bg" data-arc-invite>
+              <span aria-hidden className="shine absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-white/15 to-transparent" />
+              <motion.span className="relative text-3xl" aria-hidden animate={{ rotate: [0, 60] }} transition={{ duration: 6, repeat: Infinity, ease: "linear" }}>
+                ❄
+              </motion.span>
+              <span className="relative min-w-0 flex-1">
+                <span className="block text-[11px] font-semibold uppercase tracking-[0.18em] opacity-70">
+                  Live now · Day {data.arcInvite.day} of {data.arcInvite.totalDays}
+                </span>
+                <span className="block font-display text-lg font-bold leading-tight">The Winter Arc has started</span>
+                <span className="block text-[13px] opacity-80">Pick a pack, show up every day, climb the leaderboard.</span>
+              </span>
+              <span className="relative shrink-0 rounded-xl bg-bg px-3.5 py-2 text-sm font-bold text-ink">Join →</span>
+            </Link>
+          </motion.div>
+        )}
+
         {/* ── Stats ── */}
         <motion.section
           aria-label="Today at a glance"

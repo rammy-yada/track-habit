@@ -4,8 +4,11 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "../auth";
 import { arcSeason } from "../arc";
 import { getMemberPack, givePackHabits } from "../arc-packs";
+import { arcNumbers, badgesFor } from "../badges";
 import { execute, query, queryOne } from "../db";
-import { todayIn } from "../dates";
+import { ageOn, countryName, flag, genderLabel } from "../people";
+import { decodeEntities } from "../text";
+import { formatTimestamp, todayIn } from "../dates";
 import { toId } from "../validation";
 import { workoutById } from "../workouts";
 
@@ -123,4 +126,118 @@ export async function removePack(packIdInput: number): Promise<Result> {
   if (left.rowCount) await execute("UPDATE habits SET is_active = 0 WHERE user_id = ? AND arc_season IS NULL AND arc_habit_id IN (SELECT id FROM arc_pack_habits WHERE pack_id = ?)", [user.id, packId]);
   revalidatePath("/", "layout");
   return { ok: true };
+}
+
+// ── Winter Arc: personal goals and the quote to share ────────────────────────
+
+const line = (value: unknown, max: number) => (typeof value === "string" ? value.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, max) : "");
+
+async function memberSeason(): Promise<{ userId: number; year: number } | null> {
+  const user = await requireUser();
+  const { year } = arcSeason(todayIn(user.timezone));
+  return (await queryOne("SELECT 1 AS ok FROM winter_arc_members WHERE user_id = ? AND season = ?", [user.id, year])) ? { userId: user.id, year } : null;
+}
+const NOT_MEMBER = { ok: false, error: "Join the Winter Arc first." } as const;
+
+/** Something the member wants to have achieved by the end of the season. */
+export async function addArcGoal(textInput: string): Promise<Result> {
+  const member = await memberSeason();
+  if (!member) return NOT_MEMBER;
+  const text = line(textInput, 140);
+  if (text.length < 3) return { ok: false, error: "Write the goal first." };
+  const count = await queryOne<{ n: number | string }>("SELECT COUNT(*) AS n FROM arc_goals WHERE user_id = ? AND season = ?", [member.userId, member.year]);
+  if (Number(count?.n ?? 0) >= 7) return { ok: false, error: "Seven goals is plenty. Finish or remove one first." };
+  await execute("INSERT INTO arc_goals (user_id, season, text) VALUES (?, ?, ?)", [member.userId, member.year, text]);
+  revalidatePath("/arc");
+  return { ok: true };
+}
+
+export async function toggleArcGoal(idInput: number): Promise<Result> {
+  const user = await requireUser();
+  const id = toId(idInput);
+  if (!id) return { ok: false, error: "Invalid request." };
+  // user_id is in the WHERE: the id alone must never be enough to change someone's goal
+  await execute("UPDATE arc_goals SET done = 1 - done WHERE id = ? AND user_id = ?", [id, user.id]);
+  revalidatePath("/arc");
+  return { ok: true };
+}
+
+export async function deleteArcGoal(idInput: number): Promise<Result> {
+  const user = await requireUser();
+  const id = toId(idInput);
+  if (!id) return { ok: false, error: "Invalid request." };
+  await execute("DELETE FROM arc_goals WHERE id = ? AND user_id = ?", [id, user.id]);
+  revalidatePath("/arc");
+  return { ok: true };
+}
+
+/** The member's own line, shown on the picture they share. */
+export async function saveArcQuote(textInput: string): Promise<Result> {
+  const member = await memberSeason();
+  if (!member) return NOT_MEMBER;
+  await execute("UPDATE winter_arc_members SET quote = ? WHERE user_id = ? AND season = ?", [line(textInput, 160), member.userId, member.year]);
+  revalidatePath("/arc");
+  return { ok: true };
+}
+
+// ── Leaderboard profiles ─────────────────────────────────────────────────────
+
+export type ArcProfile = {
+  name: string;
+  username: string;
+  avatar: { id: number; name: string; color: string; version: number };
+  isMe: boolean;
+  /** Each is present only if that person lets it be shown (Profile → About you). */
+  age: number | null;
+  gender: string | null;
+  country: { code: string; name: string; flag: string } | null;
+  memberSince: string;
+  pack: string | null;
+  numbers: { points: number; streak: number; perfect: number; activeDays: number };
+  badges: { name: string; icon: string; description: string }[];
+};
+
+/**
+ * What one Winter Arc member may see of another, opened from the leaderboard.
+ * Only people on this season's leaderboard have a profile, only members can
+ * open one, and age, gender and country are left out unless their owner has
+ * them switched on.
+ */
+export async function viewArcProfile(userIdInput: number): Promise<{ ok: true; profile: ArcProfile } | { ok: false; error: string }> {
+  const viewer = await requireUser();
+  const id = toId(userIdInput);
+  const today = todayIn(viewer.timezone);
+  const { year } = arcSeason(today);
+  const target = id
+    ? await queryOne<{ id: number; username: string; full_name: string; avatar_color: string; avatar_version: number; gender: string | null; birth_date: string | null; country: string | null; show_age: number; show_gender: number; show_country: number; created_at: string; timezone: string; pack: string | null }>(
+        `SELECT u.id, u.username, u.full_name, u.avatar_color, u.avatar_version, u.gender, u.birth_date, u.country, u.show_age, u.show_gender, u.show_country, u.created_at, u.timezone,
+                (SELECT p.icon || ' ' || p.name FROM arc_packs p WHERE p.id = m.pack_id) AS pack
+         FROM winter_arc_members m JOIN users u ON u.id = m.user_id AND u.is_active = 1 AND u.role = 'user'
+         WHERE m.user_id = ? AND m.season = ?`,
+        [id, year],
+      )
+    : null;
+  if (!target) return { ok: false, error: "That profile isn't available." };
+
+  const theirToday = todayIn(target.timezone || "UTC");
+  const numbers = await arcNumbers(target.id, theirToday);
+  const badges = (await badgesFor(target.id, numbers)).filter((b) => b.earned);
+  const parts = decodeEntities(target.full_name).trim().split(/\s+/);
+  const name = parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1][0].toUpperCase()}.` : parts[0]; // first name and last initial, as on the leaderboard
+  return {
+    ok: true,
+    profile: {
+      name,
+      username: target.username,
+      avatar: { id: target.id, name, color: target.avatar_color, version: target.avatar_version },
+      isMe: target.id === viewer.id,
+      age: target.show_age === 1 && target.birth_date ? ageOn(target.birth_date, theirToday) : null,
+      gender: target.show_gender === 1 && target.gender && target.gender !== "private" ? genderLabel(target.gender) : null,
+      country: target.show_country === 1 && target.country ? { code: target.country, name: countryName(target.country), flag: flag(target.country) } : null,
+      memberSince: formatTimestamp(target.created_at, viewer.timezone),
+      pack: target.pack,
+      numbers,
+      badges: badges.map(({ name: badgeName, icon, description }) => ({ name: badgeName, icon, description })),
+    },
+  };
 }

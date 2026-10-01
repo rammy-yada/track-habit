@@ -35,6 +35,12 @@ export default function PrivacyPage() {
       </section>
 
       <section>
+        <h2>About you: gender, date of birth and country</h2>
+        <p>Before you start we ask for your gender (you can answer &ldquo;Rather not say&rdquo;), your date of birth and your country. We use the date of birth to check you are old enough to use {APP_NAME} and to work out your age; the country and gender help us understand who uses the app.</p>
+        <p>If you join the Winter Arc, other members can open your profile from the leaderboard. It shows your first name and last initial, username, photo, your Winter Arc numbers and badges &mdash; and your <strong>age</strong> (never your date of birth), <strong>gender</strong> and <strong>country</strong>, each only while you leave it switched on. You choose this when you sign up and can change it at any time in Profile &rarr; About you.</p>
+      </section>
+
+      <section>
         <h2>Signing in with Google</h2>
         <p>
           If you use &ldquo;Continue with Google&rdquo;, Google tells us three things: your <strong>name</strong>, your <strong>email address</strong>, and an <strong>account identifier</strong> that lets us recognise you next time. We ask for nothing else. We never see your Google password and cannot read your Gmail, contacts, Drive or any other Google data. We use this information only to create your {APP_NAME} account and sign you in, and we do not share or sell it.

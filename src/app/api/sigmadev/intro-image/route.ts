@@ -4,10 +4,11 @@ import sharp from "sharp";
 import { currentUser } from "@/lib/auth";
 import { execute } from "@/lib/db";
 import { sameOrigin } from "@/lib/http";
+import { STORAGE_FULL_MESSAGE, storageFull } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
 
-const SLOTS = new Set(["before", "after", "sound"]);
+const SLOTS = new Set(["before", "after", "sound", "icon-arc", "icon-away"]);
 const MAX_UPLOAD = 4 * 1024 * 1024;
 const MAX_SOUND = 2 * 1024 * 1024;
 
@@ -45,6 +46,7 @@ export async function POST(request: NextRequest) {
   const slot = await adminOnly(request);
   if (typeof slot !== "string") return slot;
 
+  if (await storageFull()) return NextResponse.json({ error: STORAGE_FULL_MESSAGE }, { status: 507 });
   const upload = Buffer.from(await request.arrayBuffer());
   if (slot === "sound") {
     if (upload.length === 0 || upload.length > MAX_SOUND) return NextResponse.json({ error: "That sound is too large (2 MB at most). A few seconds is plenty." }, { status: 413 });
@@ -55,6 +57,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, bytes: upload.length });
   }
   if (upload.length === 0 || upload.length > MAX_UPLOAD) return NextResponse.json({ error: "That image is too large (4 MB at most)." }, { status: 413 });
+  if (slot.startsWith("icon-")) {
+    // an app or notification icon: a 512px square PNG (served in whatever size is asked for by /app-icon)
+    let png: Buffer;
+    try {
+      png = await sharp(upload, { limitInputPixels: 50_000_000, failOn: "error" }).rotate().resize(512, 512, { fit: "cover" }).png({ compressionLevel: 9 }).toBuffer();
+    } catch {
+      return NextResponse.json({ error: "That file isn't an image we can read. Use a PNG or JPG." }, { status: 400 });
+    }
+    await execute("INSERT INTO site_images (slot, image, mime) VALUES (?, ?, 'image/png') ON CONFLICT (slot) DO UPDATE SET image = EXCLUDED.image, mime = EXCLUDED.mime, version = site_images.version + 1, updated_at = NOW()", [slot, png]);
+    revalidatePath("/", "layout");
+    return NextResponse.json({ ok: true, bytes: png.length });
+  }
   let webp: Buffer;
   try {
     webp = await sharp(upload, { limitInputPixels: 50_000_000, failOn: "error" }).rotate().resize(900, 900, { fit: "inside", withoutEnlargement: true }).webp({ quality: 86, alphaQuality: 90 }).toBuffer();

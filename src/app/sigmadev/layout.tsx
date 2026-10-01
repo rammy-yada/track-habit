@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { MobileBars, Sidebar } from "@/components/AppNav";
 import { ArcTheme } from "@/components/ArcTheme";
+import { SaveCredential } from "@/components/SaveCredential";
 import { adminMetadata, requireAdmin } from "@/lib/auth";
 
 export const generateMetadata = (): Promise<Metadata> => adminMetadata({ title: { default: "Admin", template: "%s — HabitFlow Admin" }, robots: { index: false, follow: false } });
@@ -21,6 +22,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         {children}
       </div>
       <ArcTheme member={false} />
+      <SaveCredential name={admin.full_name} username={admin.username} />
     </div>
   );
 }

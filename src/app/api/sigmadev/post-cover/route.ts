@@ -4,6 +4,7 @@ import sharp from "sharp";
 import { currentUser } from "@/lib/auth";
 import { execute, queryOne } from "@/lib/db";
 import { sameOrigin } from "@/lib/http";
+import { STORAGE_FULL_MESSAGE, storageFull } from "@/lib/storage";
 import { toId } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +29,7 @@ async function adminPost(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const id = await adminPost(request);
   if (typeof id !== "number") return id;
+  if (await storageFull()) return NextResponse.json({ error: STORAGE_FULL_MESSAGE }, { status: 507 });
   const upload = Buffer.from(await request.arrayBuffer());
   if (upload.length === 0 || upload.length > MAX_UPLOAD) return NextResponse.json({ error: "That image is too large (6 MB at most)." }, { status: 413 });
   let webp: Buffer;

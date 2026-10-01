@@ -6,6 +6,7 @@ const buildId = process.env.BUILD_ID ?? process.env.VERCEL_GIT_COMMIT_SHA?.slice
 
 const nextConfig: NextConfig = {
   generateBuildId: async () => buildId,
+  poweredByHeader: false, // one header fewer, and no need to advertise what the site runs on
   env: { NEXT_PUBLIC_BUILD_ID: buildId },
   // The Docker image (deploy/Dockerfile) builds a self-contained server.
   output: process.env.BUILD_STANDALONE === "1" ? "standalone" : undefined,
@@ -17,6 +18,8 @@ const nextConfig: NextConfig = {
   // full addresses out of Referer headers sent elsewhere, and always use HTTPS.
   async headers() {
     return [
+      // icons never change under the same name: let browsers keep them for a month
+      { source: "/icons/:file*", headers: [{ key: "Cache-Control", value: "public, max-age=2592000" }] },
       {
         source: "/:path*",
         headers: [

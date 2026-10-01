@@ -2,14 +2,16 @@ import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Geist, Geist_Mono, Italiana } from "next/font/google";
 import { Providers } from "@/components/Providers";
 import { APP_NAME, CREATOR } from "@/lib/constants";
+import { headIcons, manifestUrl } from "@/lib/manifest";
 import { SITE_DESCRIPTION, SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
-const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" });
+// (the last two are used on few screens: not worth delaying the first paint to fetch them early)
+const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", preload: false });
 const bricolage = Bricolage_Grotesque({ subsets: ["latin"], variable: "--font-bricolage" });
 // thin, tall capitals — the Winter Arc poster lettering
-const italiana = Italiana({ subsets: ["latin"], weight: "400", variable: "--font-italiana" });
+const italiana = Italiana({ subsets: ["latin"], weight: "400", variable: "--font-italiana", preload: false });
 
 export const metadata: Metadata = {
   // lets the relative addresses below (canonical links, share images) become full URLs
@@ -17,7 +19,10 @@ export const metadata: Metadata = {
   title: { default: `${APP_NAME} — Free Habit Tracker & Winter Arc Challenge`, template: `%s — ${APP_NAME}` },
   description: SITE_DESCRIPTION,
   applicationName: APP_NAME,
-  keywords: ["habit tracker", "free habit tracker", "daily habit tracker", "streak tracker", "routine tracker", "offline habit tracker", "habit tracker app", "winter arc", "winter arc challenge", "habit tracker Nepal"],
+  // the standard icon and install manifest; signed-in pages may swap in the Winter Arc ones
+  manifest: manifestUrl("classic"),
+  icons: headIcons("classic"),
+  keywords: ["habit tracker", "free habit tracker", "daily habit tracker", "streak tracker", "routine tracker", "offline habit tracker", "habit tracker app", "habit tracker online", "habit tracker for students", "winter arc", "winter arc challenge", "winter arc tracker"],
   authors: [{ name: CREATOR.handle }],
   creator: CREATOR.handle,
   category: "productivity",
@@ -38,6 +43,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover", // lets the bottom tab bar pad itself above the home indicator
+  interactiveWidget: "resizes-content", // when the keyboard opens the page shrinks to fit above it, instead of the keyboard covering the bottom
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#f6f7fb" },
     { media: "(prefers-color-scheme: dark)", color: "#090c13" },

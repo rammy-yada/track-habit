@@ -34,6 +34,8 @@ self.addEventListener("activate", (event) => {
     caches
       .keys()
       .then((names) => Promise.all(names.filter((n) => n.startsWith("habitflow-") && n !== ASSETS && n !== PAGES).map((n) => caches.delete(n))))
+      // lets the browser start fetching a page while this worker is still waking up
+      .then(() => self.registration.navigationPreload ? self.registration.navigationPreload.enable() : undefined)
       .then(() => self.clients.claim()),
   );
 });
@@ -49,15 +51,20 @@ self.addEventListener("message", (event) => {
 self.addEventListener("push", (event) => {
   let message = {};
   try { message = event.data ? event.data.json() : {}; } catch (_) {}
-  event.waitUntil(
+  const jobs = [
     self.registration.showNotification(message.title || "HabitFlow", {
       body: message.body || "",
-      icon: "/icons/icon-192.png",
-      badge: "/icons/icon-192.png",
+      icon: message.icon || "/icons/icon-192.png",
+      badge: "/icons/badge-96.png", // the small one-colour mark in Android's status bar
       tag: message.tag || "habitflow", // a newer one of the same kind replaces the older
       data: { url: message.url || "/dashboard" },
     }),
-  );
+  ];
+  // the number of habits still open, on the app's icon (where the device can show one)
+  if (typeof message.badge === "number" && self.navigator.setAppBadge) {
+    jobs.push((message.badge > 0 ? self.navigator.setAppBadge(message.badge) : self.navigator.clearAppBadge()).catch(() => {}));
+  }
+  event.waitUntil(Promise.all(jobs));
 });
 
 // Tapping a notification brings the app forward (or opens it) on the right screen.
@@ -93,7 +100,7 @@ self.addEventListener("fetch", (event) => {
 
   // Full page loads: network first, saved copy if that fails or stalls.
   if (request.mode === "navigate") {
-    event.respondWith(pageFromNetwork(request).catch(async () => (await caches.match(pageKey(url))) || (await caches.match(OFFLINE_URL))));
+    event.respondWith(pageFromNetwork(request, event.preloadResponse).catch(async () => (await caches.match(pageKey(url))) || (await caches.match(OFFLINE_URL))));
     return;
   }
   // Everything else (in-app data fetches) goes straight to the network. When
@@ -102,10 +109,11 @@ self.addEventListener("fetch", (event) => {
 
 const pageKey = (url) => url.origin + url.pathname + url.search;
 
-async function pageFromNetwork(request) {
+async function pageFromNetwork(request, preload) {
   const url = new URL(request.url);
   const saved = await caches.match(pageKey(url));
-  const network = fetch(request).then((response) => {
+  // use the request the browser already started, if there is one
+  const network = Promise.resolve(preload).catch(() => undefined).then((early) => early || fetch(request)).then((response) => {
     remember(url, response.clone());
     return response;
   });

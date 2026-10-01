@@ -27,7 +27,7 @@ export function Modal({ open, onClose, title, children, width = "max-w-md" }: { 
   return createPortal(
     <AnimatePresence>
       {open && (
-        <motion.div className="fixed inset-0 z-50 grid place-items-end p-0 sm:place-items-center sm:p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }}>
+        <motion.div data-sheet className="fixed inset-0 z-50 grid place-items-end p-0 sm:place-items-center sm:p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }}>
           <div className="absolute inset-0 bg-black/45 backdrop-blur-[3px]" onClick={onClose} />
           <motion.div
             ref={panel}

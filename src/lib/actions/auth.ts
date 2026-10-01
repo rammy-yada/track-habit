@@ -96,7 +96,7 @@ export async function registerAction(_prev: FormState, formData: FormData): Prom
   // With email set up, the code is sent to the address (which proves they own
   // it). Without it — local development — it is shown on screen instead.
   if (mailEnabled()) {
-    if (!(await sendMail({ to: email, ...verificationEmail(emailLang({ timezone }), code) }))) return { error: "We couldn't send the verification email. Check the address and try again.", fields };
+    if (!(await sendMail({ to: email, ...verificationEmail(emailLang({ timezone }), code) }))) return { error: "We couldn't send the verification email. Check the address for typos and try again.", fields };
     session.devOtp = undefined;
   } else {
     session.devOtp = code;
@@ -150,7 +150,7 @@ export async function resendOtpAction(): Promise<FormState> {
   }
   await session.save();
   revalidatePath("/verify");
-  return { message: mailEnabled() ? "A new code is on its way to your email." : "A new verification code has been generated." };
+  return { message: mailEnabled() ? "A new code is on its way to your email. If it isn't in your inbox, look in Spam or Junk." : "A new verification code has been generated." };
 }
 
 // Each code is an email sent from this site to an address somebody typed in.
@@ -198,7 +198,7 @@ export async function requestPasswordReset(_prev: FormState, formData: FormData)
   const email = clean(formData.get("email"), 100).toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "Please enter a valid email address." };
   if (!mailEnabled()) return { error: "Email isn't set up on this site yet. Ask an administrator to reset your password." };
-  const sent = { message: "If that address has an account, a reset link is on its way. It works for 30 minutes." };
+  const sent = { message: "If that address has an account, a reset link is on its way. It works for 30 minutes. Can't see it after a minute or two? Look in your Spam or Junk folder." };
 
   const ipKey = `forgot-ip:${await clientIp()}`;
   if (await limited(ipKey, 6, 60)) return { error: "Too many requests. Please wait a while and try again." };

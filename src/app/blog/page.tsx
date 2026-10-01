@@ -44,7 +44,7 @@ export default async function BlogPage() {
           {posts.map((post, i) => (
             <li key={post.id}>
               <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-line bg-card transition-[border-color,transform] hover:-translate-y-0.5 hover:border-brand">
-                <Link href={`/blog/${post.slug}`} className="flex h-full flex-col" aria-label={post.title}>
+                <Link href={`/blog/${post.slug}`} className="flex h-full flex-col">
                   {post.cover ? (
                     // eslint-disable-next-line @next/next/no-img-element -- a small WebP served (and cached for a year) by our own route
                     <img src={post.cover} alt="" width={1200} height={630} loading={i < 3 ? "eager" : "lazy"} decoding="async" className="aspect-[1200/630] w-full object-cover" />

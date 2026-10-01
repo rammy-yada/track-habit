@@ -21,10 +21,10 @@ function lastDays(rows: { day: string; n: number | string }[], today: string, da
 export async function getAdminOverview() {
   const today = (await queryOne<{ d: string }>("SELECT CURRENT_DATE::text AS d"))?.d ?? todayIn("UTC");
   const season = arcSeason(today);
-  const [totalUsers, activeUsers, newThisWeek, admins, totalHabits, checkinsToday, arcMembers, withPhoto, newInquiries, posts, activity, signups, popular, recent] = await Promise.all([
-    num("SELECT COUNT(*) AS n FROM users"),
-    num("SELECT COUNT(*) AS n FROM users WHERE is_active = 1"),
-    num("SELECT COUNT(*) AS n FROM users WHERE created_at::date > CURRENT_DATE - 7"),
+  const [totalUsers, activeUsers, newThisWeek, admins, totalHabits, checkinsToday, arcMembers, withPhoto, newInquiries, posts, devices, activity, signups, popular, recent] = await Promise.all([
+    num("SELECT COUNT(*) AS n FROM users WHERE role = 'user'"),
+    num("SELECT COUNT(*) AS n FROM users WHERE role = 'user' AND is_active = 1"),
+    num("SELECT COUNT(*) AS n FROM users WHERE role = 'user' AND created_at::date > CURRENT_DATE - 7"),
     num("SELECT COUNT(*) AS n FROM users WHERE role = 'admin'"),
     num("SELECT COUNT(*) AS n FROM habits WHERE is_active = 1"),
     num("SELECT COUNT(*) AS n FROM habit_logs WHERE completed_count > 0 AND log_date = CURRENT_DATE"),
@@ -32,6 +32,7 @@ export async function getAdminOverview() {
     num("SELECT COUNT(*) AS n FROM users WHERE avatar_version > 0"),
     num("SELECT COUNT(*) AS n FROM inquiries WHERE status = 'new'"),
     num("SELECT COUNT(*) AS n FROM blog_posts WHERE published = 1"),
+    num("SELECT COUNT(DISTINCT user_id) AS n FROM push_subscriptions"),
     query<{ day: string; n: number }>("SELECT log_date::text AS day, COUNT(*) AS n FROM habit_logs WHERE completed_count > 0 AND log_date > CURRENT_DATE - 14 GROUP BY log_date"),
     query<{ day: string; n: number }>("SELECT created_at::date::text AS day, COUNT(*) AS n FROM users WHERE created_at::date > CURRENT_DATE - 14 GROUP BY 1"),
     query<{ category: string; n: number }>("SELECT category, COUNT(*) AS n FROM habits WHERE is_active = 1 GROUP BY category ORDER BY n DESC LIMIT 6"),
@@ -41,7 +42,7 @@ export async function getAdminOverview() {
   ]);
 
   return {
-    stats: { totalUsers, activeUsers, disabledUsers: totalUsers - activeUsers, newThisWeek, admins, totalHabits, checkinsToday, arcMembers, withPhoto, newInquiries, posts },
+    stats: { totalUsers, activeUsers, disabledUsers: totalUsers - activeUsers, newThisWeek, admins, totalHabits, checkinsToday, arcMembers, withPhoto, newInquiries, posts, devices },
     arcLive: season.live,
     activity: lastDays(activity, today, 14),
     signups: lastDays(signups, today, 14),
@@ -66,16 +67,17 @@ export type AdminUserRow = {
   checkin_count: number;
 };
 
-export async function getAdminUsers(search: string): Promise<AdminUserRow[]> {
+/** Accounts of one kind: the members, or the administrators — each has its own screen. */
+export async function getAdminUsers(search: string, role: "user" | "admin" = "user"): Promise<AdminUserRow[]> {
   const like = `%${search.replace(/[\\%_]/g, "\\$&")}%`;
   const rows = await query<AdminUserRow & { google_id: string | null }>(
     `SELECT u.id, u.username, u.email, u.full_name, u.avatar_color, u.avatar_version, u.role, u.is_active, u.google_id, u.created_at, u.last_login,
             (SELECT COUNT(*) FROM habits h WHERE h.user_id = u.id AND h.is_active = 1) AS habit_count,
             (SELECT COUNT(*) FROM habit_logs l WHERE l.user_id = u.id AND l.completed_count > 0) AS checkin_count
      FROM users u
-     ${search ? "WHERE u.username ILIKE ? OR u.email ILIKE ? OR u.full_name ILIKE ?" : ""}
+     WHERE u.role = ? ${search ? "AND (u.username ILIKE ? OR u.email ILIKE ? OR u.full_name ILIKE ?)" : ""}
      ORDER BY u.created_at DESC, u.id DESC`,
-    search ? [like, like, like] : [],
+    search ? [role, like, like, like] : [role],
   );
   return rows.map(({ google_id, ...u }) => ({ ...u, full_name: decodeEntities(u.full_name), google: google_id !== null, habit_count: Number(u.habit_count), checkin_count: Number(u.checkin_count) }));
 }

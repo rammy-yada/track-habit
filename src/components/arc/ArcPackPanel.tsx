@@ -38,7 +38,7 @@ export function ArcPackPanel({ panel }: { panel: Panel }) {
   if (packs.length === 0 && !pack) return null; // no packs set up: nothing to show
 
   return (
-    <section className={`${card} mb-6 p-5`} aria-label="Your Winter Arc pack" data-arc-panel>
+    <section className={`${card} p-5`} aria-label="Your Winter Arc pack" data-arc-panel>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className={eyebrow}>Members only</p>

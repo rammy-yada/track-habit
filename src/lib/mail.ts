@@ -99,6 +99,46 @@ export function googleAccountEmail(lang: Lang, name: string, url: string) {
     : { subject: "Your HabitFlow account", ...layout({ heading: `Hi ${name},`, lines: ["Your account was created with Google, so it has no password of its own.", "To sign in, use “Continue with Google”."], button: { label: "Sign in", url }, footer: ["If you didn't ask for this, you can ignore this email."] }) };
 }
 
+/** To the administrators, when the database is filling up (at most once a day). */
+export function storageEmail(info: { full: boolean; used: string; limit: string; percent: number; url: string }) {
+  return {
+    subject: info.full ? `HabitFlow: storage is full (${info.percent}%) — uploads are paused` : `HabitFlow: storage is ${info.percent}% full`,
+    ...layout({
+      heading: info.full ? "Storage is full: uploads are paused" : "Storage is filling up",
+      lines: [
+        `The database is using <b>${esc(info.used)}</b> of the <b>${esc(info.limit)}</b> your plan allows (${info.percent}%).`,
+        info.full ? "New photos, pictures and sounds are being refused until there is room. Habits, ticks and sign-ins keep working." : "At 95% new photos, pictures and sounds will be paused so the site itself keeps working.",
+        "To make room: move to a larger database plan (then raise the limit in Admin → Overview), or delete accounts and pictures that are no longer needed.",
+      ],
+      button: { label: "Open the admin overview", url: info.url },
+      footer: ["Sent by the site's own storage check, once a day while this is the case."],
+    }),
+  };
+}
+
+/** Sent once, a week after someone's last tick: a kind note, not a telling-off. */
+export function comebackEmail(lang: Lang, info: { name: string; days: number; url: string; unsubscribe: string }) {
+  return lang === "ne"
+    ? {
+        subject: `${info.name}, तपाईंका बानी पर्खिरहेका छन्`,
+        ...layout({
+          heading: `${info.name}, फेरि सुरु गर्ने?`,
+          lines: [`अन्तिम पटक टिक लगाएको <b>${info.days}</b> दिन भयो। केही बिग्रिएको छैन — एक दिन छुट्नु सामान्य हो, फर्किनु नै असली कुरा हो।`, "आज एउटा मात्र बानी पूरा गर्नुहोस्। सानो भए पनि हुन्छ।"],
+          button: { label: "आजको सूची खोल्नुहोस्", url: info.url },
+          footer: [`यो एक पटक मात्र पठाइएको सम्झना हो। <a href="${esc(info.unsubscribe)}" style="color:#888">इमेल बन्द गर्नुहोस्</a>`],
+        }),
+      }
+    : {
+        subject: `${info.name}, your habits are waiting`,
+        ...layout({
+          heading: `Ready to pick it back up, ${info.name}?`,
+          lines: [`It's been <b>${info.days}</b> days since your last tick. Nothing is broken: everyone misses days. Coming back is the part that counts.`, "Do just one habit today. The smallest version is fine."],
+          button: { label: "Open today's list", url: info.url },
+          footer: [`This is a one-off note, not a daily email. <a href="${esc(info.unsubscribe)}" style="color:#888">Turn emails off</a>`],
+        }),
+      };
+}
+
 export function arcReminderEmail(lang: Lang, info: { name: string; day: number; totalDays: number; left: number; streak: number; url: string; unsubscribe: string }) {
   const ne = lang === "ne";
   const streak = info.streak > 0 ? (ne ? `तपाईंको ${info.streak} दिनको स्ट्रिक जोगाउनुहोस्।` : `Keep your ${info.streak}-day streak alive.`) : ne ? "आजबाट नयाँ स्ट्रिक सुरु गर्नुहोस्।" : "Start a new streak today.";

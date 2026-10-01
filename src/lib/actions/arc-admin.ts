@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { arcSeason } from "../arc";
+import { BADGE_RULES } from "../arc-config";
 import { givePackHabitToMembers } from "../arc-packs";
 import { saveArcSettings } from "../arc-settings";
 import { requireAdmin } from "../auth";
@@ -103,4 +104,56 @@ export async function removePackHabit(idInput: number, everyone: boolean): Promi
   await execute("DELETE FROM arc_pack_habits WHERE id = ?", [id]);
   refresh();
   return { ok: true };
+}
+
+// ── Badges ───────────────────────────────────────────────────────────────────
+
+type BadgeInput = { name: string; icon: string; description: string; rule: string; threshold: number };
+
+export async function saveBadge(input: BadgeInput): Promise<Result> {
+  await requireAdmin();
+  const name = clean(input?.name, 40);
+  const icon = clean(input?.icon, 10) || "🏅";
+  const description = clean(input?.description, 160);
+  const rule = BADGE_RULES.some((r) => r.value === input?.rule) ? input.rule : null;
+  const threshold = Math.trunc(Number(input?.threshold));
+  if (name.length < 2) return { ok: false, error: "Give the badge a name." };
+  if (!rule) return INVALID;
+  if (rule !== "manual" && !(threshold >= 1 && threshold <= 100_000)) return { ok: false, error: "Say how many it takes to earn (1 or more)." };
+  const count = await queryOne<{ n: number | string }>("SELECT COUNT(*) AS n FROM arc_badges");
+  if (Number(count?.n ?? 0) >= 30) return { ok: false, error: "30 badges is the most there can be." };
+  try {
+    await execute("INSERT INTO arc_badges (name, icon, description, rule, threshold) VALUES (?, ?, ?, ?, ?)", [name, icon, description, rule, rule === "manual" ? 0 : threshold]);
+  } catch (err) {
+    if (isDuplicateError(err)) return { ok: false, error: "Another badge already has that name." };
+    throw err;
+  }
+  refresh();
+  return { ok: true };
+}
+
+export async function deleteBadge(idInput: number): Promise<Result> {
+  await requireAdmin();
+  const id = toId(idInput);
+  if (!id) return INVALID;
+  await execute("DELETE FROM arc_badges WHERE id = ?", [id]); // user_badges rows go with it
+  refresh();
+  return { ok: true };
+}
+
+/** Give a hand-awarded badge to someone (by username), or take it back. */
+export async function setBadgeHolder(badgeIdInput: number, usernameInput: string, give: boolean): Promise<Result> {
+  await requireAdmin();
+  const badgeId = toId(badgeIdInput);
+  const username = clean(usernameInput, 50).replace(/^@/, "");
+  if (!badgeId || !username) return INVALID;
+  const badge = await queryOne<{ rule: string }>("SELECT rule FROM arc_badges WHERE id = ?", [badgeId]);
+  if (!badge) return { ok: false, error: "Badge not found." };
+  if (badge.rule !== "manual") return { ok: false, error: "That badge is earned automatically." };
+  const user = await queryOne<{ id: number; full_name: string }>("SELECT id, full_name FROM users WHERE LOWER(username) = LOWER(?) AND role = 'user'", [username]);
+  if (!user) return { ok: false, error: `No member is called @${username}.` };
+  if (give === true) await execute("INSERT INTO user_badges (user_id, badge_id) VALUES (?, ?) ON CONFLICT DO NOTHING", [user.id, badgeId]);
+  else await execute("DELETE FROM user_badges WHERE user_id = ? AND badge_id = ?", [user.id, badgeId]);
+  refresh();
+  return { ok: true, note: give === true ? `Given to ${user.full_name}.` : `Taken back from ${user.full_name}.` };
 }
