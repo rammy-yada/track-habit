@@ -7,6 +7,15 @@ type Param = string | number | null;
 // it instead of opening a new set of connections on every edit.
 const globalForDb = globalThis as unknown as { habitflowPool?: Pool; habitflowReady?: Promise<void> };
 
+// Hosted databases (Aiven, TiDB Cloud, …) only accept encrypted connections.
+// DB_SSL=true turns TLS on; DB_SSL_CA is the provider's CA certificate (PEM
+// text) for providers that sign with their own CA rather than a public one.
+function sslOptions() {
+  if (process.env.DB_SSL !== "true") return undefined;
+  const ca = process.env.DB_SSL_CA?.replace(/\\n/g, "\n");
+  return { minVersion: "TLSv1.2" as const, rejectUnauthorized: true, ...(ca ? { ca } : {}) };
+}
+
 function pool(): Pool {
   globalForDb.habitflowPool ??= mysql.createPool({
     host: process.env.DB_HOST ?? "127.0.0.1",
@@ -14,8 +23,10 @@ function pool(): Pool {
     user: process.env.DB_USER ?? "root",
     password: process.env.DB_PASS ?? "",
     database: process.env.DB_NAME ?? "habitflow",
+    ssl: sslOptions(),
     charset: "utf8mb4",
-    connectionLimit: 10,
+    // Keep this small on serverless hosts: every running instance opens its own pool.
+    connectionLimit: Number(process.env.DB_POOL_SIZE ?? 10),
     // DATE/TIMESTAMP come back as plain strings ("2026-10-01"), so a habit's
     // log_date can never shift a day through a JS Date timezone conversion.
     dateStrings: true,
@@ -34,6 +45,14 @@ function ready(): Promise<void> {
       name VARCHAR(50) NOT NULL UNIQUE,
       icon VARCHAR(10) DEFAULT '📋',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    // Winter Arc: who has opted in to the challenge (and its public leaderboard) each year.
+    await db.query(`CREATE TABLE IF NOT EXISTS winter_arc_members (
+      user_id INT NOT NULL,
+      season INT NOT NULL,
+      joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (user_id, season),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     )`);
     const [rows] = await db.query<RowDataPacket[]>("SELECT COUNT(*) AS n FROM categories");
     if (Number(rows[0].n) === 0) {

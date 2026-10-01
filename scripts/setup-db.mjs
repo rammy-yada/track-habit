@@ -17,14 +17,16 @@ for (const file of [".env.local", ".env"]) {
   if (existsSync(full)) process.loadEnvFile(full);
 }
 
-const { DB_HOST = "127.0.0.1", DB_PORT = "3306", DB_USER = "root", DB_PASS = "", DB_NAME = "habitflow" } = process.env;
+const { DB_HOST = "127.0.0.1", DB_PORT = "3306", DB_USER = "root", DB_PASS = "", DB_NAME = "habitflow", DB_SSL, DB_SSL_CA } = process.env;
+const ca = DB_SSL_CA?.replace(/\\n/g, "\n");
+const ssl = DB_SSL === "true" ? { minVersion: "TLSv1.2", rejectUnauthorized: true, ...(ca ? { ca } : {}) } : undefined;
 if (!/^\w+$/.test(DB_NAME)) throw new Error(`Unsafe DB_NAME: ${DB_NAME}`);
 
 let db;
 try {
-  db = await mysql.createConnection({ host: DB_HOST, port: Number(DB_PORT), user: DB_USER, password: DB_PASS, multipleStatements: true });
+  db = await mysql.createConnection({ host: DB_HOST, port: Number(DB_PORT), user: DB_USER, password: DB_PASS, ssl, multipleStatements: true });
 } catch (err) {
-  console.error(`✗ Could not connect to MySQL at ${DB_HOST}:${DB_PORT} — is XAMPP's MySQL running?\n  ${err.message}`);
+  console.error(`✗ Could not connect to MySQL at ${DB_HOST}:${DB_PORT} — is it running, and are the DB_* settings right?\n  ${err.message}`);
   process.exit(1);
 }
 

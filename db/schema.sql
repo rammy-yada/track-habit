@@ -86,3 +86,13 @@ CREATE TABLE IF NOT EXISTS categories (
     icon       VARCHAR(10) DEFAULT '📋',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Winter Arc (Oct 1 – Dec 31): one row per user per year they opt in.
+-- Joining is what puts a user on the public leaderboard.
+CREATE TABLE IF NOT EXISTS winter_arc_members (
+    user_id   INT NOT NULL,
+    season    INT NOT NULL,
+    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, season),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
