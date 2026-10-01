@@ -157,3 +157,186 @@ CREATE TABLE IF NOT EXISTS rate_limits (
     created_at TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS rate_limits_key ON rate_limits (key, created_at);
+
+-- ── Site settings ────────────────────────────────────────────
+-- Small pieces of admin-editable configuration, stored as JSON text.
+-- 'arc' holds the Winter Arc intro's shake, sound and wording, and the
+-- surprise messages. site_images.mime lets that table hold the intro sound too.
+--
+-- ── Winter Arc packs ─────────────────────────────────────────
+-- A pack is a ready-made set of habits an admin puts together. A member picks
+-- one when joining; its habits are created for them automatically
+-- (habits.arc_habit_id points back at the pack habit, habits.arc_season marks
+-- the habit as part of that season's Winter Arc section). A habit added to a
+-- pack later is created for everyone already on that pack.
+CREATE TABLE IF NOT EXISTS site_settings (
+    key        VARCHAR(40) PRIMARY KEY,
+    value      TEXT NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+ALTER TABLE site_images ADD COLUMN IF NOT EXISTS mime VARCHAR(40) NOT NULL DEFAULT 'image/webp';
+CREATE TABLE IF NOT EXISTS arc_packs (
+    id         SERIAL PRIMARY KEY,
+    name       VARCHAR(60)  NOT NULL UNIQUE,
+    tagline    VARCHAR(160) NOT NULL DEFAULT '',
+    icon       VARCHAR(10)  NOT NULL DEFAULT '❄️',
+    is_active  SMALLINT     NOT NULL DEFAULT 1,
+    created_at TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS arc_pack_habits (
+    id         SERIAL PRIMARY KEY,
+    pack_id    INT NOT NULL REFERENCES arc_packs(id) ON DELETE CASCADE,
+    name       VARCHAR(100) NOT NULL,
+    icon       VARCHAR(10)  NOT NULL DEFAULT '✅',
+    created_at TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
+);
+ALTER TABLE winter_arc_members ADD COLUMN IF NOT EXISTS pack_id INT REFERENCES arc_packs(id) ON DELETE SET NULL;
+ALTER TABLE habits ADD COLUMN IF NOT EXISTS arc_habit_id INT REFERENCES arc_pack_habits(id) ON DELETE SET NULL;
+ALTER TABLE habits ADD COLUMN IF NOT EXISTS arc_season INT;
+-- Packs come in two kinds. 'arc': chosen when joining the Winter Arc (one per
+-- member per season, recorded in winter_arc_members.pack_id). 'open': any
+-- member can add it from their Today screen at any time (pack_members).
+ALTER TABLE arc_packs ADD COLUMN IF NOT EXISTS kind VARCHAR(10) NOT NULL DEFAULT 'arc';
+CREATE TABLE IF NOT EXISTS pack_members (
+    user_id   INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    pack_id   INT NOT NULL REFERENCES arc_packs(id) ON DELETE CASCADE,
+    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, pack_id)
+);
+INSERT INTO arc_packs (name, tagline, icon)
+  SELECT * FROM (VALUES
+    ('Discipline', 'The classic Winter Arc: early mornings, cold water, no excuses.', '🧊'),
+    ('Strength', 'Build a body that carries you through the year.', '🏋️'),
+    ('Mind', 'Quiet, focus and learning. Sharpen what''s inside.', '🧠')
+  ) AS d(name, tagline, icon)
+  WHERE NOT EXISTS (SELECT 1 FROM arc_packs);
+INSERT INTO arc_pack_habits (pack_id, name, icon)
+  SELECT p.id, d.name, d.icon FROM (VALUES
+    ('Discipline', 'Wake up before 6 AM', '⏰'), ('Discipline', 'Cold shower', '🚿'), ('Discipline', 'Workout 45 minutes', '💪'), ('Discipline', 'No sugar or junk food', '🚫'), ('Discipline', 'Read 10 pages', '📖'),
+    ('Strength', '50 push-ups', '💪'), ('Strength', '50 squats', '🦵'), ('Strength', '2-minute plank', '🧱'), ('Strength', 'Eat enough protein', '🍳'), ('Strength', 'Sleep 8 hours', '😴'),
+    ('Mind', 'Meditate 10 minutes', '🧘'), ('Mind', 'Write in a journal', '✍️'), ('Mind', 'No phone for the first hour', '📵'), ('Mind', 'Read 20 pages', '📚'), ('Mind', 'Walk 30 minutes outside', '🚶')
+  ) AS d(pack, name, icon)
+  JOIN arc_packs p ON p.name = d.pack
+  WHERE NOT EXISTS (SELECT 1 FROM arc_pack_habits);
+
+-- ── Blog ─────────────────────────────────────────────────────
+-- Posts written in Admin → Blog. The body is plain text with a few simple
+-- marks (## heading, - list item, **bold**); it is never treated as HTML.
+--
+-- ── Inquiries ────────────────────────────────────────────────
+-- What people send through the Collaborate and Brand deals forms.
+CREATE TABLE IF NOT EXISTS blog_posts (
+    id           SERIAL PRIMARY KEY,
+    slug         VARCHAR(120) NOT NULL UNIQUE,
+    title        VARCHAR(160) NOT NULL,
+    excerpt      VARCHAR(300) NOT NULL DEFAULT '',
+    body         TEXT         NOT NULL,
+    published    SMALLINT     NOT NULL DEFAULT 0,
+    seo_title    VARCHAR(70)  NOT NULL DEFAULT '',
+    seo_description VARCHAR(170) NOT NULL DEFAULT '',
+    tags         VARCHAR(200) NOT NULL DEFAULT '',
+    cover_version INT         NOT NULL DEFAULT 0,
+    published_at TIMESTAMP,
+    created_at   TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+    updated_at   TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS inquiries (
+    id         SERIAL PRIMARY KEY,
+    kind       VARCHAR(10)  NOT NULL CHECK (kind IN ('collab', 'brand')),
+    name       VARCHAR(100) NOT NULL,
+    email      VARCHAR(100) NOT NULL,
+    company    VARCHAR(120) NOT NULL DEFAULT '',
+    website    VARCHAR(200) NOT NULL DEFAULT '',
+    topic      VARCHAR(60)  NOT NULL DEFAULT '',
+    budget     VARCHAR(40)  NOT NULL DEFAULT '',
+    message    TEXT         NOT NULL,
+    status     VARCHAR(10)  NOT NULL DEFAULT 'new',
+    created_at TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
+);
+INSERT INTO blog_posts (slug, title, excerpt, body, tags, published, published_at)
+  SELECT d.slug, d.title, d.excerpt, d.body, 'habits, winter arc, discipline', 1, NOW() FROM (VALUES
+    ('what-is-the-winter-arc', 'What is the Winter Arc, and how do you actually finish it?', 'The Winter Arc runs from October 1 to January 31. Here is what it is, why it works, and the three things that decide whether you finish.', 'The Winter Arc is a simple idea: while most people slow down for the last months of the year and promise to start again in January, you start now. From October 1 to January 31 you pick a small set of habits and do them every day. By the time everyone else is writing resolutions, you already have 123 days behind you.
+
+## Why winter?
+
+Because it is the hardest time to do it. It is cold, it gets dark early, there are festivals and holidays, and nobody is watching. That is exactly why it works. If you can keep a routine through the months that make it hardest, the rest of the year feels easy.
+
+## What goes in an arc
+
+Keep it short. Five habits you will really do beat fifteen you will drop in a week. A good arc usually has:
+
+- One thing for your body, like a workout or a long walk
+- One thing for your mind, like reading or study
+- One thing you give up, like sugar or scrolling in bed
+- One thing for rest, like a fixed bedtime
+
+On HabitFlow you can pick a ready-made pack when you join, or choose your own.
+
+## The three things that decide whether you finish
+
+**Start smaller than you want to.** The first week is not a test of strength. It is a test of whether the plan fits your real life.
+
+**Tick it the same day.** Only ticks made on the day count for points. That rule is there to keep you honest with yourself, not to punish you.
+
+**Never miss twice.** One missed day is an accident. Two is the start of a new habit, the wrong one. If you miss, the only job tomorrow is to show up.
+
+That is the whole arc. No secret, no hack. Just 123 ordinary days in a row.'),
+    ('small-habits-beat-big-goals', 'Why small habits beat big goals', 'A big goal tells you where you want to end up. A small habit is what actually moves you there. Here is how to shrink a goal into something you will do today.', 'Everyone has had the same January. A big goal, a burst of energy, and by February it is gone. The goal was not the problem. The problem was that a goal is a place, and you cannot do a place. You can only do an action.
+
+## A goal is a direction, a habit is a step
+
+"Get fit" is a direction. "Twenty push-ups after I brush my teeth" is a step. You can fail at getting fit for years without noticing. You cannot fail at twenty push-ups without noticing today.
+
+That is the real advantage of a small habit: it gives you an honest answer every single day.
+
+## How to shrink a goal
+
+Take the goal and keep cutting it down until it sounds almost too easy:
+
+- "Read more" becomes "read 10 pages before bed"
+- "Save money" becomes "write down what I spent today"
+- "Sleep better" becomes "phone outside the bedroom at 11"
+- "Learn to code" becomes "one small exercise before breakfast"
+
+If you would still do it on your worst day, it is the right size.
+
+## Let the streak do the work
+
+Once a habit is small enough to do daily, the streak starts to help you. On day three you do it because you decided to. On day thirty you do it because you do not want to break the chain. That is not weakness, that is using your own stubbornness in the right direction.
+
+## Then grow it, slowly
+
+After a few weeks the small version feels automatic. That is the moment to add a little: ten pages become fifteen, twenty push-ups become thirty. Grow the habit only when the current size has stopped feeling like effort.
+
+Big goals are fine. Just do not try to do them. Do the small thing, every day, and let the goal arrive on its own.'),
+    ('what-to-do-when-you-miss-a-day', 'You missed a day. Now what?', 'Missing a day does not ruin a habit. What you do the next morning decides everything. A short guide to getting back on track without guilt.', 'It happens to everyone. You were travelling, you were sick, there was a wedding, or you simply forgot. The streak that took weeks to build is back to zero, and a voice says: well, that is over then.
+
+It is not over. It is one day.
+
+## The streak was never the point
+
+A streak is a tool to keep you going. It is not the result. The reading you did, the workouts you finished, the mornings you got up for, all of that is still yours. A counter going back to zero does not undo a single one of them.
+
+## The rule that matters: never miss twice
+
+One missed day changes almost nothing. What changes things is the second day, because that is when "I missed" quietly becomes "I stopped".
+
+So the only job the next morning is small and clear: do it once. Not double to make up for it. Not a bigger, stricter plan. Just the normal habit, one time.
+
+## Make the comeback easy
+
+- Do the smallest version. If the habit is a 45 minute workout, do ten minutes.
+- Do it early, before the day can get in the way.
+- Do not punish yourself. Guilt makes people avoid the thing, not do it.
+
+## Look for the reason, not the blame
+
+Ask one honest question: why did it slip? Usually the answer is practical. The habit was at the wrong time of day, it was too big, or it depended on something that was not there. Fix that one thing and carry on.
+
+## Fill it in honestly
+
+On HabitFlow you can go back in the monthly view and correct a day you really did but forgot to tick. Days you did not do stay empty, and that is fine. An honest record with gaps is worth more than a perfect one that is not true.
+
+You are not starting over. You are continuing, with one gap in the middle.')
+  ) AS d(slug, title, excerpt, body)
+  WHERE NOT EXISTS (SELECT 1 FROM blog_posts);

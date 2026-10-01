@@ -22,6 +22,8 @@ const ICONS: Record<string, React.ReactNode> = {
   donate: <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" />,
   users: <path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-7 10a7 7 0 0 1 14 0m1-10a3.5 3.5 0 1 0-1.5-6.7M18 14.5a6 6 0 0 1 4 6.5" />,
   tags: <path d="M3 12V4h8l10 10-8 8L3 12zm4.5-4.5h.01" />,
+  blog: <path d="M5 4h11l3 3v13H5zM9 9h6M9 13h6M9 17h4" />,
+  inbox: <path d="M3 13l3-8h12l3 8v6H3zM3 13h5l1.5 3h5L16 13h5" />,
 };
 
 // A member and an admin get entirely different menus: an admin account
@@ -35,14 +37,17 @@ const MEMBER: NavLink[] = [
   { href: "/support", label: "Support Us", short: "Support", icon: "donate", desktopOnly: true }, // on phones it lives in Profile
 ];
 const ADMIN: NavLink[] = [
-  { href: "/admin", label: "Overview", short: "Overview", icon: "dashboard" },
-  { href: "/admin/users", label: "Users", short: "Users", icon: "users" },
-  { href: "/admin/categories", label: "Categories", short: "Categories", icon: "tags" },
-  { href: "/admin/arc", label: "Winter Arc", short: "Arc", icon: "arc" },
-  { href: "/admin/account", label: "My Account", short: "Account", icon: "profile" },
+  { href: "/sigmadev", label: "Overview", short: "Overview", icon: "dashboard" },
+  { href: "/sigmadev/users", label: "Users", short: "Users", icon: "users" },
+  { href: "/sigmadev/categories", label: "Categories", short: "Categories", icon: "tags" },
+  { href: "/sigmadev/arc", label: "Winter Arc", short: "Arc", icon: "arc" },
+  // on phones these two are reached from the Overview screen: five tabs is all a phone's bar holds
+  { href: "/sigmadev/blog", label: "Blog", short: "Blog", icon: "blog", desktopOnly: true },
+  { href: "/sigmadev/inbox", label: "Inbox", short: "Inbox", icon: "inbox", desktopOnly: true },
+  { href: "/sigmadev/account", label: "My Account", short: "Account", icon: "profile" },
 ];
 
-const isActive = (pathname: string, href: string) => (href === "/admin" ? pathname === "/admin" : pathname.startsWith(href));
+const isActive = (pathname: string, href: string) => (href === "/sigmadev" ? pathname === "/sigmadev" : pathname.startsWith(href));
 
 function Icon({ name }: { name: string }) {
   return (
@@ -62,7 +67,7 @@ export function Sidebar({ user }: { user: NavUser }) {
   return (
     <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-line bg-card md:flex">
       <div className="flex items-center justify-between gap-2 border-b border-line px-5 py-5">
-        <Logo href={admin ? "/admin" : "/dashboard"} />
+        <Logo href={admin ? "/sigmadev" : "/dashboard"} />
         {admin && <AdminBadge />}
       </div>
       <nav className="flex-1 space-y-1 px-3 py-4" aria-label="Main">
@@ -138,7 +143,7 @@ export function MobileBars({ user }: { user: NavUser }) {
     <>
       <header className="sticky top-0 z-30 flex h-[61px] items-center justify-between border-b border-line bg-card/85 px-4 backdrop-blur md:hidden">
         <span className="flex items-center gap-2">
-          <Logo href={admin ? "/admin" : "/dashboard"} />
+          <Logo href={admin ? "/sigmadev" : "/dashboard"} />
           {admin && <AdminBadge />}
         </span>
         <div className="flex items-center gap-2">

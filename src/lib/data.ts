@@ -1,5 +1,8 @@
 import "server-only";
 import { query, queryOne } from "./db";
+import { arcSeason } from "./arc";
+import { countPerfectDays, getMemberPack, getOpenPacks } from "./arc-packs";
+import { getArcSettings } from "./arc-settings";
 import type { User } from "./auth";
 import { addDays, daysInMonth, formatDate, formatTime, todayIn } from "./dates";
 import { decodeEntities } from "./text";
@@ -15,6 +18,12 @@ type HabitRow = {
   frequency: "daily" | "weekly" | "monthly";
   target_count: number;
   reminder_time: string | null;
+  /** The Winter Arc season this habit belongs to, if it came from a pack. */
+  arc_season: number | null;
+  /** The day it was created (YYYY-MM-DD). */
+  created: string;
+  /** The pack-for-everyone this habit came from, if any. */
+  pack_id: number | null;
 };
 
 export type HabitView = {
@@ -30,6 +39,10 @@ export type HabitView = {
   target: number;
   reminderTime: string;
   doneToday: boolean;
+  /** Part of this season's Winter Arc pack: shown in its own section. */
+  arc: boolean;
+  /** The pack-for-everyone it belongs to (shown as a section of its own), or null. */
+  packId: number | null;
   /** Consecutive completed days ending yesterday; today adds one when done. */
   streakBefore: number;
   /** The six days before today, oldest first. */
@@ -46,7 +59,9 @@ export type Category = { id: number; name: string; icon: string };
 
 async function activeHabits(userId: number): Promise<HabitRow[]> {
   const rows = await query<HabitRow>(
-    "SELECT id, name, description, category, icon, color, frequency, target_count, reminder_time FROM habits WHERE user_id = ? AND is_active = 1 ORDER BY created_at ASC, id ASC",
+    `SELECT h.id, h.name, h.description, h.category, h.icon, h.color, h.frequency, h.target_count, h.reminder_time, h.arc_season, h.created_at::date::text AS created,
+            (SELECT pm.pack_id FROM arc_pack_habits t JOIN pack_members pm ON pm.pack_id = t.pack_id AND pm.user_id = h.user_id WHERE t.id = h.arc_habit_id AND h.arc_season IS NULL) AS pack_id
+     FROM habits h WHERE h.user_id = ? AND h.is_active = 1 ORDER BY h.created_at ASC, h.id ASC`,
     [userId],
   );
   return rows.map((h) => ({ ...h, name: decodeEntities(h.name), category: decodeEntities(h.category) }));
@@ -61,7 +76,7 @@ export async function getCategories(): Promise<Category[]> {
 
 export async function getDashboard(user: User) {
   const today = todayIn(user.timezone);
-  const [habits, logs, totals, todayNotes, categories] = await Promise.all([
+  const [habits, logs, totals, todayNotes, categories, packs] = await Promise.all([
     activeHabits(user.id),
     // One query for a year of history instead of one query per habit per day.
     query<{ habit_id: number; log_date: string }>(
@@ -77,6 +92,7 @@ export async function getDashboard(user: User) {
       [user.id, today],
     ),
     getCategories(),
+    getOpenPacks(user.id),
   ]);
 
   const doneDates = new Map<number, Set<string>>();
@@ -87,6 +103,8 @@ export async function getDashboard(user: User) {
   const totalByHabit = new Map(totals.map((t) => [t.habit_id, Number(t.total)]));
   const noteByHabit = new Map(todayNotes.map((n) => [n.habit_id, n]));
   const monthPrefix = today.slice(0, 8);
+  const season = arcSeason(today);
+  const arcHabits = season.live ? habits.filter((h) => h.arc_season === season.year) : [];
 
   const views: HabitView[] = habits.map((h) => {
     const dates = doneDates.get(h.id) ?? new Set<string>();
@@ -105,6 +123,8 @@ export async function getDashboard(user: User) {
       target: h.target_count ?? 1,
       reminderTime: h.reminder_time?.slice(0, 5) ?? "",
       doneToday,
+      arc: arcHabits.includes(h),
+      packId: arcHabits.includes(h) ? null : h.pack_id,
       streakBefore,
       week: [6, 5, 4, 3, 2, 1].map((back) => dates.has(addDays(today, -back))),
       totalBefore: (totalByHabit.get(h.id) ?? 0) - (doneToday ? 1 : 0),
@@ -123,8 +143,18 @@ export async function getDashboard(user: User) {
     return { label: formatDate(date, { month: "short", day: "numeric" }), value: perDay.get(date) ?? 0 };
   });
 
+  // The Winter Arc section: which pack, how many perfect days so far (not
+  // counting today, which is still live on the client), and the surprises.
+  let arc: { pack: string | null; day: number; totalDays: number; perfectBefore: number; surprises: string[] } | null = null;
+  if (arcHabits.length > 0) {
+    const [pack, settings] = await Promise.all([getMemberPack(user.id, season.year), getArcSettings()]);
+    arc = { pack: pack ? `${pack.icon} ${pack.name}` : null, day: season.day, totalDays: season.totalDays, perfectBefore: countPerfectDays(arcHabits, doneDates, season.start, addDays(today, -1)), surprises: settings.surprises };
+  }
+
   return {
     today,
+    arc,
+    packs,
     todayLabel: formatDate(today, { weekday: "short", month: "short", day: "numeric" }),
     monthLabel: formatDate(today, { month: "long", year: "numeric" }),
     daysInMonth: daysInMonth(Number(today.slice(0, 4)), Number(today.slice(5, 7))),

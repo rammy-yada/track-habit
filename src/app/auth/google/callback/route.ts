@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
   session.devOtp = undefined;
   await session.save();
   if (!isNew) await execute("UPDATE users SET last_login = NOW() WHERE id = ?", [user.id]);
-  if (user.role === "admin") return to("/admin");
+  if (user.role === "admin") return to("/sigmadev");
   return to(joining ? "/arc/start" : isNew ? "/dashboard?welcome=1" : "/dashboard");
 }
 

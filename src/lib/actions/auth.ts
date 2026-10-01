@@ -53,7 +53,7 @@ export async function loginAction(_prev: FormState, formData: FormData): Promise
   session.joinArc = undefined;
   await session.save();
   await execute("UPDATE users SET last_login = NOW() WHERE id = ?", [user.id]);
-  if (user.role === "admin") redirect("/admin");
+  if (user.role === "admin") redirect("/sigmadev");
   redirect(formData.get("join") === "arc" ? "/arc/start" : "/dashboard");
 }
 

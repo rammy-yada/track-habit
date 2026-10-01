@@ -1,7 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Geist, Geist_Mono, Italiana } from "next/font/google";
 import { Providers } from "@/components/Providers";
-import { APP_NAME } from "@/lib/constants";
+import { APP_NAME, CREATOR } from "@/lib/constants";
+import { SITE_DESCRIPTION, SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
@@ -11,9 +12,23 @@ const bricolage = Bricolage_Grotesque({ subsets: ["latin"], variable: "--font-br
 const italiana = Italiana({ subsets: ["latin"], weight: "400", variable: "--font-italiana" });
 
 export const metadata: Metadata = {
-  title: { default: `${APP_NAME} — Master Your Routine`, template: `%s — ${APP_NAME}` },
-  description: "Simple habit tracking designed for clarity and focus. No clutter, just your progress.",
+  // lets the relative addresses below (canonical links, share images) become full URLs
+  metadataBase: new URL(SITE_URL),
+  title: { default: `${APP_NAME} — Free Habit Tracker & Winter Arc Challenge`, template: `%s — ${APP_NAME}` },
+  description: SITE_DESCRIPTION,
   applicationName: APP_NAME,
+  keywords: ["habit tracker", "free habit tracker", "daily habit tracker", "streak tracker", "routine tracker", "offline habit tracker", "habit tracker app", "winter arc", "winter arc challenge", "habit tracker Nepal"],
+  authors: [{ name: CREATOR.handle }],
+  creator: CREATOR.handle,
+  category: "productivity",
+  // what a shared link looks like on Facebook, WhatsApp, Messenger, X…
+  // (the picture comes from opengraph-image.tsx)
+  openGraph: { type: "website", siteName: APP_NAME, title: `${APP_NAME} — Free Habit Tracker & Winter Arc Challenge`, description: SITE_DESCRIPTION, url: "/", locale: "en_US" },
+  twitter: { card: "summary_large_image", title: `${APP_NAME} — Free Habit Tracker & Winter Arc Challenge`, description: SITE_DESCRIPTION },
+  robots: { index: true, follow: true, googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 } },
+  // Proves to Google Search Console that this site is yours: paste the code
+  // from its "HTML tag" method into GOOGLE_SITE_VERIFICATION.
+  verification: process.env.GOOGLE_SITE_VERIFICATION ? { google: process.env.GOOGLE_SITE_VERIFICATION } : undefined,
   // iPhone: open full screen, without Safari's bars, when launched from the home screen
   appleWebApp: { capable: true, title: APP_NAME, statusBarStyle: "default" },
   formatDetection: { telephone: false },

@@ -5,6 +5,8 @@ import { arcSeason, isArcMember } from "@/lib/arc";
 import { requireUser } from "@/lib/auth";
 import { todayIn } from "@/lib/dates";
 import { query } from "@/lib/db";
+import { getPacks } from "@/lib/arc-packs";
+import { getArcSettings } from "@/lib/arc-settings";
 import { getIntroImages } from "@/lib/intro";
 import { pushPublicKey } from "@/lib/push";
 import { decodeEntities } from "@/lib/text";
@@ -15,6 +17,7 @@ export default async function ArcStartPage() {
   const user = await requireUser();
   if (await isArcMember(user)) redirect("/arc"); // already in
   const [habits, images] = await Promise.all([query<{ name: string }>("SELECT name FROM habits WHERE user_id = ? AND is_active = 1 ORDER BY id", [user.id]), getIntroImages()]);
+  const [packs, settings] = await Promise.all([getPacks({ activeOnly: true, kind: "arc" }), getArcSettings()]);
   const season = arcSeason(todayIn(user.timezone));
   return (
     <ArcStart
@@ -23,6 +26,8 @@ export default async function ArcStartPage() {
       existing={habits.map((h) => decodeEntities(h.name))}
       images={images}
       pushKey={pushPublicKey()}
+      packs={packs.map(({ id, name, icon, tagline, habits: list }) => ({ id, name, icon, tagline, habits: list.map((h) => ({ name: h.name, icon: h.icon })) }))}
+      intro={settings.intro}
     />
   );
 }

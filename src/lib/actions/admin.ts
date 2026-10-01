@@ -18,7 +18,7 @@ export type AdminFormState = { error?: string; ok?: boolean } | null;
 
 const SELF = { ok: false, error: "You can't do that to your own account." } as const;
 const INVALID = { ok: false, error: "Invalid request." } as const;
-const refresh = () => revalidatePath("/admin", "layout");
+const refresh = () => revalidatePath("/sigmadev", "layout");
 
 export async function addUserAction(_prev: AdminFormState, formData: FormData): Promise<AdminFormState> {
   await requireAdmin();

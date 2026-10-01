@@ -1,8 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
+import { DEFAULT_INTRO, type IntroConfig } from "@/lib/arc-config";
+import { createIntroSound, setSoundMuted, soundMuted, type IntroSound } from "@/lib/arc-sound";
 
 const SEEN_KEY = "habitflow:arc-intro-seen";
 const REPLAY_EVENT = "habitflow:arc-intro";
@@ -36,7 +38,13 @@ type Props = {
   onDone?: () => void;
   /** false: never start by itself, only when asked to (the join flow starts it at the right moment). */
   auto?: boolean;
+  /** Shake, sound and wording, as set in Admin → Winter Arc. */
+  config?: IntroConfig & { soundUrl?: string | null };
 };
+
+// How far the screen is thrown at the moment of change, in pixels.
+const SHAKE = { off: 0, soft: 7, hard: 18 } as const;
+const shakeFrames = (amount: number) => ({ x: [0, -amount, amount * 0.85, -amount * 0.7, amount * 0.5, -amount * 0.3, amount * 0.15, 0], y: [0, amount * 0.6, -amount * 0.5, amount * 0.35, -amount * 0.25, amount * 0.12, 0, 0] });
 
 /**
  * The Winter Arc's opening scene, played the first time someone opens it: a
@@ -44,17 +52,51 @@ type Props = {
  * Tap Skip (or press Escape) to end it. People who ask their device for
  * reduced motion never see it.
  */
-export function ArcIntro({ firstName, images, totalDays = 123, onDone, auto = true }: Props) {
+export function ArcIntro({ firstName, images, totalDays = 123, onDone, auto = true, config = DEFAULT_INTRO }: Props) {
   const [playing, setPlaying] = useState(false);
   const [beat, setBeat] = useState<Beat>("before");
+  const [muted, setMuted] = useState(false);
+  const sound = useRef<IntroSound | null>(null);
+  const { text } = config;
+  const amount = SHAKE[config.shake];
+  const hasSound = config.sound !== "none" && (config.sound !== "custom" || Boolean(config.soundUrl));
+  const tagline = text.tagline.replaceAll("{name}", firstName).replaceAll("{days}", String(totalDays));
 
   const finish = useCallback(() => {
     try {
       localStorage.setItem(SEEN_KEY, "1");
     } catch {}
+    sound.current?.stop();
     setPlaying(false);
     onDone?.();
   }, [onDone]);
+
+  // sound follows the scene: something at the start, the hit at the change, a chime at the title
+  useEffect(() => {
+    if (!playing) return;
+    const off = soundMuted();
+    setMuted(off);
+    sound.current = createIntroSound(off ? "none" : config.sound, config.soundUrl ?? null);
+    sound.current.start();
+    return () => sound.current?.stop();
+  }, [playing, config.sound, config.soundUrl]);
+  useEffect(() => {
+    if (!playing) return;
+    if (beat === "ignite") {
+      sound.current?.ignite();
+      if (amount) navigator.vibrate?.(amount > 10 ? [120, 40, 160] : 90); // phones that can, buzz with the shake
+    }
+    if (beat === "title") sound.current?.title();
+  }, [beat, playing, amount]);
+
+  function toggleSound() {
+    const next = !muted;
+    setMuted(next);
+    setSoundMuted(next);
+    sound.current?.stop();
+    sound.current = createIntroSound(next ? "none" : config.sound, config.soundUrl ?? null);
+    if (!next) sound.current.start();
+  }
 
   useEffect(() => {
     const start = () => {
@@ -102,6 +144,8 @@ export function ArcIntro({ firstName, images, totalDays = 123, onDone, auto = tr
           exit={{ clipPath: "inset(0 0 100% 0)", transition: { duration: 0.7, ease: [0.7, 0, 0.2, 1] } }}
           style={{ clipPath: "inset(0 0 0% 0)" }}
         >
+         {/* everything inside is thrown about at the moment of change, and nudged again when the title lands */}
+         <motion.div className="absolute inset-0" animate={amount && beat === "ignite" ? shakeFrames(amount) : amount && beat === "title" ? shakeFrames(amount * 0.45) : { x: 0, y: 0 }} transition={{ duration: beat === "ignite" ? 0.65 : 0.4, ease: "easeOut" }}>
           {/* speed lines streaming upward once the change starts */}
           <span aria-hidden className="absolute inset-0">
             {Array.from({ length: 18 }, (_, i) => (
@@ -130,9 +174,16 @@ export function ArcIntro({ firstName, images, totalDays = 123, onDone, auto = tr
               </span>
             </div>
           </div>
-          <button type="button" onClick={finish} className="absolute right-4 top-4 z-10 rounded-full border border-white/30 px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/80 hover:bg-white/10 sm:right-6 sm:top-6">
-            Skip
-          </button>
+          <div className="absolute right-4 top-4 z-10 flex gap-2 sm:right-6 sm:top-6">
+            {hasSound && (
+              <button type="button" onClick={toggleSound} aria-pressed={!muted} className="rounded-full border border-white/30 px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/80 hover:bg-white/10">
+                {muted ? "Sound off" : "Sound on"}
+              </button>
+            )}
+            <button type="button" onClick={finish} className="rounded-full border border-white/30 px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/80 hover:bg-white/10">
+              Skip
+            </button>
+          </div>
 
           {/* ── the character ── */}
           <div className="absolute inset-0 grid place-items-center">
@@ -172,12 +223,12 @@ export function ArcIntro({ firstName, images, totalDays = 123, onDone, auto = tr
           {/* ── captions, top centre ── */}
           <div className="absolute inset-x-0 top-[13vh] px-6 text-center">
             <AnimatePresence mode="wait">
-              {beat === "before" && <Caption key="a" small="Day 0" big="WHO YOU WERE" />}
-              {beat === "ignite" && <Caption key="b" small="Level up" big="WHO YOU BECOME" />}
+              {beat === "before" && <Caption key="a" small="Day 0" big={text.before} />}
+              {beat === "ignite" && <Caption key="b" small="Level up" big={text.after} />}
               {beat === "title" && (
                 <motion.div key="c" exit={{ opacity: 0 }}>
                   <motion.p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-white/60" initial={{ opacity: 0 }} animate={{ opacity: [0, 1, 0.4, 1] }} transition={{ duration: 0.6 }}>
-                    New quest unlocked
+                    {text.quest}
                   </motion.p>
                   <h2 className={`${poster} mt-2 text-[clamp(3rem,14vw,5.2rem)] leading-[0.86] tracking-[-0.03em]`} aria-label="Winter Arc">
                     {["WINTER", "ARC"].map((word, line) => (
@@ -210,9 +261,9 @@ export function ArcIntro({ firstName, images, totalDays = 123, onDone, auto = tr
                 </motion.div>
               ) : (
                 <motion.div key="start" className="text-center" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }}>
-                  <p className="mb-4 text-[11px] uppercase tracking-[0.3em] text-white/75">{totalDays} days · Become better, {firstName}</p>
+                  <p className="mb-4 text-[11px] uppercase tracking-[0.3em] text-white/75">{tagline}</p>
                   <motion.button type="button" onClick={finish} autoFocus className="w-full border-2 border-white bg-white py-3.5 text-sm font-bold uppercase tracking-[0.3em] text-black" animate={{ opacity: [1, 0.55, 1] }} transition={{ duration: 1.2, repeat: Infinity }} whileTap={{ scale: 0.96 }}>
-                    ▶ Press start
+                    ▶ {text.button}
                   </motion.button>
                 </motion.div>
               )}
@@ -222,6 +273,7 @@ export function ArcIntro({ firstName, images, totalDays = 123, onDone, auto = tr
           {/* scanlines and grain: an old screen */}
           <span aria-hidden className="pointer-events-none absolute inset-0 bg-[repeating-linear-gradient(0deg,transparent_0,transparent_2px,rgba(0,0,0,0.28)_3px)]" />
           <span aria-hidden className="grain pointer-events-none absolute inset-0 opacity-80" />
+         </motion.div>
         </motion.div>
       )}
     </AnimatePresence>,
@@ -233,7 +285,7 @@ function Caption({ small, big }: { small: string; big: string }) {
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.35 }}>
       <p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-white/55">{small}</p>
-      <p className={`${poster} mt-2 text-3xl tracking-[0.14em]`}>{big}</p>
+      <p className={`${poster} mt-2 text-[clamp(1.4rem,7vw,1.875rem)] uppercase tracking-[0.14em]`}>{big}</p>
     </motion.div>
   );
 }

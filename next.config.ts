@@ -36,7 +36,6 @@ const nextConfig: NextConfig = {
       { source: "/index.php", destination: "/", permanent: true },
       { source: "/:page(login|register|dashboard|analytics|monthly|profile).php", destination: "/:page", permanent: true },
       { source: "/:page(donate|donate.php)", destination: "/support", permanent: true },
-      { source: "/admin/index.php", destination: "/admin", permanent: true },
     ];
   },
 };

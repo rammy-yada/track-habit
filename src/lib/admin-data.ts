@@ -21,7 +21,7 @@ function lastDays(rows: { day: string; n: number | string }[], today: string, da
 export async function getAdminOverview() {
   const today = (await queryOne<{ d: string }>("SELECT CURRENT_DATE::text AS d"))?.d ?? todayIn("UTC");
   const season = arcSeason(today);
-  const [totalUsers, activeUsers, newThisWeek, admins, totalHabits, checkinsToday, arcMembers, withPhoto, activity, signups, popular, recent] = await Promise.all([
+  const [totalUsers, activeUsers, newThisWeek, admins, totalHabits, checkinsToday, arcMembers, withPhoto, newInquiries, posts, activity, signups, popular, recent] = await Promise.all([
     num("SELECT COUNT(*) AS n FROM users"),
     num("SELECT COUNT(*) AS n FROM users WHERE is_active = 1"),
     num("SELECT COUNT(*) AS n FROM users WHERE created_at::date > CURRENT_DATE - 7"),
@@ -30,6 +30,8 @@ export async function getAdminOverview() {
     num("SELECT COUNT(*) AS n FROM habit_logs WHERE completed_count > 0 AND log_date = CURRENT_DATE"),
     num("SELECT COUNT(*) AS n FROM winter_arc_members WHERE season = ?", [season.year]),
     num("SELECT COUNT(*) AS n FROM users WHERE avatar_version > 0"),
+    num("SELECT COUNT(*) AS n FROM inquiries WHERE status = 'new'"),
+    num("SELECT COUNT(*) AS n FROM blog_posts WHERE published = 1"),
     query<{ day: string; n: number }>("SELECT log_date::text AS day, COUNT(*) AS n FROM habit_logs WHERE completed_count > 0 AND log_date > CURRENT_DATE - 14 GROUP BY log_date"),
     query<{ day: string; n: number }>("SELECT created_at::date::text AS day, COUNT(*) AS n FROM users WHERE created_at::date > CURRENT_DATE - 14 GROUP BY 1"),
     query<{ category: string; n: number }>("SELECT category, COUNT(*) AS n FROM habits WHERE is_active = 1 GROUP BY category ORDER BY n DESC LIMIT 6"),
@@ -39,7 +41,7 @@ export async function getAdminOverview() {
   ]);
 
   return {
-    stats: { totalUsers, activeUsers, disabledUsers: totalUsers - activeUsers, newThisWeek, admins, totalHabits, checkinsToday, arcMembers, withPhoto },
+    stats: { totalUsers, activeUsers, disabledUsers: totalUsers - activeUsers, newThisWeek, admins, totalHabits, checkinsToday, arcMembers, withPhoto, newInquiries, posts },
     arcLive: season.live,
     activity: lastDays(activity, today, 14),
     signups: lastDays(signups, today, 14),

@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { VerifyForm } from "@/components/auth/VerifyForm";
 import { getSession } from "@/lib/session";
 
-export const metadata: Metadata = { title: "Verify Your Email" };
+export const metadata: Metadata = { title: "Verify Your Email", robots: { index: false } };
 
 export default async function VerifyPage() {
   const session = await getSession();

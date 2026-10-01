@@ -8,6 +8,7 @@ import { applyThemeSlowly } from "@/components/ArcTheme";
 import { NotificationToggle } from "@/components/NotificationToggle";
 import { btnGhost, btnPrimary, card } from "@/components/ui/styles";
 import { startArc } from "@/lib/actions/arc";
+import type { IntroConfig } from "@/lib/arc-config";
 import { whenOnline } from "@/lib/offline";
 import { WORKOUT_CATEGORIES, WORKOUTS } from "@/lib/workouts";
 import { ArcIntro, replayArcIntro } from "./ArcIntro";
@@ -18,9 +19,12 @@ type Props = {
   existing: string[];
   images: { before: string | null; after: string | null };
   pushKey: string | null;
+  /** The ready-made habit packs an admin has set up (may be empty). */
+  packs: { id: number; name: string; icon: string; tagline: string; habits: { name: string; icon: string }[] }[];
+  intro: IntroConfig & { soundUrl: string | null };
 };
 
-const STEPS = ["Choose habits", "Reminders", "Begin"];
+const STEPS = ["Choose your pack", "Reminders", "Begin"];
 // ticked for you to begin with: the three most people start on
 const SUGGESTED = ["steps-10k", "water-3l", "sleep-11"];
 
@@ -29,14 +33,18 @@ const SUGGESTED = ["steps-10k", "water-3l", "sleep-11"];
  * begin. Nothing is saved until the last button. Then the opening scene
  * plays, and as it ends the account slowly takes on the Winter Arc look.
  */
-export function ArcStart({ firstName, season, existing, images, pushKey }: Props) {
+export function ArcStart({ firstName, season, existing, images, pushKey, packs, intro }: Props) {
   const router = useRouter();
   const have = new Set(existing.map((name) => name.toLowerCase()));
   const [step, setStep] = useState(0);
-  const [picked, setPicked] = useState<Set<string>>(() => new Set(SUGGESTED.filter((id) => !have.has(WORKOUTS.find((w) => w.id === id)!.name.toLowerCase()))));
+  // with packs on offer the pack is the starting point; the suggested extras are only pre-ticked without one
+  const [packId, setPackId] = useState<number | null>(packs[0]?.id ?? null);
+  const [picked, setPicked] = useState<Set<string>>(() => new Set(packs.length ? [] : SUGGESTED.filter((id) => !have.has(WORKOUTS.find((w) => w.id === id)!.name.toLowerCase()))));
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const total = existing.length + picked.size;
+  const pack = packs.find((p) => p.id === packId) ?? null;
+  const fromPack = pack ? pack.habits.filter((h) => !have.has(h.name.toLowerCase())).length : 0;
+  const total = existing.length + picked.size + fromPack;
 
   const toggle = (id: string) =>
     setPicked((current) => {
@@ -49,7 +57,7 @@ export function ArcStart({ firstName, season, existing, images, pushKey }: Props
   function begin() {
     setError(null);
     startTransition(async () => {
-      const result = await whenOnline(() => startArc([...picked]));
+      const result = await whenOnline(() => startArc(packId, [...picked]));
       if (!result.ok) return setError(result.error);
       replayArcIntro(); // the opening scene; onIntroDone runs when it ends
     });
@@ -63,7 +71,7 @@ export function ArcStart({ firstName, season, existing, images, pushKey }: Props
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 md:py-12">
       <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">Winter Arc · {season.range}</p>
-      <h1 className="mt-1 font-display text-3xl font-bold tracking-tight">{step === 0 ? `${firstName}, choose your habits` : step === 1 ? "Stay on track" : "Ready?"}</h1>
+      <h1 className="mt-1 font-display text-3xl font-bold tracking-tight">{step === 0 ? `${firstName}, choose your ${packs.length ? "pack" : "habits"}` : step === 1 ? "Stay on track" : "Ready?"}</h1>
 
       {/* progress: three segments that fill as you go */}
       <ol className="mt-5 grid grid-cols-3 gap-2" aria-label="Steps">
@@ -88,6 +96,43 @@ export function ArcStart({ firstName, season, existing, images, pushKey }: Props
                 <p className="rounded-xl bg-raised px-4 py-3 text-[13px] text-muted">
                   <span className="font-semibold text-ink">Already yours:</span> {existing.join(", ")}
                 </p>
+              )}
+              {packs.length > 0 && (
+                <fieldset>
+                  <legend className="mb-1 text-sm font-bold">❄️ Winter Arc packs</legend>
+                  <p className="mb-3 text-[13px] text-muted">Pick one. Its habits are created for you and kept in their own Winter Arc section; finish them all in a day to open a surprise.</p>
+                  <div className="space-y-2.5" role="radiogroup" aria-label="Winter Arc pack">
+                    {packs.map((p) => {
+                      const on = p.id === packId;
+                      return (
+                        <motion.button key={p.id} type="button" role="radio" aria-checked={on} onClick={() => setPackId(p.id)} whileTap={{ scale: 0.98 }} className={`block w-full rounded-2xl border p-4 text-left transition-colors ${on ? "border-brand bg-brand-soft" : "border-line bg-card"}`} data-pack={p.name}>
+                          <span className="flex items-start gap-3">
+                            <span className="text-2xl" aria-hidden>
+                              {p.icon}
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block text-sm font-bold">{p.name}</span>
+                              {p.tagline && <span className="block text-xs text-muted">{p.tagline}</span>}
+                            </span>
+                            <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border-2 text-xs font-bold ${on ? "border-brand bg-brand-solid text-on-brand" : "border-line text-transparent"}`}>✓</span>
+                          </span>
+                          <span className="mt-3 flex flex-wrap gap-1.5">
+                            {p.habits.map((h) => (
+                              <span key={h.name} className="rounded-full bg-raised px-2.5 py-1 text-[11px] font-medium text-muted">
+                                {h.icon} {h.name}
+                              </span>
+                            ))}
+                          </span>
+                        </motion.button>
+                      );
+                    })}
+                    <button type="button" role="radio" aria-checked={packId === null} onClick={() => setPackId(null)} className={`block w-full rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition-colors ${packId === null ? "border-brand bg-brand-soft" : "border-line bg-card text-muted"}`}>
+                      No pack — I&apos;ll choose my own habits below
+                    </button>
+                  </div>
+                  <p className="mb-1 mt-7 text-sm font-bold">Extras (optional)</p>
+                  <p className="text-[13px] text-muted">Anything you tick here is added to your ordinary habits.</p>
+                </fieldset>
               )}
               {WORKOUT_CATEGORIES.map((category) => (
                 <fieldset key={category.id}>
@@ -144,6 +189,7 @@ export function ArcStart({ firstName, season, existing, images, pushKey }: Props
               <div className={`${card} divide-y divide-line`}>
                 {[
                   ["Season", season.live ? `${season.range} — day ${season.day} of ${season.totalDays}` : `${season.range} — starts in ${season.startsIn} days`],
+                  ...(pack ? [["Your pack", `${pack.icon} ${pack.name} · ${pack.habits.length} habits`]] : []),
                   ["Your habits", `${total} to tick each day`],
                   ["Points", "10 per habit, up to 5 habits a day"],
                   ["Leaderboard", "Shows your first name, last initial, username and photo"],
@@ -195,7 +241,7 @@ export function ArcStart({ firstName, season, existing, images, pushKey }: Props
         )}
       </div>
 
-      <ArcIntro firstName={firstName} images={images} totalDays={season.totalDays} onDone={onIntroDone} auto={false} />
+      <ArcIntro firstName={firstName} images={images} totalDays={season.totalDays} onDone={onIntroDone} auto={false} config={intro} />
     </div>
   );
 }

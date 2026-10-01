@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { SiteFooter } from "@/components/PublicPage";
 import { motion } from "motion/react";
 import { FlowField } from "@/components/FlowField";
 import { Logo } from "@/components/Logo";
@@ -9,7 +10,6 @@ import { Reveal } from "@/components/ui/Reveal";
 import { Spotlight } from "@/components/ui/Spotlight";
 import { Flame } from "@/components/dashboard/effects";
 import { btnGhost, btnPrimary, card } from "@/components/ui/styles";
-import { CREATOR } from "@/lib/constants";
 import { DemoCard } from "./DemoCard";
 import { Magnetic } from "./Magnetic";
 
@@ -37,6 +37,9 @@ export function Landing() {
         <Logo />
         <nav className="flex items-center gap-2 sm:gap-3">
           <ThemeToggle />
+          <Link href="/blog" className="hidden rounded-xl px-3 py-2.5 text-sm font-semibold text-muted transition-colors hover:text-ink md:block">
+            Blog
+          </Link>
           <Link href="/login" className="hidden rounded-xl px-4 py-2.5 text-sm font-semibold text-muted transition-colors hover:text-ink sm:block">
             Sign in
           </Link>
@@ -168,20 +171,9 @@ export function Landing() {
         </section>
       </main>
 
-      <footer className="relative border-t border-line px-5 py-6 text-center text-xs text-muted sm:px-10">
-        HabitFlow · Small steps, better flow. · Made by{" "}
-        <a href={CREATOR.supportUrl} target="_blank" rel="noopener noreferrer" className="font-semibold text-brand hover:underline">
-          {CREATOR.handle}
-        </a>{" "}
-        ·{" "}
-        <Link href="/privacy" className="hover:text-ink hover:underline">
-          Privacy
-        </Link>{" "}
-        ·{" "}
-        <Link href="/terms" className="hover:text-ink hover:underline">
-          Terms
-        </Link>
-      </footer>
+      <div className="relative">
+        <SiteFooter />
+      </div>
     </div>
   );
 }

@@ -7,7 +7,15 @@ import { ARC_HABITS_PER_DAY, ARC_POINTS_PER_HABIT, arcSeason, isArcMember } from
 import { currentUser } from "@/lib/auth";
 import { todayIn } from "@/lib/dates";
 
-export const metadata: Metadata = { title: "Winter Arc", description: "Oct 1 to Jan 31. Choose your habits, show up every day, and finish the year stronger than you started it." };
+const description = "The Winter Arc challenge: Oct 1 to Jan 31. Choose your habits, show up every day, climb the leaderboard, and finish the year stronger than you started it.";
+export const metadata: Metadata = {
+  title: "Winter Arc Challenge",
+  description,
+  keywords: ["winter arc", "winter arc challenge", "winter arc habit tracker", "123 day challenge", "discipline challenge", "habit leaderboard"],
+  alternates: { canonical: "/winter-arc" },
+  // (a page's openGraph replaces the site-wide one, so the picture is named again here)
+  openGraph: { type: "website", siteName: "HabitFlow", title: "Winter Arc Challenge — HabitFlow", description, url: "/winter-arc", images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "HabitFlow — Winter Arc challenge" }] },
+};
 
 const poster = "font-[family-name:var(--font-poster)]";
 
@@ -22,7 +30,7 @@ export default async function WinterArcPage() {
   const primary = !user
     ? { href: "/register?join=arc", label: "Join — create your account" }
     : user.role === "admin"
-      ? { href: "/admin/arc", label: "Open the admin view" }
+      ? { href: "/sigmadev/arc", label: "Open the admin view" }
       : member
         ? { href: "/arc", label: "Open your Winter Arc" }
         : { href: "/arc/start", label: "Choose your habits and begin" };

@@ -5,7 +5,7 @@ import { currentUser } from "@/lib/auth";
 
 export default async function AuthLayout({ children }: { children: React.ReactNode }) {
   const user = await currentUser();
-  if (user) redirect(user.role === "admin" ? "/admin" : "/dashboard");
+  if (user) redirect(user.role === "admin" ? "/sigmadev" : "/dashboard");
   return (
     <div className="flex min-h-dvh">
       <AuthAside />

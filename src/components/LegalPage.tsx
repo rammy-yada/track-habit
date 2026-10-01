@@ -19,6 +19,7 @@ export function LegalPage({ title, updated, children }: { title: string; updated
         </div>
         <nav className="mt-12 flex flex-wrap gap-x-6 gap-y-2 border-t border-line pt-6 text-sm font-semibold text-brand">
           <Link href="/">Home</Link>
+          <Link href="/blog">Blog</Link>
           <Link href="/privacy">Privacy Policy</Link>
           <Link href="/terms">Terms of Service</Link>
         </nav>

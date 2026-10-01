@@ -74,6 +74,7 @@ account, and writes everything your hosting provider needs to
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | optional — turns on "Continue with Google" (see below) |
 | `RESEND_API_KEY`, `EMAIL_FROM` | optional — turns on email (see below) |
 | `CRON_SECRET` | optional — lets the reminder job call the site |
+| `GOOGLE_SITE_VERIFICATION` | optional — the code from Google Search Console's "HTML tag" method, to prove the site is yours |
 | `APP_URL` | the site's public address, e.g. `https://habits.example.com`. Not needed on Vercel (it knows its own address). **Set it on a self-hosted server**, so links in emails can never be pointed elsewhere by a forged request |
 
 ### Speed: keep the server next to the database
@@ -187,7 +188,7 @@ src/
     (app)/                  the member's screens: /dashboard  /analytics  /arc  /monthly  /profile  /support
       layout.tsx              auth check, sidebar, offline status, welcome guide
       loading.tsx             the skeleton shown while a page's data loads
-    admin/                  the admin-only area: /admin  /admin/users  /admin/categories  /admin/arc  /admin/account
+    sigmadev/               the admin-only area: /sigmadev  /sigmadev/users  /sigmadev/categories  /sigmadev/arc  /sigmadev/blog  /sigmadev/inbox  /sigmadev/account
     api/health  api/version   status check; which build is running
     api/sync                  applies habit ticks, including ones made offline
     api/avatar                profile photo upload (→ 256px WebP) and serving
@@ -285,6 +286,39 @@ poster theme (a theme picked by hand with the theme button always wins).
   habit" puts one on your checklist. The catalogue is a plain list in
   `src/lib/workouts.ts`.
 
+### Habit packs
+
+A pack is a ready-made set of habits an admin puts together in
+**Admin → Winter Arc → Habit packs** (three come built in). There are two kinds:
+
+- **Winter Arc** packs are chosen when joining the arc — one per member.
+- **Everyone** packs can be added by any member from the Today screen, at any
+  time of year, alongside other packs.
+
+Either way the pack's habits are created for the member automatically and
+shown in a section of their own on Today. A habit the admin adds to a pack
+later is created for everyone already on it. Tables: `arc_packs`,
+`arc_pack_habits`, `pack_members`; `habits.arc_habit_id` links a member's
+habit back to the pack habit it came from.
+
+### Surprises and badges
+
+Finishing every habit of the Winter Arc pack for the day opens a gift. On
+milestone days (1, 3, 7, 14, 21, 30, 50, 75, 100 and 123 perfect days) it
+holds a badge; on other days one of the surprise messages, which the admin can
+write (suggestions are offered) or leave as the built-in ones. Badges earned
+are shown on the Winter Arc screen.
+
+### Intro: shake, sound and wording
+
+In **Admin → Winter Arc → Opening scene** the admin sets how hard the screen
+shakes at the moment of change (off / soft / hard), the sound (three built-in
+ones made with the Web Audio API, or an uploaded MP3/OGG/WAV/M4A of up to
+2 MB), and the five lines of text shown while it plays, with ready-made
+suggestions. Preview plays the scene with unsaved changes. Members can mute
+the sound; people who ask their device for reduced motion never see the intro.
+Settings live in `site_settings`, the sound in `site_images`.
+
 ### Site-wide theme and intro
 
 The theme button cycles **light → dark → Winter Arc**, for anyone who wants
@@ -311,6 +345,48 @@ When every habit for the day is done, a small prompt under the "Perfect day"
 banner invites the user to support the creator. "Not today" hides it until
 tomorrow; "Don't ask again" hides it for good.
 
+## Blog, Collaborate and Brand deals
+
+Three public pages, no account needed:
+
+- **`/blog`** — posts written in **Admin → Blog**. The editor has a formatting
+  toolbar (headings, bold, italic, lists, quote, code, link), a live preview,
+  a cover picture (cropped to 1200×630 and converted to WebP), and a panel for
+  search engines: address, search title and description with length counters,
+  topics, a preview of the search result, and a checklist. Posts are plain text
+  with a few marks (`## heading`, `- item`, `**bold**`, `[text](https://…)`)
+  rendered by `src/components/blog/PostBody.tsx` — never as HTML, so nothing
+  typed into a post can run as code. Three starter posts come built in.
+  Published posts get their own title, description, canonical address,
+  article data for search engines, a place in the sitemap and in the RSS feed
+  (`/blog/feed.xml`). Drafts are visible only in the admin area.
+- **`/collaborate`** and **`/brand-deals`** — each has a form. What is sent
+  lands in **Admin → Inbox** (table `inquiries`), where it can be answered by
+  email, marked read or deleted; admins are also emailed when email is set up.
+  The forms are checked on the server, limited to three messages an hour per
+  address, and have a hidden field that catches form-filling programs.
+
+## Search engines and link previews
+
+- **`/sitemap.xml`** (`src/app/sitemap.ts`) lists the public pages (home,
+  Winter Arc, blog, collaborate, brand deals, sign-up, sign-in, privacy,
+  terms) and every published blog post.
+- **`/robots.txt`** (`src/app/robots.ts`) points crawlers at the sitemap and
+  away from the signed-in screens and the API.
+- Every public page has its own title, description and canonical address;
+  private and in-between pages (dashboard, verify, reset…) are `noindex`.
+- **Link previews**: sharing the site on Facebook, WhatsApp, X or Discord
+  shows a title, description and picture (`src/app/opengraph-image.tsx`).
+- **Structured data** on the home page tells search engines this is a free
+  web application.
+
+The address used in all of these is `SITE_URL` in `src/lib/site.ts`
+(`APP_URL` overrides it). After deploying, add the site in
+[Google Search Console](https://search.google.com/search-console) and submit
+`/sitemap.xml` there.
+
+---
+
 ## Privacy Policy and Terms
 
 `/privacy` and `/terms` are public pages, linked from the landing page, the
@@ -333,10 +409,16 @@ have real users; they are a plain-language starting point, not legal advice.
 ## Admin area
 
 An admin account is a different kind of account: it manages the site and has
-no habit screens. Signing in as an admin goes straight to `/admin`, the menu
-is admin-only, and the member pages redirect back to it. Members, in turn,
-cannot open anything under `/admin` — the check runs on the server in the
-layout and again inside every admin action.
+no habit screens. Signing in as an admin goes straight to `/sigmadev`, the menu
+is admin-only, and the member pages redirect back to it. The check runs on the
+server in the layout and again inside every admin action.
+
+The area is deliberately not called "admin". To anyone who isn't an
+administrator — signed in or not — every address under `/sigmadev` answers
+with the ordinary "page not found", title included, exactly like an address
+that doesn't exist; `/admin` doesn't exist at all. It is left out of
+`robots.txt` and the sitemap. That keeps it from being advertised or guessed;
+what actually protects it is still the server-side check.
 
 | Page | What it does |
 |---|---|

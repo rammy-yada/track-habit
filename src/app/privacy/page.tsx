@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Contact, LegalPage } from "@/components/LegalPage";
 import { APP_NAME, CREATOR, LEGAL_UPDATED } from "@/lib/constants";
 
-export const metadata: Metadata = { title: "Privacy Policy", description: `What ${APP_NAME} collects, why, and who can see it.` };
+export const metadata: Metadata = { title: "Privacy Policy", description: `What ${APP_NAME} collects, why, and who can see it.`, alternates: { canonical: "/privacy" } };
 
 export default function PrivacyPage() {
   return (
@@ -46,6 +46,11 @@ export default function PrivacyPage() {
         <p>
           We use your email address to send a verification code when you sign up, a link when you ask to reset your password, and — only if you have joined the Winter Arc — one reminder on days you still have habits open. Every reminder has a link that turns them off, and you can also switch them off in Profile. We send no marketing email. Messages are delivered through an email service that processes them only to deliver them.
         </p>
+      </section>
+
+      <section>
+        <h2>Collaboration and brand forms</h2>
+        <p>If you write to us through the Collaborate or Brand deals page, we keep what you typed (your name, email address, organisation, link and message) so that we can reply. Only the administrator can read it. We don&apos;t add you to any mailing list, and we delete messages we no longer need. You don&apos;t need an account to send one.</p>
       </section>
 
       <section>

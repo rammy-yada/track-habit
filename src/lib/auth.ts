@@ -1,7 +1,8 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import { cache } from "react";
-import { redirect } from "next/navigation";
+import type { Metadata } from "next";
+import { notFound, redirect } from "next/navigation";
 import { queryOne } from "./db";
 import { getSession } from "./session";
 import { decodeEntities } from "./text";
@@ -53,9 +54,22 @@ export async function requireUser(): Promise<User> {
   return user;
 }
 
-/** Authorization: signed in *and* allowed to manage the system. */
+/**
+ * Authorization: signed in *and* allowed to manage the system. Everyone else
+ * gets the ordinary "page not found" — the same answer as for an address that
+ * doesn't exist, so the admin area can't be told apart from nothing at all.
+ */
 export async function requireAdmin(): Promise<User> {
-  const user = await requireUser();
-  if (user.role !== "admin") redirect("/dashboard");
+  const user = await currentUser();
+  if (!user || user.role !== "admin") notFound();
   return user;
+}
+
+/**
+ * The tab title of an admin page — handed out only to an administrator.
+ * Anyone else is about to get "page not found", and that page must look
+ * exactly like any other missing page, title included.
+ */
+export async function adminMetadata(metadata: Metadata): Promise<Metadata> {
+  return (await currentUser())?.role === "admin" ? metadata : {};
 }
