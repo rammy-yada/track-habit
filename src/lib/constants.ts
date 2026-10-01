@@ -42,6 +42,11 @@ export type Mood = (typeof MOODS)[number]["value"];
 export const CONTACT_EMAIL = "";
 export const LEGAL_UPDATED = "October 1, 2026";
 
+// Added to every shared achievement. A hashtag needs no registration — it
+// exists as soon as someone posts with it — so change these to whatever tag
+// you want people to find you under (letters and numbers only, no spaces).
+export const SHARE_HASHTAGS = ["WinterArc", "HabitFlow"];
+
 export const CREATOR = {
   handle: "rammy24d",
   supportUrl: "https://kamaucha.me/rammy24d",

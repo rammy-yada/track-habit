@@ -87,3 +87,47 @@ export function markGuideSeen() {
     localStorage.setItem(GUIDE_SEEN_KEY, "1");
   } catch {}
 }
+
+// ── Notifications ────────────────────────────────────────────────────────────
+
+export type PushState = "unsupported" | "needs-install" | "blocked" | "off" | "on";
+
+async function registration(): Promise<ServiceWorkerRegistration | null> {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) return null;
+  return (await navigator.serviceWorker.getRegistration()) ?? null;
+}
+
+export async function pushState(): Promise<PushState> {
+  const device = detectDevice();
+  // an iPhone only allows notifications for a site that has been added to the Home Screen
+  if (device.platform === "ios" && !device.installed) return "needs-install";
+  const reg = await registration();
+  if (!reg) return "unsupported";
+  if (Notification.permission === "denied") return "blocked";
+  return (await reg.pushManager.getSubscription()) ? "on" : "off";
+}
+
+const toBytes = (base64url: string) => Uint8Array.from(atob(base64url.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(base64url.length / 4) * 4, "=")), (c) => c.charCodeAt(0));
+
+/** Asks permission, registers this device with the push service and tells the server. */
+export async function enablePush(publicKey: string): Promise<PushState> {
+  const reg = await registration();
+  if (!reg) return "unsupported";
+  if ((await Notification.requestPermission()) !== "granted") return Notification.permission === "denied" ? "blocked" : "off";
+  const subscription = (await reg.pushManager.getSubscription()) ?? (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: toBytes(publicKey) }));
+  const saved = await fetch("/api/push", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(subscription.toJSON()) });
+  if (!saved.ok) {
+    await subscription.unsubscribe().catch(() => {});
+    return "off";
+  }
+  return "on";
+}
+
+export async function disablePush(): Promise<PushState> {
+  const subscription = await (await registration())?.pushManager.getSubscription();
+  if (subscription) {
+    await fetch("/api/push", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ endpoint: subscription.endpoint }) }).catch(() => {});
+    await subscription.unsubscribe().catch(() => {});
+  }
+  return "off";
+}

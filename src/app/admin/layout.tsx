@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { MobileBars, Sidebar } from "@/components/AppNav";
+import { ArcTheme } from "@/components/ArcTheme";
 import { requireAdmin } from "@/lib/auth";
 
 export const metadata: Metadata = { title: { default: "Admin", template: "%s — HabitFlow Admin" } };
@@ -17,6 +18,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <MobileBars user={navUser} />
         {children}
       </div>
+      <ArcTheme member={false} />
     </div>
   );
 }

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { input, label as labelClass } from "./styles";
 
-export function PasswordField({ name, label, placeholder, autoComplete, onChange }: { name: string; label: string; placeholder?: string; autoComplete?: string; onChange?: (value: string) => void }) {
+export function PasswordField({ name, label, placeholder, autoComplete, minLength, onChange }: { name: string; label: string; placeholder?: string; autoComplete?: string; minLength?: number; onChange?: (value: string) => void }) {
   const [shown, setShown] = useState(false);
   return (
     <label className="block">
@@ -15,6 +15,7 @@ export function PasswordField({ name, label, placeholder, autoComplete, onChange
           placeholder={placeholder}
           autoComplete={autoComplete}
           required
+          minLength={minLength}
           maxLength={72}
           onChange={(e) => onChange?.(e.target.value)}
           className={`${input} pr-16`}

@@ -225,6 +225,7 @@ export function clearOfflineData() {
   try {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(SAVED_AT_KEY);
+    localStorage.removeItem("arc-auto"); // the Winter Arc look goes with the account
   } catch {}
   navigator.serviceWorker?.controller?.postMessage({ type: "FORGET_PAGES" });
 }

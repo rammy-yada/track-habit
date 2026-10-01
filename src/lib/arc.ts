@@ -1,19 +1,22 @@
 import "server-only";
-import { query } from "./db";
+import { query, queryOne } from "./db";
 import type { User } from "./auth";
 import { addDays, diffDays, formatDate, todayIn } from "./dates";
 import { decodeEntities } from "./text";
 
-// ── The Winter Arc: Oct 1 – Dec 31, every year ───────────────────────────────
+// ── The Winter Arc: Oct 1 – Jan 31 ───────────────────────────────────────────
+// A season is named after the year it starts in, and runs across New Year:
+// January still belongs to the season that began the previous October.
 
 export const ARC_POINTS_PER_HABIT = 10;
 export const ARC_HABITS_PER_DAY = 5; // only the first five habits of a day score
 
 export function arcSeason(today: string) {
-  const year = Number(today.slice(0, 4));
+  const calendarYear = Number(today.slice(0, 4));
+  const year = Number(today.slice(5, 7)) === 1 ? calendarYear - 1 : calendarYear;
   const start = `${year}-10-01`;
-  const end = `${year}-12-31`;
-  const live = today >= start;
+  const end = `${year + 1}-01-31`;
+  const live = today >= start && today <= end;
   return {
     year,
     start,
@@ -21,9 +24,15 @@ export function arcSeason(today: string) {
     live,
     totalDays: diffDays(start, end) + 1,
     day: live ? diffDays(start, today) + 1 : 0,
-    startsIn: live ? 0 : diffDays(today, start),
-    range: `${formatDate(start, { month: "short", day: "numeric" })} – ${formatDate(end, { month: "short", day: "numeric" })}, ${year}`,
+    startsIn: live ? 0 : Math.max(0, diffDays(today, start)),
+    range: `${formatDate(start, { month: "short", day: "numeric" })} – ${formatDate(end, { month: "short", day: "numeric", year: "numeric" })}`,
   };
+}
+
+/** Is this person in the current season? (One small query; used to switch their account into the Winter Arc look.) */
+export async function isArcMember(user: User): Promise<boolean> {
+  const { year } = arcSeason(todayIn(user.timezone));
+  return (await queryOne("SELECT 1 AS yes FROM winter_arc_members WHERE user_id = ? AND season = ?", [user.id, year])) !== null;
 }
 
 // One row per user per day: points for that day, capped at five habits.

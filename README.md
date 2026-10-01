@@ -72,6 +72,9 @@ account, and writes everything your hosting provider needs to
 | `SESSION_SECRET` | 32+ random characters; the same on every copy of the app |
 | `DB_POOL_SIZE` | connections per running copy of the app. Default 2 — leave it there on a free database |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | optional — turns on "Continue with Google" (see below) |
+| `RESEND_API_KEY`, `EMAIL_FROM` | optional — turns on email (see below) |
+| `CRON_SECRET` | optional — lets the reminder job call the site |
+| `APP_URL` | the site's public address, e.g. `https://habits.example.com`. Not needed on Vercel (it knows its own address). **Set it on a self-hosted server**, so links in emails can never be pointed elsewhere by a forged request |
 
 ### Speed: keep the server next to the database
 
@@ -91,6 +94,56 @@ Open `https://your-site/api/health`. It answers `200 {"status":"ok"}` when the
 session secret and database are both usable, and `503` with a plain-language
 reason when they aren't. It never prints hosts, usernames or secrets. If the
 site shows a generic server error, look here first.
+
+### Email (optional)
+
+Email is sent through [Resend](https://resend.com). With it set up:
+
+- **Forgot password** on the sign-in page emails a one-time link (30 minutes,
+  single use; only a hash of it is stored).
+- **Sign-up codes** are emailed instead of shown on screen, which proves the
+  person owns the address.
+- **Winter Arc reminders**: at 7 PM in each member's own timezone, one email
+  if they still have habits open that day (alongside the notification, if on). Never twice in a day, and every
+  email has an unsubscribe link.
+
+Emails are written in **Nepali** for people whose timezone is Nepal and
+**English** for everyone else; anyone can choose either in Profile.
+
+Setup:
+
+1. Create a Resend account, add and verify your domain (until then Resend only
+   delivers to your own address), and create an API key.
+2. On the host set `RESEND_API_KEY`, `EMAIL_FROM` (e.g.
+   `HabitFlow <hello@yourdomain.com>`) and `CRON_SECRET` (any long random
+   string).
+3. Reminders need something to call the site on a schedule. That is
+   `.github/workflows/reminders.yml`, which GitHub runs for free every 15
+   minutes. In the
+   GitHub repository add two secrets (Settings → Secrets and variables →
+   Actions): `SITE_URL` (your site's address) and `CRON_SECRET` (the same
+   value as on the host).
+
+Without these variables the app works as before: codes are shown on screen
+and a forgotten password is reset by an admin.
+
+### Notifications (optional)
+
+Real push notifications, like a native app — they arrive when the app is
+closed. On iPhone they need the app added to the Home Screen first.
+
+- **Habit reminders** at the time set on each habit, if it isn't ticked yet.
+- **A quote** every morning at 8, in Nepali or English.
+- **An evening nudge** at 7 PM for Winter Arc members with habits still open.
+
+All on each person's own clock. People switch them on in the join flow or in
+Profile.
+
+Setup: run `npm run push:keys` once, add the three lines it prints
+(`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`) to the host, and set
+`CRON_SECRET` plus the two GitHub secrets described under Email — the same
+scheduled job (`.github/workflows/reminders.yml`, every 15 minutes) sends both
+the emails and the notifications.
 
 ### Sign in with Google (optional)
 
@@ -197,7 +250,19 @@ Profile.
 
 ## Winter Arc
 
-`/arc` is a seasonal challenge that runs **Oct 1 – Dec 31** every year.
+A seasonal challenge that runs **Oct 1 – Jan 31** (123 days, across New
+Year; a season is named after the year it starts in).
+
+**Joining is a guided flow.** The public page `/winter-arc` explains it and
+has the Join button. Someone without an account is asked to create one (or
+continue with Google) first, then lands on `/arc/start`: choose habits →
+reminders → begin. Nothing is saved until the last button; then the opening
+scene plays and the account takes on the Winter Arc look.
+
+**The look belongs to accounts that joined.** The site is in its normal
+light/dark theme for visitors and for members who haven't joined. For an
+account in the arc, every screen slowly dissolves into the black-and-white
+poster theme (a theme picked by hand with the theme button always wins).
 
 - **Joining is opt-in** and is what puts someone on the leaderboard, shown as
   first name + last initial and username. Leaving removes them.
@@ -209,22 +274,32 @@ Profile.
   hooded knight resting on a sword (drawn in SVG in `ArcScreen.tsx`), snow and
   drifting fog. On a phone it is the screen; on desktop it sits in a phone
   frame.
+- **Sharing**: "Share my progress" builds a 1080×1350 picture of the member's
+  real numbers plus a caption, and opens the phone's share sheet (Instagram,
+  Facebook, WhatsApp…). On a computer it offers the picture to download. The
+  hashtags are `SHARE_HASHTAGS` in `src/lib/constants.ts`.
+- **Intro images**: in Admin → Winter Arc, upload a "before" and an "after"
+  picture (transparent PNG works best) to replace the built-in drawings in the
+  opening scene. They are converted to WebP and shown in black and white.
 - **Workout recommendations** sit beside it, in six categories. "Add as daily
   habit" puts one on your checklist. The catalogue is a plain list in
   `src/lib/workouts.ts`.
 
 ### Site-wide theme and intro
 
-The theme button cycles **light → dark → Winter Arc**. The Winter Arc theme is
-the same black-and-white poster look applied to the whole site (one fixed
-layer greys out colour and adds grain), and it is the default from October to
-December for anyone who hasn't chosen a theme.
+The theme button cycles **light → dark → Winter Arc**, for anyone who wants
+to choose by hand.
 
-The first time someone opens `/arc`, a short scene plays: a tired silhouette is
-hit by a burst of energy and stands up strong, then the title lands. It can be
-skipped (tap, Skip, or Escape), is never shown to people who ask for reduced
-motion, and "Replay intro" at the bottom of the arc screen plays it again. The
-figures are original drawings, not existing characters.
+The first time someone opens `/arc`, a short scene plays like the opening of
+a game: player name and level, a tired character with nearly empty stat bars,
+a flash and "level up" as the bars fill and the strong character appears, then
+"New quest unlocked — Winter Arc" with a **Press start** button. It can be
+skipped, is never shown to people who ask for reduced motion, and "Replay
+intro" at the bottom of the arc screen plays it again.
+
+In the Winter Arc theme everything is grey — except on a screen where a colour
+is being chosen (avatar or habit colour), where real colours come back so the
+swatches can be told apart.
 
 ## Support page
 
@@ -296,17 +371,31 @@ described in the Privacy Policy.
 | Concern | How it is handled |
 |---|---|
 | SQL injection | Every query is parameterised; values never go into SQL text |
-| Passwords | `bcryptjs`, cost 12 |
+| Passwords | `bcryptjs`, cost 12; 8–72 characters |
 | Sessions | One encrypted, tamper-proof cookie; `HttpOnly`, `SameSite=Lax`, 24 h |
-| CSRF | Server Actions only accept same-origin POSTs; `/api/sync` checks the Origin; `SameSite=Lax` cookie |
+| Signing out other devices | The cookie carries a fingerprint of the password hash. Change or reset the password (yourself, by email link, or by an admin) and every other device is signed out |
+| Password guessing | 8 wrong passwords per account, or 40 from one address, in 15 minutes pauses sign-in (`src/lib/throttle.ts`, table `rate_limits`). The "current password" boxes in Profile allow 5 |
+| Email flooding | At most 4 verification codes per address per 30 minutes; reset links: one per account per 2 minutes, 6 requests per address per hour |
+| Verification codes | 6 digits, 10 minutes, 5 guesses, compared with `crypto.timingSafeEqual()` |
+| Reset links | Random 256-bit token, only its SHA-256 stored, 30 minutes, single use |
+| Account discovery | Sign-in and forgot-password answer the same whether or not the account exists |
+| CSRF | Server Actions only accept same-origin POSTs; API routes check the Origin; `SameSite=Lax` cookie |
+| Clickjacking & co. | `X-Frame-Options: DENY`, `frame-ancestors 'none'`, `nosniff`, `Referrer-Policy`, HSTS on every response (`next.config.ts`) |
 | XSS | React escapes all rendered text |
 | Authorization | `requireUser()` / `requireAdmin()` in every page, action and API route |
-| OTP comparison | `crypto.timingSafeEqual()` |
+| Ownership | Every habit query carries `user_id = <signed-in user>`; another member's id is "not found" |
+| Uploads | Re-encoded to WebP on the server; anything that isn't a real image is refused |
 | Database connection | TLS with certificate verification for hosted databases |
 
 The user row is re-read from the database on every request, so disabling an
-account or changing its role takes effect immediately. Verification codes are
-shown on screen because there is no mail server.
+account or changing its role takes effect immediately. Without email set up,
+verification codes are shown on screen — fine for local development, but it
+means addresses are not verified, so set up email before going live.
+
+Anything destructive asks first: deleting a habit, a user, a category or your
+own account (which also needs the password), resetting a password, disabling
+an account, changing a role, removing a photo, removing someone from the arc
+and leaving it.
 
 ---
 

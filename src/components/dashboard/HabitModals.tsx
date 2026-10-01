@@ -91,7 +91,7 @@ function HabitForm({ categories, habit, onDone }: { categories: Category[]; habi
         <input type="hidden" name="icon" value={icon} />
       </fieldset>
 
-      <fieldset>
+      <fieldset data-true-color>
         <legend className={label}>Color</legend>
         <div className="flex flex-wrap gap-2.5">
           {colors.map((c) => (

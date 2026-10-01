@@ -3,11 +3,12 @@
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireUser } from "../auth";
+import { passwordStamp, requireUser } from "../auth";
 import { execute } from "../db";
 import { getSession } from "../session";
 import { clean } from "../text";
-import { isHexColor, isValidTimezone } from "../validation";
+import { forget, limited, record } from "../throttle";
+import { isHexColor, isValidTimezone, passwordProblem } from "../validation";
 
 export type ProfileState = { error?: string; message?: string } | null;
 
@@ -20,8 +21,11 @@ export async function updateProfileAction(_prev: ProfileState, formData: FormDat
   if (fullName.length < 2) return { error: "Name must be at least 2 characters." };
   if (!isValidTimezone(timezone)) return { error: "Unknown timezone." };
   if (!isHexColor(color)) return { error: "Pick an avatar color." };
+  const language = clean(formData.get("email_lang"), 5);
+  const emailLang = language === "ne" || language === "en" ? language : null; // null = decide from the timezone
+  const reminders = formData.get("email_reminders") === "on" ? 1 : 0;
 
-  await execute("UPDATE users SET full_name = ?, timezone = ?, avatar_color = ? WHERE id = ?", [fullName, timezone, color, user.id]);
+  await execute("UPDATE users SET full_name = ?, timezone = ?, avatar_color = ?, email_lang = ?, email_reminders = ? WHERE id = ?", [fullName, timezone, color, emailLang, reminders, user.id]);
   revalidatePath("/", "layout");
   return { message: "Profile updated successfully!" };
 }
@@ -32,13 +36,27 @@ export async function changePasswordAction(_prev: ProfileState, formData: FormDa
   const next = String(formData.get("new_password") ?? "");
   const confirm = String(formData.get("confirm_password") ?? "");
 
-  if (!(await bcrypt.compare(current, user.password))) return { error: "Current password is incorrect." };
+  // someone holding an unlocked phone shouldn't get unlimited guesses at the password
+  const key = `password:${user.id}`;
+  if (await limited(key, 5, 15)) return { error: "Too many wrong attempts. Please wait 15 minutes." };
+  if (!(await bcrypt.compare(current, user.password))) {
+    await record(key);
+    return { error: "Current password is incorrect." };
+  }
   if (next !== confirm) return { error: "New passwords do not match." };
-  if (next.length < 6) return { error: "Password must be at least 6 characters." };
-  if (next.length > 72) return { error: "Password must be 72 characters or fewer." };
+  const weak = passwordProblem(next);
+  if (weak) return { error: weak };
+  if (next === current) return { error: "The new password must be different from the current one." };
 
-  await execute("UPDATE users SET password = ? WHERE id = ?", [await bcrypt.hash(next, 12), user.id]);
-  return { message: "Password changed successfully!" };
+  const hash = await bcrypt.hash(next, 12);
+  await execute("UPDATE users SET password = ? WHERE id = ?", [hash, user.id]);
+  await forget(key);
+  // Every other device signed in with the old password is now signed out;
+  // this one carries on with the new fingerprint.
+  const session = await getSession();
+  session.pw = passwordStamp(hash);
+  await session.save();
+  return { message: "Password changed. Other devices have been signed out." };
 }
 
 /**
@@ -53,8 +71,13 @@ export async function deleteAccountAction(_prev: ProfileState, formData: FormDat
   const confirm = String(formData.get("confirm") ?? "");
   if (user.google_id) {
     if (confirm.trim().toLowerCase() !== user.username.toLowerCase()) return { error: "Type your username exactly to confirm." };
-  } else if (!(await bcrypt.compare(confirm, user.password))) {
-    return { error: "That password is incorrect." };
+  } else {
+    const key = `password:${user.id}`;
+    if (await limited(key, 5, 15)) return { error: "Too many wrong attempts. Please wait 15 minutes." };
+    if (!(await bcrypt.compare(confirm, user.password))) {
+      await record(key);
+      return { error: "That password is incorrect." };
+    }
   }
 
   // foreign keys cascade: habits, check-ins, notes, photo and leaderboard entry go too

@@ -23,6 +23,9 @@ export default async function AdminAccountPage() {
           memberSince: formatTimestamp(admin.created_at, admin.timezone),
           google: Boolean(admin.google_id),
           photo: admin.avatar_version,
+          emailLang: admin.email_lang ?? "",
+          reminders: admin.email_reminders !== 0,
+          pushKey: null,
           admin: true,
         }}
       />

@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
   const session = await getSession();
   session.oauthState = randomBytes(24).toString("base64url");
   session.oauthTimezone = isValidTimezone(timezone) ? timezone : "UTC";
+  session.joinArc = request.nextUrl.searchParams.get("join") === "arc" || undefined;
   await session.save();
   return NextResponse.redirect(googleAuthUrl(session.oauthState, googleRedirectUri(request)));
 }

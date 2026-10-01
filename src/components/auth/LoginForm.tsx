@@ -21,18 +21,19 @@ const NOTICES: Record<string, string> = {
   email_exists: "That email already has an account with a password. Sign in with your password below.",
   disabled: "This account has been disabled.",
 };
+const SUCCESS: Record<string, string> = { password_reset: "Your password has been changed. Sign in with the new one." };
 
-export function LoginForm({ google, notice }: { google: boolean; notice?: string }) {
+export function LoginForm({ google, notice, success, join = false }: { google: boolean; notice?: string; success?: string; join?: boolean }) {
   const [state, action, pending] = useActionState(loginAction, null);
   const message = state?.error ?? (notice ? NOTICES[notice] : undefined);
   return (
     <AuthCard
-      title="Sign in"
-      subtitle="Welcome back. Enter your details to continue."
+      title={join ? "Sign in to join" : "Sign in"}
+      subtitle={join ? "Sign in, and we'll take you straight to the Winter Arc." : "Welcome back. Enter your details to continue."}
       footer={
         <>
           Don&apos;t have an account?{" "}
-          <Link href="/register" className="font-semibold text-brand hover:underline">
+          <Link href={join ? "/register?join=arc" : "/register"} className="font-semibold text-brand hover:underline">
             Create one
           </Link>
         </>
@@ -41,13 +42,20 @@ export function LoginForm({ google, notice }: { google: boolean; notice?: string
       <Alert kind="error" shakeKey={state ?? notice}>
         {message}
       </Alert>
-      {google && <GoogleButton label="Continue with Google" />}
+      <Alert kind="success">{!message && success ? SUCCESS[success] : undefined}</Alert>
+      {google && <GoogleButton label="Continue with Google" join={join} />}
       <form action={action} className="space-y-4">
+        {join && <input type="hidden" name="join" value="arc" />}
         <label className="block">
           <span className={label}>Email or username</span>
           <input name="identifier" className={input} placeholder="you@example.com" autoComplete="username" defaultValue={state?.fields?.identifier} required autoFocus />
         </label>
-        <PasswordField name="password" label="Password" placeholder="Your password" autoComplete="current-password" />
+        <div>
+          <PasswordField name="password" label="Password" placeholder="Your password" autoComplete="current-password" />
+          <Link href="/forgot" className="mt-2 inline-block text-xs font-semibold text-brand hover:underline">
+            Forgot password?
+          </Link>
+        </div>
         <SubmitButton pending={pending} pendingLabel="Signing in…">
           Sign In
         </SubmitButton>

@@ -35,6 +35,7 @@ export function VerifyForm({ email, devCode }: { email: string; devCode: string 
     startResend(async () => {
       const result = await resendOtpAction();
       if (result?.message) setNotice({ kind: "success", text: result.message, id: Date.now() });
+      else if (result?.error) setNotice({ kind: "error", text: result.error, id: Date.now() });
     });
   }
 
@@ -51,7 +52,7 @@ export function VerifyForm({ email, devCode }: { email: string; devCode: string 
   }
 
   return (
-    <AuthCard title="Verify your email" subtitle={`Confirm the account for ${email}.`}>
+    <AuthCard title="Verify your email" subtitle={devCode ? `Confirm the account for ${email}.` : `We sent a 6-digit code to ${email}. Enter it below.`}>
       <Link href="/register" className="mb-5 inline-block text-[13px] font-medium text-muted hover:text-brand">
         ← Change sign-up details
       </Link>
@@ -106,9 +107,9 @@ export function VerifyForm({ email, devCode }: { email: string; devCode: string 
       </form>
 
       <p className="mt-6 text-center text-[13px] text-muted">
-        Didn&apos;t receive it?{" "}
+        {devCode ? "Didn't receive it?" : "Nothing in your inbox? Check spam, or"}{" "}
         <button type="button" disabled={resending} onClick={resend} className="font-semibold text-brand underline disabled:opacity-60">
-          {resending ? "Generating…" : "Regenerate code"}
+          {resending ? "Sending…" : devCode ? "Regenerate code" : "send a new code"}
         </button>
       </p>
     </AuthCard>

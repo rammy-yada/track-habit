@@ -112,6 +112,25 @@ export function Landing() {
           <DemoCard />
         </section>
 
+        <section aria-label="Winter Arc" className="relative mx-auto max-w-6xl px-5 pb-16 sm:px-10">
+          <Reveal>
+            <Link href="/winter-arc" className="group relative block overflow-hidden rounded-3xl bg-[#050505] px-6 py-9 text-white sm:px-12 sm:py-12">
+              <span aria-hidden className="aurora absolute -right-20 -top-24 h-64 w-96 rounded-full bg-white/25 blur-[70px]" />
+              <span aria-hidden className="grain pointer-events-none absolute inset-0 opacity-60" />
+              <span className="relative flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+                <span>
+                  <span className="block text-[11px] font-semibold uppercase tracking-[0.3em] text-white/60">Oct 1 – Jan 31</span>
+                  <span className="mt-2 block font-[family-name:var(--font-poster)] text-6xl leading-[0.9] tracking-[-0.03em] sm:text-7xl">WINTER ARC</span>
+                  <span className="mt-4 block max-w-md text-sm leading-relaxed text-white/65">123 days. A few habits, every day, with everyone on one leaderboard. Finish the year stronger than you started it.</span>
+                </span>
+                <span className="inline-flex shrink-0 items-center gap-2 self-start rounded-xl bg-white px-6 py-3.5 text-sm font-bold uppercase tracking-[0.14em] text-black transition-transform group-hover:translate-x-1 sm:self-auto">
+                  Join the arc <span aria-hidden>→</span>
+                </span>
+              </span>
+            </Link>
+          </Reveal>
+        </section>
+
         <section aria-label="Features" className="relative border-t border-line bg-card/60">
           <div className="mx-auto grid max-w-6xl gap-4 px-5 py-14 sm:px-10 md:grid-cols-3">
             <Feature title="Daily" label="Automatic reset" body="Your checklist starts fresh at midnight in your own timezone." delay={0}>

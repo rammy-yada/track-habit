@@ -11,22 +11,40 @@ const poster = "font-[family-name:var(--font-poster)]";
 /** Lets the "Replay intro" button on the arc screen start it again. */
 export const replayArcIntro = () => window.dispatchEvent(new Event(REPLAY_EVENT));
 
-// What is on screen, in order. Each beat lasts until the next one starts.
+// The scene, beat by beat — staged like the opening of a game.
 const BEATS = [
-  { at: 0, name: "before" }, //     a slouched, faded figure: "who you were"
-  { at: 1700, name: "ignite" }, //  flash, shockwave — the figure changes
-  { at: 3500, name: "title" }, //   WINTER ARC · BECOME BETTER
-  { at: 5600, name: "done" },
+  { at: 0, name: "before" }, //     LEVEL 01: a tired figure, stats nearly empty
+  { at: 2300, name: "ignite" }, //  LEVEL UP: flash, shockwave, the figure changes, stats fill
+  { at: 4700, name: "title" }, //   NEW QUEST: WINTER ARC — press start
+  { at: 11000, name: "done" }, //   (starts by itself if nobody presses)
 ] as const;
 type Beat = (typeof BEATS)[number]["name"];
 
+const STATS = [
+  { label: "Discipline", low: 12 },
+  { label: "Strength", low: 18 },
+  { label: "Focus", low: 9 },
+];
+
+type Props = {
+  firstName: string;
+  /** Pictures uploaded in Admin → Winter Arc. Where one is missing, a built-in drawing is used. */
+  images?: { before: string | null; after: string | null };
+  /** Length of the season in days (shown as the level reached and on the title card). */
+  totalDays?: number;
+  /** Called when the scene ends, however it ends. */
+  onDone?: () => void;
+  /** false: never start by itself, only when asked to (the join flow starts it at the right moment). */
+  auto?: boolean;
+};
+
 /**
- * A short opening scene, played the first time someone opens the Winter Arc:
- * a tired silhouette is hit by a burst of energy and stands up strong.
- * Tap anywhere (or Skip) to end it. People who ask their device for reduced
- * motion never see it.
+ * The Winter Arc's opening scene, played the first time someone opens it: a
+ * tired character levels up into a strong one, then a "new quest" title card.
+ * Tap Skip (or press Escape) to end it. People who ask their device for
+ * reduced motion never see it.
  */
-export function ArcIntro({ firstName }: { firstName: string }) {
+export function ArcIntro({ firstName, images, totalDays = 123, onDone, auto = true }: Props) {
   const [playing, setPlaying] = useState(false);
   const [beat, setBeat] = useState<Beat>("before");
 
@@ -35,7 +53,8 @@ export function ArcIntro({ firstName }: { firstName: string }) {
       localStorage.setItem(SEEN_KEY, "1");
     } catch {}
     setPlaying(false);
-  }, []);
+    onDone?.();
+  }, [onDone]);
 
   useEffect(() => {
     const start = () => {
@@ -46,20 +65,25 @@ export function ArcIntro({ firstName }: { firstName: string }) {
     try {
       seen = localStorage.getItem(SEEN_KEY) === "1";
     } catch {}
-    if (!seen && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) start();
-    window.addEventListener(REPLAY_EVENT, start);
-    return () => window.removeEventListener(REPLAY_EVENT, start);
-  }, []);
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (auto && !seen && !reduced) start();
+    // asked to play, but this person prefers no motion: skip straight to the end
+    const onReplay = () => (reduced ? finish() : start());
+    window.addEventListener(REPLAY_EVENT, onReplay);
+    return () => window.removeEventListener(REPLAY_EVENT, onReplay);
+  }, [auto, finish]);
 
   useEffect(() => {
     if (!playing) return;
     const timers = BEATS.map(({ at, name }) => setTimeout(() => (name === "done" ? finish() : setBeat(name)), at));
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && finish();
+    const onKey = (e: KeyboardEvent) => (e.key === "Escape" || (e.key === "Enter" && beat === "title")) && finish();
     window.addEventListener("keydown", onKey);
     return () => {
       timers.forEach(clearTimeout);
       window.removeEventListener("keydown", onKey);
     };
+    // the timers are set once per play, not once per beat
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playing, finish]);
 
   if (typeof document === "undefined") return null;
@@ -71,8 +95,7 @@ export function ArcIntro({ firstName }: { firstName: string }) {
         <motion.div
           role="dialog"
           aria-label="Winter Arc intro"
-          onClick={finish}
-          className="fixed inset-0 z-[70] cursor-pointer overflow-hidden bg-black text-white grayscale"
+          className="fixed inset-0 z-[70] overflow-hidden bg-black font-mono text-white grayscale"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           // the scene lifts away like a curtain, uncovering the arc screen
@@ -92,9 +115,28 @@ export function ArcIntro({ firstName }: { firstName: string }) {
             ))}
           </span>
 
+          {/* ── HUD: player and level, top left ── */}
+          <div className="absolute left-4 top-4 text-[10px] uppercase tracking-[0.2em] sm:left-6 sm:top-6">
+            <div className="text-white/50">Player</div>
+            <div className="text-sm font-bold tracking-[0.14em]">{firstName}</div>
+            <div className="mt-2 flex items-center gap-2 text-white/50">
+              Level
+              <span className="relative inline-block h-5 w-10 overflow-hidden text-sm font-bold text-white">
+                <AnimatePresence mode="popLayout" initial={false}>
+                  <motion.span key={strong ? "max" : "one"} className="absolute inset-0" initial={{ y: 18, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -18, opacity: 0 }}>
+                    {strong ? totalDays : "01"}
+                  </motion.span>
+                </AnimatePresence>
+              </span>
+            </div>
+          </div>
+          <button type="button" onClick={finish} className="absolute right-4 top-4 z-10 rounded-full border border-white/30 px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/80 hover:bg-white/10 sm:right-6 sm:top-6">
+            Skip
+          </button>
+
+          {/* ── the character ── */}
           <div className="absolute inset-0 grid place-items-center">
-            <div className="relative h-[min(62vh,500px)] w-[min(80vw,320px)] translate-y-[9vh]">
-              {/* energy: a shockwave ring and rays, behind the figure */}
+            <div className="relative h-[min(52vh,440px)] w-[min(76vw,300px)]">
               <AnimatePresence>
                 {strong && (
                   <motion.span key="energy" aria-hidden className="absolute inset-0 grid place-items-center" exit={{ opacity: 0 }}>
@@ -113,11 +155,11 @@ export function ArcIntro({ firstName }: { firstName: string }) {
               <AnimatePresence mode="popLayout">
                 {!strong ? (
                   <motion.div key="before" className="absolute inset-0" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.92, filter: "blur(10px)" }} transition={{ duration: 0.6 }}>
-                    <Figure strong={false} />
+                    <Figure strong={false} src={images?.before ?? null} />
                   </motion.div>
                 ) : (
-                  <motion.div key="after" className="absolute inset-0" initial={{ opacity: 0, scale: 0.8, y: 26 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 170, damping: 13, delay: 0.12 }}>
-                    <Figure strong />
+                  <motion.div key="after" className="absolute inset-0" initial={{ opacity: 0, scale: 0.8, y: 26 }} animate={{ opacity: 1, scale: 1, y: [0, -6, 0] }} transition={{ opacity: { delay: 0.12 }, scale: { type: "spring", stiffness: 170, damping: 13, delay: 0.12 }, y: { duration: 3.2, repeat: Infinity, ease: "easeInOut", delay: 1 } }}>
+                    <Figure strong src={images?.after ?? null} />
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -127,17 +169,20 @@ export function ArcIntro({ firstName }: { firstName: string }) {
           {/* the flash at the moment of change */}
           {beat === "ignite" && <motion.span aria-hidden className="absolute inset-0 bg-white" initial={{ opacity: 0.95 }} animate={{ opacity: 0 }} transition={{ duration: 0.55, ease: "easeOut" }} />}
 
-          {/* captions */}
-          <div className="absolute inset-x-0 top-[7vh] px-6 text-center">
+          {/* ── captions, top centre ── */}
+          <div className="absolute inset-x-0 top-[13vh] px-6 text-center">
             <AnimatePresence mode="wait">
-              {beat === "before" && <Caption key="a" small="October 1" big="WHO YOU WERE" />}
-              {beat === "ignite" && <Caption key="b" small="92 days" big="WHO YOU BECOME" />}
+              {beat === "before" && <Caption key="a" small="Day 0" big="WHO YOU WERE" />}
+              {beat === "ignite" && <Caption key="b" small="Level up" big="WHO YOU BECOME" />}
               {beat === "title" && (
                 <motion.div key="c" exit={{ opacity: 0 }}>
-                  <h2 className={`${poster} text-[clamp(3.2rem,15vw,5.6rem)] leading-[0.86] tracking-[-0.03em]`} aria-label="Winter Arc">
+                  <motion.p className="text-[10px] font-semibold uppercase tracking-[0.34em] text-white/60" initial={{ opacity: 0 }} animate={{ opacity: [0, 1, 0.4, 1] }} transition={{ duration: 0.6 }}>
+                    New quest unlocked
+                  </motion.p>
+                  <h2 className={`${poster} mt-2 text-[clamp(3rem,14vw,5.2rem)] leading-[0.86] tracking-[-0.03em]`} aria-label="Winter Arc">
                     {["WINTER", "ARC"].map((word, line) => (
                       <span key={word} aria-hidden className="block overflow-hidden">
-                        <motion.span className="block" initial={{ y: "105%" }} animate={{ y: 0 }} transition={{ delay: line * 0.14, duration: 0.6, ease: [0.2, 0.8, 0.2, 1] }}>
+                        <motion.span className="block" initial={{ y: "105%" }} animate={{ y: 0 }} transition={{ delay: 0.15 + line * 0.14, duration: 0.6, ease: [0.2, 0.8, 0.2, 1] }}>
                           {word}
                         </motion.span>
                       </span>
@@ -148,18 +193,35 @@ export function ArcIntro({ firstName }: { firstName: string }) {
             </AnimatePresence>
           </div>
 
-          <AnimatePresence>
-            {beat === "title" && (
-              <motion.p key="line" className="absolute inset-x-0 bottom-[5vh] px-6 text-center text-xs font-semibold uppercase tracking-[0.34em] text-white/85" initial={{ opacity: 0, letterSpacing: "0.8em" }} animate={{ opacity: 1, letterSpacing: "0.34em" }} transition={{ delay: 0.5, duration: 0.9 }}>
-                Become better, {firstName}
-              </motion.p>
-            )}
-          </AnimatePresence>
+          {/* ── bottom: stat bars, then the start button ── */}
+          <div className="absolute inset-x-0 bottom-[5vh] mx-auto w-[min(86vw,340px)]">
+            <AnimatePresence mode="wait">
+              {beat !== "title" ? (
+                <motion.div key="stats" className="space-y-2" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}>
+                  {STATS.map((stat, i) => (
+                    <div key={stat.label} className="flex items-center gap-3 text-[10px] uppercase tracking-[0.18em]">
+                      <span className="w-[5.5rem] text-white/60">{stat.label}</span>
+                      <span className="h-2 flex-1 border border-white/40 p-px">
+                        <motion.span className="block h-full bg-white" initial={{ width: 0 }} animate={{ width: `${strong ? 100 : stat.low}%` }} transition={strong ? { duration: 0.9, delay: 0.25 + i * 0.18, ease: "easeOut" } : { duration: 0.6, delay: 0.3 + i * 0.12 }} />
+                      </span>
+                      <span className="w-8 text-right tabular-nums">{strong ? "MAX" : stat.low}</span>
+                    </div>
+                  ))}
+                </motion.div>
+              ) : (
+                <motion.div key="start" className="text-center" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }}>
+                  <p className="mb-4 text-[11px] uppercase tracking-[0.3em] text-white/75">{totalDays} days · Become better, {firstName}</p>
+                  <motion.button type="button" onClick={finish} autoFocus className="w-full border-2 border-white bg-white py-3.5 text-sm font-bold uppercase tracking-[0.3em] text-black" animate={{ opacity: [1, 0.55, 1] }} transition={{ duration: 1.2, repeat: Infinity }} whileTap={{ scale: 0.96 }}>
+                    ▶ Press start
+                  </motion.button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
+          {/* scanlines and grain: an old screen */}
+          <span aria-hidden className="pointer-events-none absolute inset-0 bg-[repeating-linear-gradient(0deg,transparent_0,transparent_2px,rgba(0,0,0,0.28)_3px)]" />
           <span aria-hidden className="grain pointer-events-none absolute inset-0 opacity-80" />
-          <button type="button" onClick={finish} className="absolute right-4 top-4 rounded-full border border-white/30 px-3.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/80 hover:bg-white/10">
-            Skip
-          </button>
         </motion.div>
       )}
     </AnimatePresence>,
@@ -177,11 +239,15 @@ function Caption({ small, big }: { small: string; big: string }) {
 }
 
 /**
- * Two original silhouettes in an anime style: the same person before and
- * after. Before: narrow, slumped, faded. After: broad shoulders, tapered
- * waist, fists closed, lit from behind.
+ * The character. If an admin has uploaded a picture for this slot it is shown
+ * (a PNG with a transparent background works best); otherwise one of two
+ * built-in silhouettes: narrow and slumped before, broad and upright after.
  */
-function Figure({ strong }: { strong: boolean }) {
+function Figure({ strong, src }: { strong: boolean; src: string | null }) {
+  if (src) {
+    // eslint-disable-next-line @next/next/no-img-element -- an uploaded WebP served by our own route
+    return <img src={src} alt="" className={`h-full w-full object-contain object-bottom ${strong ? "drop-shadow-[0_0_28px_rgba(255,255,255,0.55)]" : "opacity-70"}`} />;
+  }
   if (!strong) {
     return (
       <svg viewBox="0 0 200 330" className="h-full w-full" aria-hidden>

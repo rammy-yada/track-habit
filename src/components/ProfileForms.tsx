@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { AppControls } from "@/components/AppStatus";
 import { InstallButton } from "@/components/InstallButton";
+import { NotificationToggle } from "@/components/NotificationToggle";
 import { Alert } from "@/components/ui/Alert";
 import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
 import { Modal } from "@/components/ui/Modal";
@@ -19,7 +20,7 @@ import { AVATAR_COLORS, CREATOR, TIMEZONES } from "@/lib/constants";
 import { clearOfflineData } from "@/lib/offline";
 
 type Props = {
-  user: { id: number; fullName: string; username: string; email: string; color: string; timezone: string; memberSince: string; google: boolean; photo: number; admin: boolean };
+  user: { id: number; fullName: string; username: string; email: string; color: string; timezone: string; memberSince: string; google: boolean; photo: number; admin: boolean; emailLang: string; reminders: boolean; pushKey: string | null };
   stats: { habits: number; checkins: number };
 };
 
@@ -148,7 +149,7 @@ export function ProfileForms({ user, stats }: Props) {
               <span className={label}>Full name</span>
               <input name="full_name" className={input} defaultValue={user.fullName} required minLength={2} maxLength={100} />
             </label>
-            <fieldset>
+            <fieldset data-true-color>
               <legend className={label}>Avatar colour {user.photo > 0 && <span className="font-normal">(shown if you remove your photo)</span>}</legend>
               <div className="flex flex-wrap gap-3">
                 {palette.map((c) => (
@@ -170,6 +171,28 @@ export function ProfileForms({ user, stats }: Props) {
               </select>
               {!user.admin && <span className="mt-1.5 block text-[11px] text-muted">Habits reset at midnight in your timezone.</span>}
             </label>
+            <fieldset className="space-y-3 border-t border-line pt-5">
+              <legend className="sr-only">Email</legend>
+              <label className="block">
+                <span className={label}>Email language</span>
+                <select name="email_lang" className={input} defaultValue={user.emailLang}>
+                  <option value="">Automatic (नेपाली in Nepal, English elsewhere)</option>
+                  <option value="ne">नेपाली</option>
+                  <option value="en">English</option>
+                </select>
+              </label>
+              {user.admin ? (
+                <input type="hidden" name="email_reminders" value={user.reminders ? "on" : ""} />
+              ) : (
+                <label className="flex cursor-pointer items-start gap-3">
+                  <input type="checkbox" name="email_reminders" defaultChecked={user.reminders} className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--brand-solid)]" />
+                  <span className="text-[13px] leading-snug">
+                    <span className="font-semibold text-ink">Winter Arc reminder emails</span>
+                    <span className="block text-muted">One email at 7 PM your time, only on days you still have habits open and only if you&apos;ve joined the arc.</span>
+                  </span>
+                </label>
+              )}
+            </fieldset>
             <SubmitButton pending={profilePending} pendingLabel="Saving…">
               Save changes
             </SubmitButton>
@@ -186,7 +209,7 @@ export function ProfileForms({ user, stats }: Props) {
           {user.google && <p className="text-[13px] leading-relaxed text-muted">You sign in with Google, so this account has no password of its own. There is nothing to change here.</p>}
           <form action={passwordAction} className="space-y-5" hidden={user.google}>
             <PasswordField name="current_password" label="Current password" placeholder="Your current password" autoComplete="current-password" />
-            <PasswordField name="new_password" label="New password" placeholder="At least 6 characters" autoComplete="new-password" />
+            <PasswordField name="new_password" label="New password" placeholder="At least 8 characters" minLength={8} autoComplete="new-password" />
             <PasswordField name="confirm_password" label="Confirm new password" placeholder="Repeat new password" autoComplete="new-password" />
             <SubmitButton pending={passwordPending} pendingLabel="Updating…">
               Update password
@@ -202,6 +225,7 @@ export function ProfileForms({ user, stats }: Props) {
             <p className="text-[13px] leading-relaxed text-muted">{user.admin ? "Install HabitFlow on this device for one-tap access to the admin area." : "Install HabitFlow on your phone. It works offline: ticks made without a connection are kept on the device and synced when you're back online."}</p>
           </div>
           <InstallButton />
+          {!user.admin && <NotificationToggle publicKey={user.pushKey} />}
           <AppControls />
         </section>
       </Reveal>

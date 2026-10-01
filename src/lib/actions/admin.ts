@@ -8,7 +8,7 @@ import { arcSeason } from "../arc";
 import { execute, isDuplicateError, queryOne } from "../db";
 import { todayIn } from "../dates";
 import { clean } from "../text";
-import { toId } from "../validation";
+import { passwordProblem, toId } from "../validation";
 
 // Every action here starts with requireAdmin(): the buttons being hidden from
 // normal users is not what protects these — this check is.
@@ -32,7 +32,8 @@ export async function addUserAction(_prev: AdminFormState, formData: FormData): 
   if (fullName.length < 2) errors.push("Full name too short.");
   if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) errors.push("Invalid username.");
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push("Invalid email.");
-  if (password.length < 6 || password.length > 72) errors.push("Password must be 6-72 characters.");
+  const weak = passwordProblem(password);
+  if (weak) errors.push(weak);
   if (errors.length) return { error: errors.join(" ") };
 
   if (await queryOne("SELECT id FROM users WHERE LOWER(email) = LOWER(?) OR LOWER(username) = LOWER(?)", [email, username])) {
@@ -85,9 +86,15 @@ export async function resetUserPassword(userIdInput: number): Promise<{ ok: true
   const userId = toId(userIdInput);
   if (!userId) return INVALID;
   if (userId === admin.id) return { ok: false, error: "Change your own password from Account." };
-  const password = randomBytes(8).toString("base64url");
-  const changed = await execute("UPDATE users SET password = ? WHERE id = ?", [await bcrypt.hash(password, 12), userId]);
-  if (!changed.rowCount) return { ok: false, error: "User not found." };
+  const target = await queryOne<{ google_id: string | null; email: string; username: string }>("SELECT google_id, email, username FROM users WHERE id = ?", [userId]);
+  if (!target) return { ok: false, error: "User not found." };
+  // a Google account has no password to reset, and must not be given one
+  if (target.google_id) return { ok: false, error: "This account signs in with Google — it has no password." };
+  const password = randomBytes(9).toString("base64url");
+  // the new hash also signs that person out everywhere (see passwordStamp)
+  await execute("UPDATE users SET password = ? WHERE id = ?", [await bcrypt.hash(password, 12), userId]);
+  await execute("UPDATE password_resets SET used = 1 WHERE user_id = ?", [userId]); // emailed links for the old password die too
+  await execute("DELETE FROM rate_limits WHERE key IN (?, ?)", [`login:${target.email.toLowerCase()}`, `login:${target.username.toLowerCase()}`]); // lift any sign-in pause
   return { ok: true, password };
 }
 

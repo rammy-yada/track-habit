@@ -5,6 +5,7 @@ import { ArcScreen } from "@/components/arc/ArcScreen";
 import { WorkoutPicker } from "@/components/arc/WorkoutPicker";
 import { getArc } from "@/lib/arc";
 import { requireUser } from "@/lib/auth";
+import { getIntroImages } from "@/lib/intro";
 import { query } from "@/lib/db";
 import { decodeEntities } from "@/lib/text";
 
@@ -12,10 +13,10 @@ export const metadata: Metadata = { title: "Winter Arc" };
 
 export default async function ArcPage() {
   const user = await requireUser();
-  const [arc, habits] = await Promise.all([getArc(user), query<{ name: string }>("SELECT name FROM habits WHERE user_id = ? AND is_active = 1", [user.id])]);
+  const [arc, habits, images] = await Promise.all([getArc(user), query<{ name: string }>("SELECT name FROM habits WHERE user_id = ? AND is_active = 1", [user.id]), getIntroImages()]);
   return (
     <>
-      <ArcIntro firstName={user.full_name.split(" ")[0]} />
+      {arc.me && <ArcIntro firstName={user.full_name.split(" ")[0]} images={images} totalDays={arc.season.totalDays} />}
       <PageHeader title="Winter Arc">
         <span className="text-[13px] font-medium text-muted">{arc.season.live ? `Day ${arc.season.day} of ${arc.season.totalDays}` : `Starts in ${arc.season.startsIn} days`}</span>
       </PageHeader>

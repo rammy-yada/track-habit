@@ -4,6 +4,7 @@ import { ProfileForms } from "@/components/ProfileForms";
 import { requireUser } from "@/lib/auth";
 import { getProfileStats } from "@/lib/data";
 import { formatTimestamp } from "@/lib/dates";
+import { pushPublicKey } from "@/lib/push";
 
 export const metadata: Metadata = { title: "Profile" };
 
@@ -26,6 +27,9 @@ export default async function ProfilePage() {
           memberSince: formatTimestamp(user.created_at, user.timezone),
           google: Boolean(user.google_id),
           photo: user.avatar_version,
+          emailLang: user.email_lang ?? "",
+          reminders: user.email_reminders !== 0,
+          pushKey: pushPublicKey(),
           admin: false,
         }}
       />

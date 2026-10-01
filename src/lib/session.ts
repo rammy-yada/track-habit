@@ -5,6 +5,8 @@ import { getIronSession, type IronSession } from "iron-session";
 // What PHP kept in $_SESSION now lives in one encrypted, tamper-proof cookie.
 export type SessionData = {
   userId?: number;
+  /** Fingerprint of the password this sign-in was made with (see passwordStamp in auth.ts). */
+  pw?: string;
   /** A registration waiting on its verification code. */
   pendingReg?: {
     username: string;
@@ -19,6 +21,8 @@ export type SessionData = {
   /** "Sign in with Google" in progress: the value Google must echo back. */
   oauthState?: string;
   oauthTimezone?: string;
+  /** Came from the Winter Arc page: after signing in or up, continue to the join steps. */
+  joinArc?: boolean;
 };
 
 export const SESSION_LIFETIME = 60 * 60 * 24; // 24 hours

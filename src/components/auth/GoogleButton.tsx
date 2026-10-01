@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 
 /** A plain link to /auth/google. It adds the browser's timezone so a new account starts with the right "today". */
-export function GoogleButton({ label }: { label: string }) {
-  const [href, setHref] = useState("/auth/google");
-  useEffect(() => setHref(`/auth/google?tz=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}`), []);
+export function GoogleButton({ label, join = false }: { label: string; join?: boolean }) {
+  const tail = join ? "&join=arc" : "";
+  const [href, setHref] = useState(`/auth/google?tz=UTC${tail}`);
+  useEffect(() => setHref(`/auth/google?tz=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}${tail}`), [tail]);
 
   return (
     <>

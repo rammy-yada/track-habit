@@ -1,0 +1,36 @@
+# Sends HabitFlow's reminders: habit notifications at each habit's set time,
+# the morning quote, and the Winter Arc evening nudge (notification + email).
+#
+# Runs every 15 minutes and calls the site, which works out who is due what on
+# their own clock. (GitHub runs this for free; Vercel's free plan only allows a
+# scheduled job once a day, which can't follow people's timezones. GitHub may
+# start a run a few minutes late — the site allows for that.)
+#
+# One-time setup, in the GitHub repository:
+#   Settings → Secrets and variables → Actions → New repository secret
+#     SITE_URL     e.g. https://your-site.vercel.app   (no trailing slash)
+#     CRON_SECRET  the same value as CRON_SECRET in the site's environment variables
+name: Reminders
+
+on:
+  schedule:
+    - cron: "*/15 * * * *" # every 15 minutes
+  workflow_dispatch: # also lets you press "Run workflow" by hand
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ask the site to send due reminders
+        env:
+          SITE_URL: ${{ secrets.SITE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$SITE_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "SITE_URL / CRON_SECRET are not set as repository secrets yet — nothing to do."
+            exit 0
+          fi
+          curl --fail --silent --show-error --max-time 90 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$SITE_URL/api/cron/reminders"

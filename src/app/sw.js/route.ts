@@ -45,6 +45,33 @@ self.addEventListener("message", (event) => {
   if (message.type === "SAVE_PAGES") event.waitUntil(savePages(message.pages || []));
 });
 
+// A push arrives (possibly while the app is closed): show it.
+self.addEventListener("push", (event) => {
+  let message = {};
+  try { message = event.data ? event.data.json() : {}; } catch (_) {}
+  event.waitUntil(
+    self.registration.showNotification(message.title || "HabitFlow", {
+      body: message.body || "",
+      icon: "/icons/icon-192.png",
+      badge: "/icons/icon-192.png",
+      tag: message.tag || "habitflow", // a newer one of the same kind replaces the older
+      data: { url: message.url || "/dashboard" },
+    }),
+  );
+});
+
+// Tapping a notification brings the app forward (or opens it) on the right screen.
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = new URL((event.notification.data && event.notification.data.url) || "/dashboard", self.location.origin).href;
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((windows) => {
+      for (const client of windows) if ("focus" in client) return client.navigate(target).then((c) => (c || client).focus());
+      return self.clients.openWindow(target);
+    }),
+  );
+});
+
 const isAsset = (url) => url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/icons/") || /\.(png|svg|ico|woff2?)$/.test(url.pathname);
 
 self.addEventListener("fetch", (event) => {

@@ -9,11 +9,12 @@ import { btnSmall, card, eyebrow } from "@/components/ui/styles";
 import { removeArcMember } from "@/lib/actions/admin";
 import type { getAdminArc } from "@/lib/admin-data";
 import { whenOnline } from "@/lib/offline";
+import { IntroImages } from "./IntroImages";
 
 type Data = Awaited<ReturnType<typeof getAdminArc>>;
 type Member = Data["members"][number];
 
-export function AdminArc({ data, joined }: { data: Data; joined: Record<number, string> }) {
+export function AdminArc({ data, joined, images, adminName }: { data: Data; joined: Record<number, string>; images: { before: string | null; after: string | null }; adminName: string }) {
   const { season, members } = data;
   const [removing, setRemoving] = useState<Member | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -50,6 +51,9 @@ export function AdminArc({ data, joined }: { data: Data; joined: Record<number, 
           ))}
         </div>
 
+        <IntroImages images={images} adminName={adminName} totalDays={season.totalDays} />
+
+        <h2 className="pt-2 font-display text-lg font-bold tracking-tight">Leaderboard</h2>
         <p className="max-w-2xl text-sm text-muted">
           {season.range}. This is the same ranking members see. Removing someone takes them off this year&apos;s leaderboard — their habits and check-ins are untouched, and they can join again.
         </p>

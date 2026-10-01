@@ -15,8 +15,8 @@ import { GoogleButton } from "./GoogleButton";
 
 function strength(password: string): number {
   let score = 0;
-  if (password.length >= 6) score++;
-  if (password.length >= 10) score++;
+  if (password.length >= 8) score++;
+  if (password.length >= 12) score++;
   if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
   if (/\d/.test(password) && /[^a-zA-Z0-9]/.test(password)) score++;
   return score;
@@ -25,7 +25,7 @@ function strength(password: string): number {
 const STRENGTH_LABEL = ["Too short", "Okay", "Good", "Strong", "Excellent"];
 const STRENGTH_COLOR = ["var(--bad)", "var(--warn)", "var(--warn)", "var(--good)", "var(--good)"];
 
-export function RegisterForm({ google }: { google: boolean }) {
+export function RegisterForm({ google, join = false }: { google: boolean; join?: boolean }) {
   const [state, action, pending] = useActionState(registerAction, null);
   const [password, setPassword] = useState("");
   const [timezone, setTimezone] = useState("UTC");
@@ -42,12 +42,12 @@ export function RegisterForm({ google }: { google: boolean }) {
 
   return (
     <AuthCard
-      title="Create account"
-      subtitle="Start tracking your habits today."
+      title={join ? "Join the Winter Arc" : "Create account"}
+      subtitle={join ? "First, an account. Then you'll choose your habits." : "Start tracking your habits today."}
       footer={
         <>
           Already have an account?{" "}
-          <Link href="/login" className="font-semibold text-brand hover:underline">
+          <Link href={join ? "/login?join=arc" : "/login"} className="font-semibold text-brand hover:underline">
             Sign in
           </Link>
         </>
@@ -56,8 +56,9 @@ export function RegisterForm({ google }: { google: boolean }) {
       <Alert kind="error" shakeKey={state}>
         {state?.error}
       </Alert>
-      {google && <GoogleButton label="Sign up with Google" />}
+      {google && <GoogleButton label="Sign up with Google" join={join} />}
       <form action={action} className="space-y-4">
+        {join && <input type="hidden" name="join" value="arc" />}
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block">
             <span className={label}>Full name</span>
@@ -73,7 +74,7 @@ export function RegisterForm({ google }: { google: boolean }) {
           <input type="email" name="email" className={input} placeholder="you@example.com" defaultValue={state?.fields?.email} required maxLength={100} />
         </label>
         <div>
-          <PasswordField name="password" label="Password" placeholder="At least 6 characters" autoComplete="new-password" onChange={setPassword} />
+          <PasswordField name="password" label="Password" placeholder="At least 8 characters" minLength={8} autoComplete="new-password" onChange={setPassword} />
           <div className="mt-2 flex items-center gap-2.5" aria-live="polite">
             <div className="h-1 flex-1 overflow-hidden rounded-full bg-raised">
               <motion.div className="h-full rounded-full" animate={{ width: password ? `${Math.max(12, score * 25)}%` : "0%", backgroundColor: STRENGTH_COLOR[score] }} transition={{ type: "spring", stiffness: 200, damping: 24 }} />

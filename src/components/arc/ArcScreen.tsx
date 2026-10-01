@@ -1,11 +1,14 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
 import { AppControls } from "@/components/AppStatus";
 import { replayArcIntro } from "./ArcIntro";
+import { ShareAchievement } from "./ShareAchievement";
 import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
-import { joinArc, leaveArc } from "@/lib/actions/arc";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { leaveArc } from "@/lib/actions/arc";
 import type { getArc } from "@/lib/arc";
 import { whenOnline } from "@/lib/offline";
 import { UserAvatar } from "@/components/ui/UserAvatar";
@@ -34,6 +37,7 @@ export function ArcScreen({ arc }: { arc: Arc }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [showRules, setShowRules] = useState(false);
+  const [leaving, setLeaving] = useState(false);
 
   const run = (action: () => Promise<{ ok: true } | { ok: false; error: string }>) =>
     startTransition(async () => {
@@ -150,21 +154,16 @@ export function ArcScreen({ arc }: { arc: Arc }) {
                     <motion.div className="h-full rounded-full bg-black" initial={{ width: 0 }} animate={{ width: `${(me.today / me.dailyMax) * 100}%` }} transition={{ type: "spring", stiffness: 70, damping: 16, delay: 0.3 }} />
                   </div>
                 </div>
+                <ShareAchievement stats={{ day: season.day, totalDays: season.totalDays, points: me.points, streak: me.streak, rank: me.rank }} />
               </motion.div>
             ) : (
               <motion.div key="join" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="rounded-2xl border border-white/15 p-5 text-center">
                 <p className={`${poster} text-xl tracking-[0.1em]`}>NOT IN THE ARC YET</p>
-                <p className="mx-auto mt-2 max-w-[17rem] text-xs leading-relaxed text-white/60">Every habit you tick earns points. Joining shows your first name, last initial and username on this leaderboard.</p>
-                <motion.button
-                  type="button"
-                  disabled={pending}
-                  onClick={() => run(joinArc)}
-                  whileTap={{ scale: 0.95 }}
-                  className="relative mt-4 w-full overflow-hidden rounded-xl bg-white py-3 text-sm font-bold uppercase tracking-[0.14em] text-black disabled:opacity-70"
-                >
+                <p className="mx-auto mt-2 max-w-[17rem] text-xs leading-relaxed text-white/60">Choose your habits, start the arc, and earn points for every one you tick.</p>
+                <Link href="/arc/start" className="relative mt-4 block w-full overflow-hidden rounded-xl bg-white py-3 text-sm font-bold uppercase tracking-[0.14em] text-black">
                   <span aria-hidden className="shine absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-black/15 to-transparent" />
-                  <span className="relative">{pending ? "Joining…" : "Join the Winter Arc"}</span>
-                </motion.button>
+                  <span className="relative">Join the Winter Arc</span>
+                </Link>
               </motion.div>
             )}
           </AnimatePresence>
@@ -232,7 +231,7 @@ export function ArcScreen({ arc }: { arc: Arc }) {
                     <li>• Ties go to whoever has more active days, then whoever joined first.</li>
                   </ul>
                   {me && (
-                    <button type="button" disabled={pending} onClick={() => run(leaveArc)} className="w-full px-4 pb-3 text-left text-xs font-medium text-white/45 underline-offset-2 hover:text-white/80 hover:underline">
+                    <button type="button" disabled={pending} onClick={() => setLeaving(true)} className="w-full px-4 pb-3 text-left text-xs font-medium text-white/45 underline-offset-2 hover:text-white/80 hover:underline">
                       Leave the arc and remove me from the leaderboard
                     </button>
                   )}
@@ -250,6 +249,14 @@ export function ArcScreen({ arc }: { arc: Arc }) {
           </div>
         </footer>
       </div>
+      <ConfirmDialog
+        open={leaving}
+        title="Leave the Winter Arc?"
+        body="You'll be taken off the leaderboard and the Winter Arc look is removed from your account. Your habits and check-ins stay. You can join again later."
+        confirmLabel="Leave the arc"
+        onConfirm={() => run(leaveArc)}
+        onClose={() => setLeaving(false)}
+      />
     </div>
   );
 }
@@ -298,7 +305,7 @@ function Avatar({ entry, size, ring = false }: { entry: Entry; size: number; rin
  * A hooded knight, head bowed, both hands resting on a sword planted in the
  * ground. Drawn here as plain shapes: a silhouette with a few lighter edges.
  */
-function Knight() {
+export function Knight() {
   return (
     <motion.svg
       aria-hidden
@@ -372,7 +379,7 @@ function Knight() {
  * the pale sky and pale against the dark ground. Positions are fixed, not
  * random, so server and browser render the same thing.
  */
-function Snow() {
+export function Snow() {
   return (
     <span aria-hidden className="pointer-events-none absolute inset-0 mix-blend-difference">
       {Array.from({ length: 26 }, (_, i) => (

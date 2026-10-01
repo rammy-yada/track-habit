@@ -17,6 +17,7 @@ export async function setHabitDone(user: User, habitIdInput: unknown, done: bool
   const latest = todayIn("Pacific/Kiritimati");
   if (!habitId || !isDateString(dateInput)) return { ok: false, error: "Invalid request." };
   if (dateInput > latest) return { ok: false, error: "Cannot log future dates." };
+  if (dateInput < "2000-01-01") return { ok: false, error: "Invalid request." };
   if (!(await queryOne("SELECT id FROM habits WHERE id = ? AND user_id = ? AND is_active = 1", [habitId, user.id]))) {
     return { ok: false, error: "Habit not found." };
   }

@@ -1,4 +1,5 @@
 import "server-only";
+import { createHash } from "node:crypto";
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { queryOne } from "./db";
@@ -19,7 +20,17 @@ export type User = {
   last_login: string | null;
   google_id: string | null;
   avatar_version: number;
+  email_lang: string | null;
+  email_reminders: number;
 };
+
+/**
+ * A short fingerprint of the stored password hash, kept in the session cookie.
+ * When the password changes (by the owner, a reset link, or an admin) the
+ * fingerprint no longer matches, so every device signed in with the old
+ * password is signed out — including one a stranger may be using.
+ */
+export const passwordStamp = (passwordHash: string) => createHash("sha256").update(passwordHash).digest("base64url").slice(0, 16);
 
 /**
  * The signed-in user, re-read from the database on every request (cached for
@@ -31,7 +42,7 @@ export const currentUser = cache(async (): Promise<User | null> => {
   const session = await getSession();
   if (!session.userId) return null;
   const user = await queryOne<User>("SELECT * FROM users WHERE id = ? AND is_active = 1", [session.userId]);
-  if (!user) return null;
+  if (!user || session.pw !== passwordStamp(user.password)) return null;
   return { ...user, full_name: decodeEntities(user.full_name), timezone: user.timezone || "UTC" };
 });
 

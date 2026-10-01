@@ -1,8 +1,10 @@
 import { Suspense } from "react";
 import { MobileBars, Sidebar } from "@/components/AppNav";
 import { AppStatus } from "@/components/AppStatus";
+import { ArcTheme } from "@/components/ArcTheme";
 import { WelcomeGuide } from "@/components/guide/WelcomeGuide";
 import { redirect } from "next/navigation";
+import { isArcMember } from "@/lib/arc";
 import { requireUser } from "@/lib/auth";
 
 // Everything under (app) requires a signed-in user. The check runs on the
@@ -20,6 +22,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         {children}
       </div>
       <AppStatus userId={user.id} />
+      <ArcTheme member={await isArcMember(user)} />
       {/* Suspense: the guide reads the URL's query string */}
       <Suspense>
         <WelcomeGuide firstName={user.full_name.split(" ")[0]} timezone={user.timezone} />

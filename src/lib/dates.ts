@@ -47,7 +47,11 @@ export function daysInMonth(year: number, month: number): number {
 }
 
 export function isDateString(value: unknown): value is string {
-  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(toUTC(value).getTime());
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  // must be a day that exists: "2026-02-31" has the right shape but JS rolls it
+  // over to March, and the database would refuse it
+  const date = toUTC(value);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }
 
 /** "07:30:00" → "7:30 AM" */

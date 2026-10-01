@@ -9,7 +9,8 @@
     "db:setup": "node scripts/setup-db.mjs",
     "db:setup:live": "node scripts/setup-live.mjs",
     "db:local": "node scripts/local-db.mjs",
-    "admin": "node scripts/make-admin.mjs"
+    "admin": "node scripts/make-admin.mjs",
+    "push:keys": "node scripts/push-keys.mjs"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -20,7 +21,8 @@
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "server-only": "^0.0.1",
-    "sharp": "^0.35.5"
+    "sharp": "^0.35.5",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
@@ -28,6 +30,7 @@
     "@types/pg": "^8.23.1",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@types/web-push": "^3.6.4",
     "embedded-postgres": "^18.4.0-beta.17",
     "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2"

@@ -52,6 +52,26 @@ const UPGRADES = `
   CREATE TABLE IF NOT EXISTS avatars (
     user_id INT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, image BYTEA NOT NULL, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   );
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS email_lang VARCHAR(5);
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS email_reminders SMALLINT NOT NULL DEFAULT 1;
+  CREATE TABLE IF NOT EXISTS password_resets (
+    id SERIAL PRIMARY KEY, user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE, token_hash CHAR(64) NOT NULL UNIQUE,
+    expires_at TIMESTAMP NOT NULL, used SMALLINT NOT NULL DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE IF NOT EXISTS email_log (
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE, kind VARCHAR(20) NOT NULL, day DATE NOT NULL, PRIMARY KEY (user_id, kind, day)
+  );
+  CREATE TABLE IF NOT EXISTS site_images (
+    slot VARCHAR(20) PRIMARY KEY, image BYTEA NOT NULL, version INT NOT NULL DEFAULT 1, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE IF NOT EXISTS push_subscriptions (
+    id SERIAL PRIMARY KEY, user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE, endpoint TEXT NOT NULL UNIQUE,
+    p256dh TEXT NOT NULL, auth TEXT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE IF NOT EXISTS rate_limits (
+    id BIGSERIAL PRIMARY KEY, key VARCHAR(160) NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE INDEX IF NOT EXISTS rate_limits_key ON rate_limits (key, created_at);
   INSERT INTO categories (name, icon)
     SELECT * FROM (VALUES ('Health','🧘'), ('Productivity','🎯'), ('Learning','📚'), ('Finance','💰'), ('Social','🤝'), ('Routine','⏰')) AS d(name, icon)
     WHERE NOT EXISTS (SELECT 1 FROM categories);
@@ -59,7 +79,7 @@ const UPGRADES = `
 
 function upToDate(): Promise<void> {
   globalForDb.habitflowMigrated ??= (async () => {
-    const check = await pool().query("SELECT to_regclass('public.avatars') IS NOT NULL AS ok"); // the newest addition
+    const check = await pool().query("SELECT to_regclass('public.rate_limits') IS NOT NULL AS ok"); // the newest addition
     if (!check.rows[0].ok) await pool().query(UPGRADES);
   })().catch((err) => {
     globalForDb.habitflowMigrated = undefined; // try again on the next request

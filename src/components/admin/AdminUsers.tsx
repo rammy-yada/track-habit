@@ -23,6 +23,8 @@ export function AdminUsers({ users, selfId, search, dates }: Props) {
   const [adding, setAdding] = useState(false);
   const [deleting, setDeleting] = useState<AdminUserRow | null>(null);
   const [resetting, setResetting] = useState<AdminUserRow | null>(null);
+  // changes that take effect at once and are easy to tap by mistake: asked about first
+  const [asking, setAsking] = useState<{ title: string; body: string; label: string; task: () => Promise<{ ok: true } | { ok: false; error: string }> } | null>(null);
   const [newPassword, setNewPassword] = useState<{ user: AdminUserRow; password: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [shown, setShown] = useState(PAGE);
@@ -48,6 +50,7 @@ export function AdminUsers({ users, selfId, search, dates }: Props) {
   const closeAdd = useCallback(() => setAdding(false), []);
   const closeDelete = useCallback(() => setDeleting(null), []);
   const closeReset = useCallback(() => setResetting(null), []);
+  const closeAsking = useCallback(() => setAsking(null), []);
   const closeNew = useCallback(() => setNewPassword(null), []);
 
   return (
@@ -130,7 +133,14 @@ export function AdminUsers({ users, selfId, search, dates }: Props) {
                     <div className="mt-3.5 flex flex-wrap items-center gap-2 border-t border-line pt-3.5">
                       <label className="flex items-center gap-2 text-xs font-medium text-muted">
                         Role
-                        <select aria-label={`Role for ${u.full_name}`} value={u.role} disabled={busy} onChange={(e) => run(() => changeRole(u.id, e.target.value))} className="rounded-lg border border-line bg-card px-2.5 py-1.5 text-xs font-semibold text-ink">
+                        <select aria-label={`Role for ${u.full_name}`} value={u.role} disabled={busy} onChange={(e) => {
+                            const role = e.target.value;
+                            setAsking(
+                              role === "admin"
+                                ? { title: "Make this person an administrator?", body: `${u.full_name} will be able to see every account, reset passwords, delete users and change the site. Their habit tracker is replaced by the admin area.`, label: "Make administrator", task: () => changeRole(u.id, role) }
+                                : { title: "Remove administrator access?", body: `${u.full_name} will go back to being an ordinary member and lose access to the admin area straight away.`, label: "Remove access", task: () => changeRole(u.id, role) },
+                            );
+                          }} className="rounded-lg border border-line bg-card px-2.5 py-1.5 text-xs font-semibold text-ink">
                           <option value="user">Member</option>
                           <option value="admin">Admin</option>
                         </select>
@@ -142,11 +152,11 @@ export function AdminUsers({ users, selfId, search, dates }: Props) {
                         </button>
                       )}
                       {u.avatar_version > 0 && (
-                        <button type="button" className={btnSmall} disabled={busy} onClick={() => run(() => removeUserPhoto(u.id))}>
+                        <button type="button" className={btnSmall} disabled={busy} onClick={() => setAsking({ title: "Remove this photo?", body: `${u.full_name}'s profile photo will be deleted. They can upload another one.`, label: "Remove photo", task: () => removeUserPhoto(u.id) })}>
                           Remove photo
                         </button>
                       )}
-                      <button type="button" className={btnSmall} disabled={busy} onClick={() => run(() => toggleUser(u.id))}>
+                      <button type="button" className={btnSmall} disabled={busy} onClick={() => (u.is_active ? setAsking({ title: "Disable this account?", body: `${u.full_name} will be signed out everywhere and won't be able to sign in until you enable the account again. Nothing is deleted.`, label: "Disable account", task: () => toggleUser(u.id) }) : run(() => toggleUser(u.id)))}>
                         {u.is_active ? "Disable" : "Enable"}
                       </button>
                       <button type="button" className={`${btnSmall} hover:!border-bad hover:!text-bad`} disabled={busy} onClick={() => setDeleting(u)}>
@@ -180,10 +190,11 @@ export function AdminUsers({ users, selfId, search, dates }: Props) {
         onConfirm={() => deleting && run(() => deleteUser(deleting.id))}
         onClose={closeDelete}
       />
+      <ConfirmDialog open={asking !== null} title={asking?.title ?? ""} body={asking?.body ?? ""} confirmLabel={asking?.label ?? "Confirm"} onConfirm={() => asking && run(asking.task)} onClose={closeAsking} />
       <ConfirmDialog
         open={resetting !== null}
         title="Reset this password?"
-        body={`${resetting?.full_name ?? ""}'s current password will stop working. You'll be shown a new one to pass on to them.`}
+        body={`${resetting?.full_name ?? ""}'s current password will stop working and they will be signed out on every device. You'll be shown a new one to pass on to them.`}
         confirmLabel="Reset password"
         onConfirm={() => resetting && reset(resetting)}
         onClose={closeReset}
@@ -230,7 +241,7 @@ function AddUserForm({ onDone }: { onDone: () => void }) {
         <span className={label}>Email address</span>
         <input type="email" name="email" className={input} placeholder="user@example.com" required />
       </label>
-      <PasswordField name="password" label="Initial password" placeholder="Minimum 6 characters" autoComplete="new-password" />
+      <PasswordField name="password" label="Initial password" placeholder="Minimum 8 characters" minLength={8} autoComplete="new-password" />
       <label className="block">
         <span className={label}>Account type</span>
         <select name="role" className={input} defaultValue="user">

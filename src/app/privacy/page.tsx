@@ -42,6 +42,27 @@ export default function PrivacyPage() {
       </section>
 
       <section>
+        <h2>Email</h2>
+        <p>
+          We use your email address to send a verification code when you sign up, a link when you ask to reset your password, and — only if you have joined the Winter Arc — one reminder on days you still have habits open. Every reminder has a link that turns them off, and you can also switch them off in Profile. We send no marketing email. Messages are delivered through an email service that processes them only to deliver them.
+        </p>
+      </section>
+
+      <section>
+        <h2>Notifications</h2>
+        <p>
+          If you turn notifications on, your browser gives us an address for that device at its push service (Google, Apple or Mozilla). We store it and use it only to send your habit reminders, a morning quote and the Winter Arc evening reminder. Turning notifications off, or signing out of the site in your browser settings, removes it.
+        </p>
+      </section>
+
+      <section>
+        <h2>Sharing</h2>
+        <p>
+          &ldquo;Share my progress&rdquo; makes a picture of your own Winter Arc numbers and passes it to the app you choose on your device. Nothing is posted anywhere unless you post it yourself.
+        </p>
+      </section>
+
+      <section>
         <h2>Who can see what</h2>
         <ul>
           <li>
@@ -90,7 +111,7 @@ export default function PrivacyPage() {
 
       <section>
         <h2>Security</h2>
-        <p>Passwords are hashed, the connection to the site and to the database is encrypted, and every page and action checks who is signed in before showing or changing anything. No system is perfectly secure; please use a password you don&apos;t use elsewhere.</p>
+        <p>Passwords are hashed, the connection to the site and to the database is encrypted, and every page and action checks who is signed in before showing or changing anything. Repeated wrong passwords pause sign-in for a while, and changing your password signs out every other device. No system is perfectly secure; please use a password you don&apos;t use elsewhere.</p>
       </section>
 
       <section>

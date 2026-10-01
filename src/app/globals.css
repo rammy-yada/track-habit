@@ -126,6 +126,11 @@ body {
 html[data-theme="arc"] {
   filter: grayscale(1) contrast(1.05);
 }
+/* …except on a screen where someone is choosing a colour: grey swatches
+   would be impossible to tell apart, so real colours come back there. */
+html[data-theme="arc"]:has([data-true-color]) {
+  filter: none;
+}
 /* a fixed sheet of film grain; it ignores the pointer, so everything stays clickable */
 html[data-theme="arc"]::after {
   content: "";

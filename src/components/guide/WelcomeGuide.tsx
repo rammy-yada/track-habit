@@ -45,8 +45,9 @@ export function WelcomeGuide({ firstName, timezone }: Props) {
   }, []);
 
   useEffect(() => {
+    if (pathname.startsWith("/arc/start")) return; // mid-way through joining the arc: don't interrupt
     if (justSignedUp || !guideSeen()) setOpen(true);
-  }, [justSignedUp]);
+  }, [justSignedUp, pathname]);
 
   const close = useCallback(() => {
     markGuideSeen();
