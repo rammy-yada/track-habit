@@ -24,7 +24,7 @@ export function PasswordField({ name, label, placeholder, autoComplete, minLengt
           type="button"
           onClick={() => setShown((s) => !s)}
           aria-label={shown ? "Hide password" : "Show password"}
-          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted hover:bg-raised hover:text-ink"
+          className="absolute right-1.5 top-1/2 grid h-8 min-w-12 -translate-y-1/2 place-items-center rounded-md px-2 text-[11px] font-semibold uppercase tracking-wide text-muted hover:bg-raised hover:text-ink"
         >
           {shown ? "Hide" : "Show"}
         </button>

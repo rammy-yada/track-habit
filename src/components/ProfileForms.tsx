@@ -23,6 +23,7 @@ import { TimezoneOptions } from "@/components/TimezoneOptions";
 import { AVATAR_COLORS, CREATOR } from "@/lib/constants";
 import { clearOfflineData } from "@/lib/offline";
 import { openGuide } from "@/lib/pwa";
+import { shrinkImage } from "@/lib/shrink";
 
 type Props = {
   user: { id: number; fullName: string; username: string; email: string; color: string; timezone: string; memberSince: string; google: boolean; photo: number; admin: boolean; emailLang: string; reminders: boolean; pushKey: string | null; prefs?: Prefs; arcMember?: boolean; details?: Details };
@@ -30,25 +31,6 @@ type Props = {
   /** The member's Winter Arc badges, if there are any to show. */
   badges?: React.ReactNode;
 };
-
-/**
- * Shrinks a photo in the browser before it is uploaded, so a 6 MB camera
- * picture goes up as a few dozen KB. (The server converts it to a 256px WebP
- * regardless — this step only saves the person's data and time.)
- */
-async function shrink(file: File): Promise<Blob> {
-  const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" }).catch(() => null);
-  if (!bitmap) return file; // a format this browser can't decode: let the server try
-  const scale = Math.min(1, 640 / Math.max(bitmap.width, bitmap.height));
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.round(bitmap.width * scale);
-  canvas.height = Math.round(bitmap.height * scale);
-  canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  const encode = (type: string, quality: number) => new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, quality));
-  const webp = await encode("image/webp", 0.86);
-  // Safari can't write WebP from a canvas and quietly returns PNG; use JPEG there
-  return (webp?.type === "image/webp" ? webp : await encode("image/jpeg", 0.88)) ?? file;
-}
 
 export function ProfileForms({ user, stats, badges }: Props) {
   const router = useRouter();
@@ -82,7 +64,7 @@ export function ProfileForms({ user, stats, badges }: Props) {
     event.target.value = ""; // so picking the same file again still fires
     if (!file) return;
     if (!file.type.startsWith("image/")) return setPhotoError("Please choose an image file.");
-    const blob = await shrink(file);
+    const blob = await shrinkImage(file, 640);
     await photoRequest({ method: "POST", body: blob, headers: { "Content-Type": blob.type || "application/octet-stream" } });
   }
 

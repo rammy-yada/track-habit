@@ -192,7 +192,7 @@ function PackCard({ pack, busy, run, onEdit, onDelete, onRemoveHabit }: { pack: 
           <li key={habit.id} className="flex items-center gap-2 rounded-lg bg-raised px-3 py-2 text-sm">
             <span aria-hidden>{habit.icon}</span>
             <span className="min-w-0 flex-1 truncate font-medium">{habit.name}</span>
-            <button type="button" className="rounded-md px-1.5 text-muted hover:text-bad" disabled={busy} onClick={() => onRemoveHabit(habit)} aria-label={`Remove ${habit.name}`}>
+            <button type="button" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-muted hover:bg-bad-soft hover:text-bad" disabled={busy} onClick={() => onRemoveHabit(habit)} aria-label={`Remove ${habit.name}`}>
               ✕
             </button>
           </li>
@@ -236,7 +236,7 @@ function PackCard({ pack, busy, run, onEdit, onDelete, onRemoveHabit }: { pack: 
       {suggesting && !full && (
         <div className="mt-3 flex flex-wrap gap-1.5">
           {suggestions.map((s) => (
-            <button key={s.name} type="button" disabled={busy} onClick={() => run(() => addPackHabit(pack.id, s.name, s.icon))} className="rounded-full border border-line px-2.5 py-1 text-xs font-medium text-muted hover:border-brand hover:text-brand">
+            <button key={s.name} type="button" disabled={busy} onClick={() => run(() => addPackHabit(pack.id, s.name, s.icon))} className="rounded-full border border-line px-3 py-1.5 text-xs font-medium text-muted hover:border-brand hover:text-brand">
               {s.icon} {s.name}
             </button>
           ))}

@@ -154,14 +154,14 @@ export function MonthlyGrid({ data }: { data: Data }) {
                                 aria-pressed={isDone}
                                 aria-label={`${habit.name}, ${d.weekday} ${d.day}: ${isDone ? "done" : "not done"}`}
                                 style={{ ["--d" as string]: row + col }}
-                                className={`cell-in grid h-5 w-5 place-items-center rounded-[5px] text-[10px] font-bold transition-colors ${popped === key ? "cell-pop" : ""} ${
+                                className={`cell-in grid h-6 w-6 place-items-center rounded-[6px] text-[11px] font-bold transition-colors ${popped === key ? "cell-pop" : ""} ${
                                   isDone ? "bg-good-soft text-good hover:brightness-95" : "bg-raised text-muted hover:bg-good-soft hover:text-good"
                                 }`}
                               >
                                 {isDone ? "✓" : "·"}
                               </button>
                             ) : (
-                              <span style={{ ["--d" as string]: row + col }} className="cell-in mx-auto block h-5 w-5 rounded-[5px] border border-dashed border-line" />
+                              <span style={{ ["--d" as string]: row + col }} className="cell-in mx-auto block h-6 w-6 rounded-[6px] border border-dashed border-line" />
                             )}
                           </td>
                         );

@@ -86,7 +86,7 @@ export function AdminOverview({ data, joined, status }: { data: Data; joined: Re
             <section className={`${card} h-full p-5`}>
               <div className="mb-4 flex items-baseline justify-between">
                 <h2 className="text-sm font-bold">Newest members</h2>
-                <Link href="/sigmadev/users" className="text-xs font-semibold text-brand hover:underline">
+                <Link href="/sigmadev/users" className="-my-1.5 py-1.5 text-xs font-semibold text-brand hover:underline">
                   All users →
                 </Link>
               </div>
@@ -130,7 +130,7 @@ export function AdminOverview({ data, joined, status }: { data: Data; joined: Re
                   </div>
                 ))}
               </dl>
-              <a href="/api/health" target="_blank" rel="noreferrer" className="mt-4 inline-block text-xs font-semibold text-brand hover:underline">
+              <a href="/api/health" target="_blank" rel="noreferrer" className="mt-2.5 inline-block py-1.5 text-xs font-semibold text-brand hover:underline">
                 Open status check ↗
               </a>
             </section>

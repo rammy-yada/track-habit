@@ -415,7 +415,7 @@ export function HabitBoard({ data }: { data: Awaited<ReturnType<typeof getDashbo
               <section className={`${card} p-5`}>
                 <div className="mb-3 flex items-baseline justify-between gap-3">
                   <h2 className="text-sm font-bold">{data.monthLabel}</h2>
-                  <Link href="/monthly" className="text-xs font-semibold text-brand hover:underline">
+                  <Link href="/monthly" className="-my-1.5 py-1.5 text-xs font-semibold text-brand hover:underline">
                     Open monthly view →
                   </Link>
                 </div>

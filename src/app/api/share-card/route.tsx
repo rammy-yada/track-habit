@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
   const user = await currentUser();
   if (!user) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   if (request.nextUrl.searchParams.get("kind") === "quote") return quoteCard(user);
-  const arc = await getArc(user);
+  const [arc, photo] = await Promise.all([getArc(user), avatarPng(user.id)]);
   const me = arc.me;
   const name = user.full_name.split(" ")[0].toUpperCase();
   const stats = me
@@ -43,7 +43,13 @@ export async function GET(request: NextRequest) {
         </div>
 
         <div style={{ display: "flex", flexDirection: "column" }}>
-          <div style={{ fontSize: 34, letterSpacing: 10, color: "#bdbdbd" }}>{name}</div>
+          <div style={{ display: "flex", alignItems: "center" }}>
+            {photo && (
+              // eslint-disable-next-line @next/next/no-img-element -- drawn into the generated picture
+              <img src={photo} width={72} height={72} alt="" style={{ borderRadius: 36, border: "3px solid #fff", marginRight: 22 }} />
+            )}
+            <div style={{ display: "flex", fontSize: 34, letterSpacing: 10, color: "#bdbdbd" }}>{name}</div>
+          </div>
           <div style={{ display: "flex", alignItems: "baseline", marginTop: 8 }}>
             <div style={{ fontSize: 250, fontWeight: 800, lineHeight: 1 }}>{arc.season.live ? `DAY ${arc.season.day}` : "DAY 0"}</div>
             <div style={{ fontSize: 60, color: "#8a8a8a", marginLeft: 24 }}>{`/ ${arc.season.totalDays}`}</div>
@@ -76,16 +82,21 @@ export async function GET(request: NextRequest) {
   );
 }
 
+/**
+ * The member's profile photo, ready to draw onto a share picture (null: they
+ * have none). The stored photo is WebP, which the picture renderer can't
+ * read, so it is handed a small black-and-white PNG instead.
+ */
+async function avatarPng(userId: number): Promise<string | null> {
+  const avatar = await queryOne<{ image: Buffer }>("SELECT image FROM avatars WHERE user_id = ?", [userId]);
+  return avatar ? `data:image/png;base64,${(await sharp(avatar.image).resize(220, 220).grayscale().png().toBuffer()).toString("base64")}` : null;
+}
+
 /** The picture for the Quote tab: the member's own line, signed with their name and photo. */
 async function quoteCard(user: User) {
   const season = arcSeason(todayIn(user.timezone));
-  const [member, avatar] = await Promise.all([
-    queryOne<{ quote: string }>("SELECT quote FROM winter_arc_members WHERE user_id = ? AND season = ?", [user.id, season.year]),
-    queryOne<{ image: Buffer }>("SELECT image FROM avatars WHERE user_id = ?", [user.id]),
-  ]);
+  const [member, photo] = await Promise.all([queryOne<{ quote: string }>("SELECT quote FROM winter_arc_members WHERE user_id = ? AND season = ?", [user.id, season.year]), avatarPng(user.id)]);
   const quote = member?.quote || "Small steps. Every day. All winter.";
-  // the stored photo is WebP, which the picture renderer can't read: hand it a PNG
-  const photo = avatar ? `data:image/png;base64,${(await sharp(avatar.image).resize(220, 220).grayscale().png().toBuffer()).toString("base64")}` : null;
   // longer lines get smaller letters, so the quote always fits
   const size = quote.length > 110 ? 62 : quote.length > 70 ? 76 : quote.length > 40 ? 92 : 112;
 

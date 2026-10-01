@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { PostBody } from "@/components/blog/PostBody";
 import { PageHeader } from "@/components/PageHeader";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { UploadTile } from "@/components/ui/UploadTile";
 import { btnGhost, btnPrimary, btnSmall, card, input, label } from "@/components/ui/styles";
 import { deletePost, savePost } from "@/lib/actions/site-admin";
 import { parsePost, plainText, readingMinutes, SEO_DESCRIPTION_MAX, SEO_TITLE_MAX, slugify, wordCount } from "@/lib/blog-format";
@@ -45,7 +46,6 @@ export function PostEditor({ post, siteUrl }: { post: EditablePost; siteUrl: str
   const [uploading, setUploading] = useState(false);
   const [busy, startTransition] = useTransition();
   const area = useRef<HTMLTextAreaElement>(null);
-  const file = useRef<HTMLInputElement>(null);
 
   const set = <K extends keyof EditablePost>(key: K, value: EditablePost[K]) => setDraft((d) => ({ ...d, [key]: value }));
   const slug = slugTouched ? slugify(draft.slug) : slugify(draft.title);
@@ -215,14 +215,14 @@ export function PostEditor({ post, siteUrl }: { post: EditablePost; siteUrl: str
             <div className={`${card} overflow-hidden`}>
               <div className="flex flex-wrap items-center gap-1 border-b border-line bg-raised/60 p-2">
                 {TOOLS.map((tool) => (
-                  <button key={tool.key} type="button" title={tool.title} aria-label={tool.title} onClick={() => apply(tool.key)} disabled={view === "preview"} className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold text-muted hover:bg-card hover:text-ink disabled:opacity-40 ${"className" in tool ? tool.className : ""}`}>
+                  <button key={tool.key} type="button" title={tool.title} aria-label={tool.title} onClick={() => apply(tool.key)} disabled={view === "preview"} className={`grid h-9 min-w-9 place-items-center rounded-lg px-2.5 text-xs font-semibold text-muted hover:bg-card hover:text-ink disabled:opacity-40 ${"className" in tool ? tool.className : ""}`}>
                     {tool.label}
                   </button>
                 ))}
                 <span className="flex-1" />
                 <div className="flex rounded-lg border border-line p-0.5 xl:hidden" role="tablist" aria-label="Editor view">
                   {(["write", "preview"] as const).map((v) => (
-                    <button key={v} type="button" role="tab" aria-selected={view === v} onClick={() => setView(v)} className={`rounded-md px-3 py-1 text-xs font-semibold capitalize ${view === v ? "bg-brand-solid text-on-brand" : "text-muted"}`}>
+                    <button key={v} type="button" role="tab" aria-selected={view === v} onClick={() => setView(v)} className={`rounded-md px-3 py-2 text-xs font-semibold capitalize ${view === v ? "bg-brand-solid text-on-brand" : "text-muted"}`}>
                       {v}
                     </button>
                   ))}
@@ -256,38 +256,21 @@ export function PostEditor({ post, siteUrl }: { post: EditablePost; siteUrl: str
           <div className="min-w-0 space-y-4">
             <section className={`${card} p-4`} aria-label="Cover picture">
               <h2 className="text-sm font-bold">Cover picture</h2>
-              <div className="mt-3 grid aspect-[1200/630] place-items-center overflow-hidden rounded-xl bg-raised">
-                {draft.cover ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- an uploaded WebP served by our own route
-                  <img src={draft.cover} alt="Cover" className="h-full w-full object-cover" />
-                ) : (
-                  <span className="px-4 text-center text-xs text-muted">{draft.id === null ? "Save the post once, then add a picture." : "No picture yet. Without one, the site's own picture is used when the post is shared."}</span>
-                )}
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button type="button" className={btnSmall} disabled={draft.id === null || uploading} onClick={() => file.current?.click()}>
-                  {uploading ? "Uploading…" : draft.cover ? "Replace" : "Upload"}
-                </button>
-                {draft.cover && (
-                  <button type="button" className={btnSmall} disabled={uploading} onClick={() => sendCover({ method: "DELETE" })}>
-                    Remove
-                  </button>
-                )}
+              <div className="mt-3">
+                <UploadTile
+                  src={draft.cover}
+                  alt="Cover picture"
+                  emptyNote="Tap to choose a picture, or drop one here. Without one, the site's own picture is used when the post is shared."
+                  blocked={draft.id === null ? "Save the post once, then add a picture." : null}
+                  accept="image/png,image/webp,image/jpeg"
+                  busy={uploading}
+                  inputData={{ "data-cover-input": "" }}
+                  // made smaller here first: a phone photo is far bigger than a cover needs, and than one request may carry
+                  onPick={(chosen) => void shrinkImage(chosen, 1800).then((small) => sendCover({ method: "POST", body: small, headers: { "Content-Type": small.type || "application/octet-stream" } }))}
+                  onRemove={() => sendCover({ method: "DELETE" })}
+                />
               </div>
               <p className="mt-2 text-xs text-muted">Any JPG, PNG or WebP. It is cropped to 1200×630 and compressed to WebP for you. Only upload pictures you made or may use.</p>
-              <input
-                ref={file}
-                type="file"
-                accept="image/png,image/webp,image/jpeg"
-                hidden
-                data-cover-input
-                onChange={(e) => {
-                  const chosen = e.target.files?.[0];
-                  e.target.value = "";
-                  // made smaller here first: a phone photo is far bigger than a cover needs, and than one request may carry
-                  if (chosen) void shrinkImage(chosen, 1800).then((small) => sendCover({ method: "POST", body: small, headers: { "Content-Type": small.type || "application/octet-stream" } }));
-                }}
-              />
             </section>
 
             <section className={`${card} space-y-3.5 p-4`} aria-label="Search engines">

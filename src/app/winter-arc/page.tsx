@@ -87,7 +87,7 @@ export default async function WinterArcPage() {
               <span className="relative">{primary.label}</span>
             </Link>
             {!user && (
-              <Link href="/login?join=arc" className="text-sm font-semibold text-white/70 underline-offset-4 hover:text-white hover:underline">
+              <Link href="/login?join=arc" className="py-2 text-sm font-semibold text-white/70 underline-offset-4 hover:text-white hover:underline">
                 I already have an account
               </Link>
             )}

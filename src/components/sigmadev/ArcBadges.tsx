@@ -98,7 +98,7 @@ export function ArcBadges({ badges }: { badges: Row[] }) {
             <div className="flex flex-wrap gap-1.5 border-t border-line pt-3">
               <span className="py-1 text-xs text-muted">Suggestions:</span>
               {ideas.map((idea) => (
-                <button key={idea.name} type="button" disabled={busy} onClick={() => run(() => saveBadge(idea))} className="rounded-full border border-line px-2.5 py-1 text-xs font-medium text-muted hover:border-brand hover:text-brand">
+                <button key={idea.name} type="button" disabled={busy} onClick={() => run(() => saveBadge(idea))} className="rounded-full border border-line px-3 py-1.5 text-xs font-medium text-muted hover:border-brand hover:text-brand">
                   {idea.icon} {idea.name}
                 </button>
               ))}
@@ -123,7 +123,7 @@ export function ArcBadges({ badges }: { badges: Row[] }) {
                       <p className="text-xs text-muted">{badge.rule === "manual" ? `Given by hand · ${badge.holders} ${badge.holders === 1 ? "person has" : "people have"} it` : `Earned at ${badge.threshold.toLocaleString("en-US")} ${unit}`}</p>
                       {badge.description && <p className="mt-1 text-xs text-muted">{badge.description}</p>}
                     </div>
-                    <button type="button" className="rounded-md px-1.5 text-muted hover:text-bad" disabled={busy} onClick={() => setDeleting(badge)} aria-label={`Delete ${badge.name}`}>
+                    <button type="button" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-muted hover:bg-bad-soft hover:text-bad" disabled={busy} onClick={() => setDeleting(badge)} aria-label={`Delete ${badge.name}`}>
                       ✕
                     </button>
                   </div>
@@ -134,7 +134,7 @@ export function ArcBadges({ badges }: { badges: Row[] }) {
                           {badge.holderNames.map((username) => (
                             <li key={username} className="flex items-center gap-1 rounded-full bg-raised py-0.5 pl-2.5 pr-1 text-xs font-medium">
                               @{username}
-                              <button type="button" className="rounded-full px-1.5 text-muted hover:text-bad" disabled={busy} onClick={() => run(() => setBadgeHolder(badge.id, username, false))} aria-label={`Take ${badge.name} back from ${username}`}>
+                              <button type="button" className="grid h-7 w-7 place-items-center rounded-full text-muted hover:bg-bad-soft hover:text-bad" disabled={busy} onClick={() => run(() => setBadgeHolder(badge.id, username, false))} aria-label={`Take ${badge.name} back from ${username}`}>
                                 ✕
                               </button>
                             </li>

@@ -1,9 +1,10 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { replayArcIntro } from "@/components/arc/ArcIntro";
-import { btnGhost, btnSmall, card } from "@/components/ui/styles";
+import { UploadTile } from "@/components/ui/UploadTile";
+import { btnGhost, card } from "@/components/ui/styles";
 
 type Images = { before: string | null; after: string | null };
 
@@ -17,7 +18,6 @@ export function IntroImages({ images }: { images: Images }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const inputs = useRef<Record<string, HTMLInputElement | null>>({});
 
   async function send(slot: string, init: RequestInit) {
     setBusy(slot);
@@ -54,51 +54,27 @@ export function IntroImages({ images }: { images: Images }) {
       )}
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        {SLOTS.map(({ slot, title, hint }) => {
-          const src = images[slot];
-          return (
-            <div key={slot} className="rounded-xl border border-line p-3" data-slot={slot}>
-              <div className="grid h-44 place-items-center overflow-hidden rounded-lg bg-black">
-                {src ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- an uploaded WebP served by our own route
-                  <img src={src} alt={`${title} image`} className="h-full w-full object-contain grayscale" />
-                ) : (
-                  <span className="px-4 text-center text-xs text-white/50">Using the built-in drawing</span>
-                )}
-              </div>
-              <div className="mt-3 flex items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="text-sm font-semibold">{title}</div>
-                  <div className="truncate text-xs text-muted">{hint}</div>
-                </div>
-                <div className="flex shrink-0 gap-1.5">
-                  <button type="button" className={btnSmall} disabled={busy !== null} onClick={() => inputs.current[slot]?.click()}>
-                    {busy === slot ? "Uploading…" : src ? "Replace" : "Upload"}
-                  </button>
-                  {src && (
-                    <button type="button" className={btnSmall} disabled={busy !== null} onClick={() => send(slot, { method: "DELETE" })}>
-                      Remove
-                    </button>
-                  )}
-                </div>
-              </div>
-              <input
-                ref={(el) => {
-                  inputs.current[slot] = el;
-                }}
-                type="file"
-                accept="image/png,image/webp,image/jpeg"
-                hidden
-                data-intro-input={slot}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  e.target.value = "";
-                  if (file) void send(slot, { method: "POST", body: file, headers: { "Content-Type": file.type || "application/octet-stream" } });
-                }}
-              />
-            </div>
-          );
-        })}
+        {SLOTS.map(({ slot, title, hint }) => (
+          <div key={slot} className="rounded-xl border border-line p-3" data-slot={slot}>
+            <UploadTile
+              src={images[slot]}
+              alt={`${title} image`}
+              title={title}
+              note={hint}
+              emptyNote="Using the built-in drawing. Tap to choose a picture, or drop one here."
+              shape="tall"
+              fit="contain"
+              dark
+              imgClassName="grayscale"
+              accept="image/png,image/webp,image/jpeg"
+              busy={busy === slot}
+              blocked={busy !== null && busy !== slot ? "One at a time…" : null}
+              inputData={{ "data-intro-input": slot }}
+              onPick={(file) => void send(slot, { method: "POST", body: file, headers: { "Content-Type": file.type || "application/octet-stream" } })}
+              onRemove={() => send(slot, { method: "DELETE" })}
+            />
+          </div>
+        ))}
       </div>
     </section>
   );

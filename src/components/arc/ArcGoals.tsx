@@ -87,7 +87,7 @@ export function ArcGoals({ goals, endsOn, member }: { goals: Goal[]; endsOn: str
                 ✓
               </button>
               <span className={`min-w-0 flex-1 break-words text-sm font-medium ${goal.done ? "text-good line-through" : ""}`}>{goal.text}</span>
-              <button type="button" aria-label={`Remove goal: ${goal.text}`} disabled={goal.id < 0} onClick={() => run({ type: "remove", id: goal.id }, () => deleteArcGoal(goal.id))} className="rounded-md px-1.5 text-muted hover:text-bad">
+              <button type="button" aria-label={`Remove goal: ${goal.text}`} disabled={goal.id < 0} onClick={() => run({ type: "remove", id: goal.id }, () => deleteArcGoal(goal.id))} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-muted hover:bg-bad-soft hover:text-bad">
                 ✕
               </button>
             </motion.li>
@@ -113,7 +113,7 @@ export function ArcGoals({ goals, endsOn, member }: { goals: Goal[]; endsOn: str
             <div className="mt-3 flex flex-wrap gap-1.5">
               <span className="py-1 text-xs text-muted">Ideas:</span>
               {IDEAS.map((idea) => (
-                <button key={idea} type="button" onClick={() => add(idea)} className="rounded-full border border-line px-2.5 py-1 text-xs font-medium text-muted hover:border-brand hover:text-brand">
+                <button key={idea} type="button" onClick={() => add(idea)} className="rounded-full border border-line px-3 py-1.5 text-xs font-medium text-muted hover:border-brand hover:text-brand">
                   {idea}
                 </button>
               ))}

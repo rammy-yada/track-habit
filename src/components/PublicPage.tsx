@@ -26,9 +26,9 @@ export function SiteFooter() {
             .
           </p>
         </div>
-        <nav aria-label="Footer" className="flex flex-wrap gap-x-6 gap-y-2 text-[13px] font-medium">
+        <nav aria-label="Footer" className="flex flex-wrap gap-x-6 gap-y-1 text-[13px] font-medium">
           {[...LINKS, { href: "/privacy", label: "Privacy" }, { href: "/terms", label: "Terms" }].map((link) => (
-            <Link key={link.href} href={link.href} className="hover:text-ink hover:underline">
+            <Link key={link.href} href={link.href} className="-mx-1 px-1 py-1.5 hover:text-ink hover:underline">
               {link.label}
             </Link>
           ))}

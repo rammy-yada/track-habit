@@ -60,7 +60,7 @@ export function LoginForm({ google, notice, success, join = false }: { google: b
         </label>
         <div>
           <PasswordField name="password" label="Password" placeholder="Your password" autoComplete="current-password" />
-          <Link href="/forgot" className="mt-2 inline-block text-xs font-semibold text-brand hover:underline">
+          <Link href="/forgot" className="mt-1 inline-block py-1.5 text-xs font-semibold text-brand hover:underline">
             Forgot password?
           </Link>
         </div>

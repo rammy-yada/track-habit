@@ -92,7 +92,7 @@ export function ArcQuote({ member, saved, day, totalDays, live, photoVersion }: 
         <div className="mt-3 flex flex-wrap gap-1.5">
           <span className="py-1 text-xs text-muted">Ideas:</span>
           {QUOTE_IDEAS.map((idea) => (
-            <button key={idea} type="button" onClick={() => setText(idea)} className="rounded-full border border-line px-2.5 py-1 text-xs font-medium text-muted hover:border-brand hover:text-brand">
+            <button key={idea} type="button" onClick={() => setText(idea)} className="rounded-full border border-line px-3 py-1.5 text-xs font-medium text-muted hover:border-brand hover:text-brand">
               {idea}
             </button>
           ))}

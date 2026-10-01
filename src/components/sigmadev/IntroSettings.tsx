@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ArcIntro, replayArcIntro } from "@/components/arc/ArcIntro";
+import { UploadTile } from "@/components/ui/UploadTile";
 import { btnGhost, btnPrimary, btnSmall, card, input, label } from "@/components/ui/styles";
 import { saveArcSettingsAction } from "@/lib/actions/arc-admin";
 import { DEFAULT_SURPRISES, MAX_SURPRISES, MILESTONES, normalizeIntro, SHAKE_OPTIONS, SOUND_OPTIONS, TEXT_FIELDS, TEXT_PRESETS, type IntroText, type Shake, type Sound } from "@/lib/arc-config";
@@ -32,7 +33,6 @@ export function IntroSettings({ intro, surprises, images, adminName, totalDays }
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [uploading, setUploading] = useState(false);
   const [saving, startSaving] = useTransition();
-  const file = useRef<HTMLInputElement>(null);
 
   const surpriseList = lines.split("\n").map((line) => line.trim()).filter(Boolean);
   const live = { ...normalizeIntro({ shake, sound, text }), soundUrl: intro.soundUrl };
@@ -113,32 +113,23 @@ export function IntroSettings({ intro, surprises, images, adminName, totalDays }
               ))}
             </select>
           </label>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <button type="button" className={btnSmall} disabled={uploading} onClick={() => file.current?.click()}>
-              {uploading ? "Uploading…" : intro.soundUrl ? "Replace my sound" : "Upload my own sound"}
-            </button>
-            {intro.soundUrl && (
-              <>
-                <button type="button" className={btnSmall} disabled={uploading} onClick={() => sendSound({ method: "DELETE" })}>
-                  Remove
-                </button>
-                <audio src={intro.soundUrl} controls preload="none" className="h-8 max-w-[200px]" aria-label="Uploaded sound" />
-              </>
-            )}
+          <div className="mt-3">
+            <UploadTile
+              kind="sound"
+              shape="row"
+              src={null}
+              preview={intro.soundUrl ? <audio src={intro.soundUrl} controls preload="none" className="h-9 w-full max-w-[260px]" aria-label="Uploaded sound" /> : undefined}
+              alt="your own sound"
+              title={intro.soundUrl ? "Your sound" : "Your own sound"}
+              emptyNote=""
+              accept="audio/mpeg,audio/ogg,audio/wav,audio/mp4,audio/x-m4a,.mp3,.ogg,.wav,.m4a"
+              busy={uploading}
+              inputData={{ "data-sound-input": "" }}
+              onPick={(chosen) => void sendSound({ method: "POST", body: chosen, headers: { "Content-Type": chosen.type || "application/octet-stream" } })}
+              onRemove={() => sendSound({ method: "DELETE" })}
+            />
           </div>
           <p className="mt-1.5 text-xs text-muted">MP3, OGG, WAV or M4A, 2 MB at most; around 8 seconds fits the scene. Only upload sound you made or may use. Members can switch sound off in the intro, and a browser stays silent until the person has tapped the page once.</p>
-          <input
-            ref={file}
-            type="file"
-            accept="audio/mpeg,audio/ogg,audio/wav,audio/mp4,audio/x-m4a,.mp3,.ogg,.wav,.m4a"
-            hidden
-            data-sound-input
-            onChange={(e) => {
-              const chosen = e.target.files?.[0];
-              e.target.value = "";
-              if (chosen) void sendSound({ method: "POST", body: chosen, headers: { "Content-Type": chosen.type || "application/octet-stream" } });
-            }}
-          />
         </div>
       </div>
 
@@ -182,7 +173,7 @@ export function IntroSettings({ intro, surprises, images, adminName, totalDays }
         <p className="mt-1 text-xs leading-relaxed text-muted">
           When a member finishes every habit in their Winter Arc pack for the day, a gift opens with one of these messages — one per line, up to {MAX_SURPRISES}. Leave it empty to use the built-in ones. On milestone days ({MILESTONES.map((m) => m.days).join(", ")} perfect days) they get a badge instead.
         </p>
-        <textarea className={`${input} mt-2 min-h-[140px] font-mono text-[13px]`} name="surprises" value={lines} onChange={(e) => setLines(e.target.value)} placeholder={DEFAULT_SURPRISES.slice(0, 3).join("\n")} />
+        <textarea aria-label="Surprise messages, one per line" className={`${input} mt-2 min-h-[140px] font-mono text-[13px]`} name="surprises" value={lines} onChange={(e) => setLines(e.target.value)} placeholder={DEFAULT_SURPRISES.slice(0, 3).join("\n")} />
         <p className="mt-1 text-xs text-muted">{surpriseList.length ? `${Math.min(surpriseList.length, MAX_SURPRISES)} of your own` : `Using the ${DEFAULT_SURPRISES.length} built-in messages`}</p>
       </div>
 

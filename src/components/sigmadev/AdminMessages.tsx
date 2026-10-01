@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/PageHeader";
+import { UploadTile } from "@/components/ui/UploadTile";
 import { btnPrimary, btnSmall, card, input, label } from "@/components/ui/styles";
 import { saveMessagesAction } from "@/lib/actions/site-admin";
 import { whenOnline } from "@/lib/offline";
@@ -38,7 +39,6 @@ export function AdminMessages({ messages, icons, builtIn, ready, devices, people
   const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
   const [uploading, setUploading] = useState<string | null>(null);
   const [saving, startTransition] = useTransition();
-  const inputs = useRef<Record<string, HTMLInputElement | null>>({});
 
   function save() {
     setNote(null);
@@ -91,43 +91,29 @@ export function AdminMessages({ messages, icons, builtIn, ready, devices, people
           <h2 className="text-sm font-bold">Icons</h2>
           <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted">A square PNG works best (512×512 or larger). Only upload artwork you made or may use. An installed app's icon is fixed when it is installed: Android and computers pick up a new one within a day or so, an iPhone only when the app is re-added — so a website can't swap its home-screen icon day by day. The “come back” notification is where a different picture shows up straight away.</p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {ICONS.map((icon) => {
-              const custom = icons[icon.kind] > 0;
-              return (
-                <div key={icon.slot} className="flex items-center gap-4 rounded-xl border border-line p-3.5" data-icon-slot={icon.kind} data-true-color>
-                  {/* eslint-disable-next-line @next/next/no-img-element -- a small icon served by our own route */}
-                  <img src={`/app-icon/${icon.kind}?s=96&v=${icons[icon.kind]}`} alt="" width={64} height={64} className="h-16 w-16 shrink-0 rounded-2xl bg-raised" />
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-semibold">{icon.title}</div>
-                    <p className="text-xs leading-snug text-muted">{icon.note}</p>
-                    <div className="mt-2 flex gap-1.5">
-                      <button type="button" className={btnSmall} disabled={uploading !== null} onClick={() => inputs.current[icon.slot]?.click()}>
-                        {uploading === icon.slot ? "Uploading…" : custom ? "Replace" : "Upload my own"}
-                      </button>
-                      {custom && (
-                        <button type="button" className={btnSmall} disabled={uploading !== null} onClick={() => sendIcon(icon.slot, { method: "DELETE" })}>
-                          Use built-in
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  <input
-                    ref={(el) => {
-                      inputs.current[icon.slot] = el;
-                    }}
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    hidden
-                    data-icon-input={icon.kind}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      e.target.value = "";
-                      if (file) void sendIcon(icon.slot, { method: "POST", body: file, headers: { "Content-Type": file.type || "application/octet-stream" } });
-                    }}
-                  />
-                </div>
-              );
-            })}
+            {ICONS.map((icon) => (
+              <div key={icon.slot} className="rounded-xl border border-line p-3.5" data-icon-slot={icon.kind} data-true-color>
+                <UploadTile
+                  shape="row"
+                  src={`/app-icon/${icon.kind}?s=144&v=${icons[icon.kind]}`}
+                  alt={icon.title}
+                  title={icon.title}
+                  note={icon.note}
+                  emptyNote=""
+                  fit="cover"
+                  imgClassName="rounded-[14px]"
+                  accept="image/png,image/jpeg,image/webp"
+                  busy={uploading === icon.slot}
+                  blocked={uploading !== null && uploading !== icon.slot ? "One at a time…" : null}
+                  inputData={{ "data-icon-input": icon.kind }}
+                  onPick={(file) => void sendIcon(icon.slot, { method: "POST", body: file, headers: { "Content-Type": file.type || "application/octet-stream" } })}
+                  // "remove" here means going back to the built-in one, and only makes sense once one has been uploaded
+                  onRemove={icons[icon.kind] > 0 ? () => sendIcon(icon.slot, { method: "DELETE" }) : undefined}
+                  removeLabel="Use built-in"
+                  actionLabel={icons[icon.kind] > 0 ? "Replace" : "Upload my own"}
+                />
+              </div>
+            ))}
           </div>
         </section>
 
