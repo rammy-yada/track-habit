@@ -8,8 +8,6 @@ import { decodeEntities } from "./text";
 // Everything the admin area reads. Admin screens show accounts and totals —
 // never the contents of anyone's habits, notes or moods.
 
-const num = async (sql: string, params: (string | number)[] = []) => Number((await queryOne<{ n: number | string }>(sql, params))?.n ?? 0);
-
 function lastDays(rows: { day: string; n: number | string }[], today: string, days: number) {
   const byDay = new Map(rows.map((r) => [r.day, Number(r.n)]));
   return Array.from({ length: days }, (_, i) => {
@@ -21,25 +19,31 @@ function lastDays(rows: { day: string; n: number | string }[], today: string, da
 export async function getAdminOverview() {
   const today = (await queryOne<{ d: string }>("SELECT CURRENT_DATE::text AS d"))?.d ?? todayIn("UTC");
   const season = arcSeason(today);
-  const [totalUsers, activeUsers, newThisWeek, admins, totalHabits, checkinsToday, arcMembers, withPhoto, newInquiries, posts, devices, activity, signups, popular, recent] = await Promise.all([
-    num("SELECT COUNT(*) AS n FROM users WHERE role = 'user'"),
-    num("SELECT COUNT(*) AS n FROM users WHERE role = 'user' AND is_active = 1"),
-    num("SELECT COUNT(*) AS n FROM users WHERE role = 'user' AND created_at::date > CURRENT_DATE - 7"),
-    num("SELECT COUNT(*) AS n FROM users WHERE role = 'admin'"),
-    num("SELECT COUNT(*) AS n FROM habits WHERE is_active = 1"),
-    num("SELECT COUNT(*) AS n FROM habit_logs WHERE completed_count > 0 AND log_date = CURRENT_DATE"),
-    num("SELECT COUNT(*) AS n FROM winter_arc_members WHERE season = ?", [season.year]),
-    num("SELECT COUNT(*) AS n FROM users WHERE avatar_version > 0"),
-    num("SELECT COUNT(*) AS n FROM inquiries WHERE status = 'new'"),
-    num("SELECT COUNT(*) AS n FROM blog_posts WHERE published = 1"),
-    num("SELECT COUNT(DISTINCT user_id) AS n FROM push_subscriptions"),
+  // every count in one round trip: this page is opened often, and each query is a wait on the database
+  const [counts, activity, signups, popular, recent] = await Promise.all([
+    queryOne<Record<string, number | string>>(
+      `SELECT (SELECT COUNT(*) FROM users WHERE role = 'user') AS "totalUsers",
+              (SELECT COUNT(*) FROM users WHERE role = 'user' AND is_active = 1) AS "activeUsers",
+              (SELECT COUNT(*) FROM users WHERE role = 'user' AND created_at::date > CURRENT_DATE - 7) AS "newThisWeek",
+              (SELECT COUNT(*) FROM users WHERE role = 'admin') AS admins,
+              (SELECT COUNT(*) FROM habits WHERE is_active = 1) AS "totalHabits",
+              (SELECT COUNT(*) FROM habit_logs WHERE completed_count > 0 AND log_date = CURRENT_DATE) AS "checkinsToday",
+              (SELECT COUNT(*) FROM winter_arc_members WHERE season = ?) AS "arcMembers",
+              (SELECT COUNT(*) FROM users WHERE avatar_version > 0) AS "withPhoto",
+              (SELECT COUNT(*) FROM inquiries WHERE status = 'new') AS "newInquiries",
+              (SELECT COUNT(*) FROM blog_posts WHERE published = 1) AS posts,
+              (SELECT COUNT(DISTINCT user_id) FROM push_subscriptions) AS devices`,
+      [season.year],
+    ),
     query<{ day: string; n: number }>("SELECT log_date::text AS day, COUNT(*) AS n FROM habit_logs WHERE completed_count > 0 AND log_date > CURRENT_DATE - 14 GROUP BY log_date"),
-    query<{ day: string; n: number }>("SELECT created_at::date::text AS day, COUNT(*) AS n FROM users WHERE created_at::date > CURRENT_DATE - 14 GROUP BY 1"),
+    query<{ day: string; n: number }>("SELECT created_at::date::text AS day, COUNT(*) AS n FROM users WHERE role = 'user' AND created_at::date > CURRENT_DATE - 14 GROUP BY 1"),
     query<{ category: string; n: number }>("SELECT category, COUNT(*) AS n FROM habits WHERE is_active = 1 GROUP BY category ORDER BY n DESC LIMIT 6"),
     query<{ id: number; username: string; full_name: string; avatar_color: string; avatar_version: number; created_at: string }>(
-      "SELECT id, username, full_name, avatar_color, avatar_version, created_at FROM users ORDER BY created_at DESC, id DESC LIMIT 6",
+      "SELECT id, username, full_name, avatar_color, avatar_version, created_at FROM users WHERE role = 'user' ORDER BY created_at DESC, id DESC LIMIT 6",
     ),
   ]);
+  const n = (key: string) => Number(counts?.[key] ?? 0);
+  const [totalUsers, activeUsers, newThisWeek, admins, totalHabits, checkinsToday, arcMembers, withPhoto, newInquiries, posts, devices] = ["totalUsers", "activeUsers", "newThisWeek", "admins", "totalHabits", "checkinsToday", "arcMembers", "withPhoto", "newInquiries", "posts", "devices"].map(n);
 
   return {
     stats: { totalUsers, activeUsers, disabledUsers: totalUsers - activeUsers, newThisWeek, admins, totalHabits, checkinsToday, arcMembers, withPhoto, newInquiries, posts, devices },

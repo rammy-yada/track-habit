@@ -10,6 +10,7 @@ import { btnGhost, btnPrimary, btnSmall, card, input, label } from "@/components
 import { deletePost, savePost } from "@/lib/actions/site-admin";
 import { parsePost, plainText, readingMinutes, SEO_DESCRIPTION_MAX, SEO_TITLE_MAX, slugify, wordCount } from "@/lib/blog-format";
 import { whenOnline } from "@/lib/offline";
+import { shrinkImage } from "@/lib/shrink";
 
 export type EditablePost = { id: number | null; title: string; slug: string; excerpt: string; body: string; published: boolean; seoTitle: string; seoDescription: string; tags: string; cover: string | null };
 
@@ -136,7 +137,7 @@ export function PostEditor({ post, siteUrl }: { post: EditablePost; siteUrl: str
       const response = await fetch(`/api/sigmadev/post-cover?id=${draft.id}`, init);
       const data = await response.json().catch(() => null);
       if (response.ok) set("cover", data?.url ?? null);
-      else setMessage({ ok: false, text: data?.error ?? "That didn't work. Please try again." });
+      else setMessage({ ok: false, text: data?.error ?? (response.status === 413 ? "That picture is too large to upload. Try a smaller one." : "The picture couldn't be uploaded just now. Please try again in a moment.") });
     } catch {
       setMessage({ ok: false, text: "That didn't work. Check your connection and try again." });
     } finally {
@@ -283,7 +284,8 @@ export function PostEditor({ post, siteUrl }: { post: EditablePost; siteUrl: str
                 onChange={(e) => {
                   const chosen = e.target.files?.[0];
                   e.target.value = "";
-                  if (chosen) void sendCover({ method: "POST", body: chosen, headers: { "Content-Type": chosen.type || "application/octet-stream" } });
+                  // made smaller here first: a phone photo is far bigger than a cover needs, and than one request may carry
+                  if (chosen) void shrinkImage(chosen, 1800).then((small) => sendCover({ method: "POST", body: small, headers: { "Content-Type": small.type || "application/octet-stream" } }));
                 }}
               />
             </section>

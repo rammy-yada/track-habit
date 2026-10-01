@@ -35,5 +35,12 @@ export function connectionConfig(rawEnv = process.env) {
   const ssl = tls ? { minVersion: "TLSv1.2", rejectUnauthorized: true, ...(ca ? { ca } : {}) } : undefined;
 
   // Timestamps are stored and compared in UTC on every connection.
-  return { host, port, user, password, database, ssl, options: "-c timezone=UTC" };
+  //
+  // On a hosted database, a connection that has sat idle for 15 seconds is
+  // closed by the database itself. A serverless host freezes a copy of the app
+  // between requests — with its connection still open, and its own "close
+  // when idle" timer frozen too. Left alone those pile up until the database
+  // has none left to give (error 53300, "too many connections").
+  const hosted = Boolean(env.DATABASE_URL) || tls;
+  return { host, port, user, password, database, ssl, options: `-c timezone=UTC${hosted ? " -c idle_session_timeout=15000" : ""}` };
 }

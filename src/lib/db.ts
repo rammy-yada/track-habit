@@ -14,17 +14,19 @@ for (const oid of [types.builtins.DATE, types.builtins.TIMESTAMP, types.builtins
 // reloads reuse it.
 //
 // It is deliberately tiny. On a serverless host every warm instance has its
-// own pool, and a free hosted database allows only ~15 connections in total —
-// so each instance takes at most two, and gives them back after a few idle
-// seconds.
+// own pool, and a free hosted database allows only ~20 connections in total.
+// On Vercel each copy of the app therefore holds exactly ONE connection (a
+// page's queries simply run one after another on it), and gives it back after
+// a few idle seconds — and the database closes it anyway after 15 (see
+// db-config.mjs). Elsewhere the size is DB_POOL_SIZE, 2 unless set.
 const globalForDb = globalThis as unknown as { habitflowPool?: Pool; habitflowMigrated?: Promise<void> };
 
 function pool(): Pool {
   if (!globalForDb.habitflowPool) {
     globalForDb.habitflowPool = new Pool({
       ...connectionConfig(),
-      max: Number(process.env.DB_POOL_SIZE ?? 2),
-      idleTimeoutMillis: 5_000,
+      max: process.env.VERCEL ? 1 : Number(process.env.DB_POOL_SIZE ?? 2),
+      idleTimeoutMillis: 4_000,
       connectionTimeoutMillis: 8_000,
       allowExitOnIdle: true,
     });
@@ -287,8 +289,12 @@ function upToDate(): Promise<void> {
 // Couldn't even get a connection (database busy or out of connections): worth
 // one more try. Only failures from *before* the query ran are retried, so a
 // write can never be applied twice.
-const BUSY = new Set(["53300", "57P03", "08001", "ECONNREFUSED"]);
-const isBusy = (err: { code?: string; message?: string }) => BUSY.has(err.code ?? "") || /timeout exceeded when trying to connect/i.test(err.message ?? "");
+//
+// The same goes for a connection the database closed while it sat idle
+// (57P05, or the socket simply being gone): the query never reached the
+// database, so it is sent again on a fresh connection.
+const BUSY = new Set(["53300", "57P03", "08001", "ECONNREFUSED", "57P05", "08006", "08003", "ECONNRESET", "EPIPE"]);
+const isBusy = (err: { code?: string; message?: string }) => BUSY.has(err.code ?? "") || /timeout exceeded when trying to connect|Connection terminated|Client has encountered a connection error/i.test(err.message ?? "");
 
 /** Queries are written with `?` placeholders; Postgres wants $1, $2, … */
 function numbered(sql: string): string {
@@ -304,7 +310,9 @@ async function run(sql: string, params: Param[]) {
   } catch (first) {
     const err = first as { code?: string; message?: string };
     if (isBusy(err)) {
-      await new Promise((resolve) => setTimeout(resolve, 350));
+      // out of connections: give the others a moment to finish and hand theirs back
+      await new Promise((resolve) => setTimeout(resolve, err.code === "53300" ? 1500 : 350));
+      await upToDate();
       return pool().query(text, params);
     }
     throw first;

@@ -25,7 +25,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const maskable = request.nextUrl.searchParams.get("m") === "1";
   const row = await queryOne<{ image: Buffer }>("SELECT image FROM site_images WHERE slot = ?", [`icon-${kind}`]);
   // a relative address: the built-in file on this same site, whatever name the site is reached by
-  if (!row) return new NextResponse(null, { status: 307, headers: { Location: BUILT_IN[kind](size, maskable), "Cache-Control": "public, max-age=3600" } });
+  if (!row) return new NextResponse(null, { status: 307, headers: { Location: BUILT_IN[kind](size, maskable), "Cache-Control": "no-cache" } }); // not remembered: an icon uploaded a minute from now must show up
 
   const inner = maskable ? Math.round(size * 0.78) : size;
   let image = sharp(row.image).resize(inner, inner, { fit: "cover" });

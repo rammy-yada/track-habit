@@ -14,6 +14,10 @@ import { clearOfflineData } from "@/lib/offline";
 type NavUser = AvatarInfo & { role: "user" | "admin" };
 /** Is the Winter Arc season running, and is this person in it? Decides how the Arc entry is dressed. */
 type ArcState = { live: boolean; member: boolean };
+// The menu's links are not fetched ahead of time (prefetch={false}): on a
+// serverless host every prefetch can wake another copy of the app, each
+// holding a database connection, and a menu of nine links would use up a
+// small database's whole allowance just by being looked at.
 type NavLink = { href: string; label: string; short: string; icon: string; desktopOnly?: boolean };
 
 const ICONS: Record<string, React.ReactNode> = {
@@ -84,6 +88,7 @@ export function Sidebar({ user, arc }: { user: NavUser; arc?: ArcState }) {
             <Link
               key={link.href}
               href={link.href}
+              prefetch={false}
               aria-current={active ? "page" : undefined}
               className={`relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors ${active ? "text-brand" : link.icon === "arc" && !admin ? "text-ink" : "text-muted hover:text-ink"}`}
             >
@@ -166,7 +171,7 @@ export function MobileBars({ user, arc }: { user: NavUser; arc?: ArcState }) {
           // up out of the bar: a raised round button with a ring that pulses.
           if (link.icon === "arc" && !admin)
             return (
-              <Link key={link.href} href={link.href} aria-current={active ? "page" : undefined} aria-label={arc?.live ? "Winter Arc (live now)" : "Winter Arc"} className="relative flex min-h-[58px] min-w-0 flex-col items-center justify-end gap-1 pb-[7px] text-[10.5px] font-bold text-ink" data-arc-tab>
+              <Link key={link.href} href={link.href} prefetch={false} aria-current={active ? "page" : undefined} aria-label={arc?.live ? "Winter Arc (live now)" : "Winter Arc"} className="relative flex min-h-[58px] min-w-0 flex-col items-center justify-end gap-1 pb-[7px] text-[10.5px] font-bold text-ink" data-arc-tab>
                 <span className="absolute -top-5 grid h-[52px] w-[52px] place-items-center rounded-full border-4 border-card bg-ink text-bg shadow-[0_8px_22px_-6px_rgb(0_0_0/0.55)]">
                   <motion.span aria-hidden className="absolute inset-0 rounded-full border-2 border-brand" animate={{ scale: [1, 1.28], opacity: [0.8, 0] }} transition={{ duration: 1.9, repeat: Infinity, ease: "easeOut" }} />
                   <motion.span animate={{ rotate: active ? 60 : 0, scale: active ? 1.1 : 1 }} transition={{ type: "spring", stiffness: 260, damping: 16 }}>
@@ -181,6 +186,7 @@ export function MobileBars({ user, arc }: { user: NavUser; arc?: ArcState }) {
             <Link
               key={link.href}
               href={link.href}
+              prefetch={false}
               aria-current={active ? "page" : undefined}
               className={`relative flex min-h-[58px] min-w-0 flex-col items-center justify-center gap-1 text-[10.5px] font-semibold ${active ? "text-brand" : "text-muted"}`}
             >
