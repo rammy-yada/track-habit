@@ -8,7 +8,8 @@ import { redirect } from "next/navigation";
 import { arcSeason, isArcMember } from "@/lib/arc";
 import { currentUser } from "@/lib/auth";
 import { todayIn } from "@/lib/dates";
-import { headIcons, iconFor, manifestUrl } from "@/lib/manifest";
+import { headIcons, iconFor } from "@/lib/manifest";
+import { IconCookie } from "@/components/IconCookie";
 import { pushPublicKey } from "@/lib/push";
 import { NotifyPrompt } from "@/components/NotifyPrompt";
 import { SaveCredential } from "@/components/SaveCredential";
@@ -23,7 +24,7 @@ const arcMember = cache(isArcMember);
 export async function generateMetadata(): Promise<Metadata> {
   const user = await currentUser();
   const icon = user ? iconFor(user.app_icon, await arcMember(user)) : "classic";
-  return { robots: { index: false, follow: false }, manifest: manifestUrl(icon), icons: headIcons(icon) };
+  return { robots: { index: false, follow: false }, icons: headIcons(icon) };
 }
 
 // Everything under (app) requires a signed-in user. The check runs on the
@@ -45,6 +46,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <AppStatus userId={user.id} />
       <ArcTheme member={member} />
       <NotifyPrompt publicKey={pushPublicKey()} />
+      <IconCookie icon={iconFor(user.app_icon, member)} />
       <SaveCredential name={user.full_name} username={user.username} />
       {/* Suspense: the guide reads the URL's query string */}
       <Suspense>

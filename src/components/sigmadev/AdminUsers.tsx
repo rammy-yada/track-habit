@@ -11,7 +11,7 @@ import { PasswordField } from "@/components/ui/PasswordField";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { btnGhost, btnPrimary, btnSmall, card, input, label } from "@/components/ui/styles";
-import { addUserAction, changeRole, deleteUser, removeUserPhoto, resetUserPassword, toggleUser } from "@/lib/actions/admin";
+import { addUserAction, deleteUser, removeUserPhoto, resetUserPassword, toggleUser } from "@/lib/actions/admin";
 import type { AdminUserRow } from "@/lib/admin-data";
 import { whenOnline } from "@/lib/offline";
 
@@ -61,13 +61,15 @@ export function AdminUsers({ users, selfId, search, dates, kind = "user" }: Prop
         <Link href={admins ? "/sigmadev/users" : "/sigmadev/admins"} className={btnGhost}>
           {admins ? "Members" : "Administrators"} →
         </Link>
-        <motion.button type="button" className={btnPrimary} onClick={() => setAdding(true)} whileTap={{ scale: 0.95 }}>
-          <span className="text-base leading-none">+</span> {admins ? "Add admin" : "Add user"}
-        </motion.button>
+        {!admins && (
+          <motion.button type="button" className={btnPrimary} onClick={() => setAdding(true)} whileTap={{ scale: 0.95 }}>
+            <span className="text-base leading-none">+</span> Add user
+          </motion.button>
+        )}
       </PageHeader>
 
       <div className="space-y-4 px-4 py-6 md:px-8 md:py-7">
-        <p className="max-w-2xl text-sm text-muted">{admins ? "People who can manage the site. They don't track habits and never appear among the members or on the leaderboard." : "Everyone who tracks habits. Administrators are kept on their own screen."}</p>
+        <p className="max-w-2xl text-sm text-muted">{admins ? "People who can manage the site. For safety an administrator can't be made from here, and a member can't be turned into one: run `npm run admin` on the server instead. To take access away, delete the account." : "Everyone who tracks habits. Administrators are kept on their own screen."}</p>
         <form method="GET" className="flex flex-wrap gap-2.5" role="search">
           <input type="search" name="search" defaultValue={search} placeholder="Search name, username or email…" aria-label="Search users" className={`${input} min-w-0 flex-1 sm:max-w-sm`} />
           <button type="submit" className={btnGhost}>
@@ -137,20 +139,6 @@ export function AdminUsers({ users, selfId, search, dates, kind = "user" }: Prop
 
                   {!self && (
                     <div className="mt-3.5 flex flex-wrap items-center gap-2 border-t border-line pt-3.5">
-                      <label className="flex items-center gap-2 text-xs font-medium text-muted">
-                        Role
-                        <select aria-label={`Role for ${u.full_name}`} value={u.role} disabled={busy} onChange={(e) => {
-                            const role = e.target.value;
-                            setAsking(
-                              role === "admin"
-                                ? { title: "Make this person an administrator?", body: `${u.full_name} will be able to see every account, reset passwords, delete users and change the site. Their habit tracker is replaced by the admin area.`, label: "Make administrator", task: () => changeRole(u.id, role) }
-                                : { title: "Remove administrator access?", body: `${u.full_name} will go back to being an ordinary member and lose access to the admin area straight away.`, label: "Remove access", task: () => changeRole(u.id, role) },
-                            );
-                          }} className="rounded-lg border border-line bg-card px-2.5 py-1.5 text-xs font-semibold text-ink">
-                          <option value="user">Member</option>
-                          <option value="admin">Admin</option>
-                        </select>
-                      </label>
                       <span className="flex-1" />
                       {!u.google && (
                         <button type="button" className={btnSmall} disabled={busy} onClick={() => setResetting(u)}>
@@ -184,8 +172,8 @@ export function AdminUsers({ users, selfId, search, dates, kind = "user" }: Prop
         )}
       </div>
 
-      <Modal open={adding} onClose={closeAdd} title={admins ? "New administrator" : "New user account"}>
-        <AddUserForm onDone={closeAdd} role={kind} />
+      <Modal open={adding} onClose={closeAdd} title="New user account">
+        <AddUserForm onDone={closeAdd} />
       </Modal>
 
       <ConfirmDialog
@@ -225,7 +213,7 @@ export function AdminUsers({ users, selfId, search, dates, kind = "user" }: Prop
   );
 }
 
-function AddUserForm({ onDone, role }: { onDone: () => void; role: "user" | "admin" }) {
+function AddUserForm({ onDone }: { onDone: () => void }) {
   const [state, action, pending] = useActionState(addUserAction, null);
   useEffect(() => {
     if (state?.ok) onDone();
@@ -248,9 +236,6 @@ function AddUserForm({ onDone, role }: { onDone: () => void; role: "user" | "adm
         <input type="email" name="email" className={input} placeholder="user@example.com" required />
       </label>
       <PasswordField name="password" label="Initial password" placeholder="Minimum 8 characters" minLength={8} autoComplete="new-password" />
-      {/* the kind of account is decided by which screen this is */}
-      <input type="hidden" name="role" value={role} />
-      {role === "admin" && <p className="rounded-xl bg-raised px-3.5 py-2.5 text-xs leading-relaxed text-muted">An administrator can see every account, reset passwords, delete users and change the site.</p>}
       <SubmitButton pending={pending} pendingLabel="Creating…">
         Create account
       </SubmitButton>

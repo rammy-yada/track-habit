@@ -26,7 +26,10 @@ export async function addUserAction(_prev: AdminFormState, formData: FormData): 
   const username = clean(formData.get("username"), 50);
   const email = clean(formData.get("email"), 100).toLowerCase();
   const password = String(formData.get("password") ?? "");
-  const role = formData.get("role") === "admin" ? "admin" : "user";
+  // Accounts made here are always ordinary members. An administrator can only
+  // be created on the server itself (`npm run admin`), never from a screen:
+  // one wrong tap must not be able to hand someone the whole site.
+  const role = "user";
 
   const errors: string[] = [];
   if (fullName.length < 2) errors.push("Full name too short.");
@@ -61,17 +64,6 @@ export async function deleteUser(userIdInput: number): Promise<Result> {
   if (userId === admin.id) return SELF;
   // Foreign keys cascade: the user's habits, check-ins, photo and arc entry go with them.
   await execute("DELETE FROM users WHERE id = ?", [userId]);
-  refresh();
-  return { ok: true };
-}
-
-export async function changeRole(userIdInput: number, roleInput: string): Promise<Result> {
-  const admin = await requireAdmin();
-  const userId = toId(userIdInput);
-  const role = roleInput === "admin" ? "admin" : "user";
-  if (!userId) return INVALID;
-  if (userId === admin.id) return SELF;
-  await execute("UPDATE users SET role = ? WHERE id = ?", [role, userId]);
   refresh();
   return { ok: true };
 }

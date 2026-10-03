@@ -24,7 +24,8 @@ export async function GET(request: NextRequest) {
   if (request.nextUrl.searchParams.get("kind") === "quote") return quoteCard(user);
   const [arc, photo] = await Promise.all([getArc(user), avatarPng(user.id)]);
   const me = arc.me;
-  const name = user.full_name.split(" ")[0].toUpperCase();
+  const { season } = arc;
+  const progress = season.live ? season.day / season.totalDays : 0;
   const stats = me
     ? [
         { label: "POINTS", value: me.points.toLocaleString("en-US") },
@@ -32,48 +33,61 @@ export async function GET(request: NextRequest) {
         { label: "RANK", value: `#${me.rank}` },
       ]
     : [];
+  // the season as a row of ticks: filled up to today
+  const ticks = Array.from({ length: 41 }, (_, i) => i / 40 <= progress);
+  const line = !me ? "I'm in." : me.streak >= 7 ? `${me.streak} days without missing one.` : me.rank <= 3 ? "On the podium. Staying there." : "Showing up. Every day.";
 
   return new ImageResponse(
     (
-      <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", background: "linear-gradient(180deg, #2b2b2b 0%, #0a0a0a 46%, #000 100%)", color: "#fff", padding: 84, fontFamily: "sans-serif" }}>
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          <div style={{ fontSize: 30, letterSpacing: 12, color: "#bdbdbd" }}>{arc.season.range.toUpperCase()}</div>
-          <div style={{ fontSize: 150, fontWeight: 200, letterSpacing: 6, lineHeight: 1, marginTop: 26 }}>WINTER</div>
-          <div style={{ fontSize: 150, fontWeight: 200, letterSpacing: 6, lineHeight: 1 }}>ARC</div>
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          <div style={{ display: "flex", alignItems: "center" }}>
-            {photo && (
+      <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "radial-gradient(circle at 50% 22%, #4a4a4a 0%, #1a1a1a 32%, #050505 62%)", color: "#fff", fontFamily: "sans-serif" }}>
+        {/* the top: a soft light behind the person */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "70px 84px 0" }}>
+          <div style={{ display: "flex", width: "100%", justifyContent: "space-between", fontSize: 28, letterSpacing: 10, color: "#bdbdbd" }}>
+            <div style={{ display: "flex" }}>WINTER ARC</div>
+            <div style={{ display: "flex" }}>{season.range.toUpperCase()}</div>
+          </div>
+          <div style={{ display: "flex", marginTop: 64, padding: 8, borderRadius: 130, border: "4px solid #fff" }}>
+            {photo ? (
               // eslint-disable-next-line @next/next/no-img-element -- drawn into the generated picture
-              <img src={photo} width={72} height={72} alt="" style={{ borderRadius: 36, border: "3px solid #fff", marginRight: 22 }} />
+              <img src={photo} width={220} height={220} alt="" style={{ borderRadius: 110 }} />
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 220, height: 220, borderRadius: 110, background: "#222", fontSize: 110, fontWeight: 800 }}>{initial(user.full_name)}</div>
             )}
-            <div style={{ display: "flex", fontSize: 34, letterSpacing: 10, color: "#bdbdbd" }}>{name}</div>
           </div>
-          <div style={{ display: "flex", alignItems: "baseline", marginTop: 8 }}>
-            <div style={{ fontSize: 250, fontWeight: 800, lineHeight: 1 }}>{arc.season.live ? `DAY ${arc.season.day}` : "DAY 0"}</div>
-            <div style={{ fontSize: 60, color: "#8a8a8a", marginLeft: 24 }}>{`/ ${arc.season.totalDays}`}</div>
-          </div>
-          {/* how far through the season */}
-          <div style={{ display: "flex", height: 6, background: "#333", marginTop: 30 }}>
-            <div style={{ width: `${Math.max(2, (arc.season.day / arc.season.totalDays) * 100)}%`, background: "#fff" }} />
-          </div>
+          <div style={{ display: "flex", marginTop: 26, fontSize: 52, fontWeight: 800 }}>{user.full_name}</div>
+          <div style={{ display: "flex", marginTop: 2, fontSize: 30, color: "#a3a3a3" }}>{`@${user.username}`}</div>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column" }}>
+        {/* the middle: the day */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "34px 84px 0" }}>
+          <div style={{ display: "flex", alignItems: "baseline" }}>
+            <div style={{ display: "flex", fontSize: 54, letterSpacing: 14, color: "#bdbdbd", marginRight: 22 }}>DAY</div>
+            <div style={{ display: "flex", fontSize: 230, fontWeight: 800, lineHeight: 1 }}>{String(season.live ? season.day : 0)}</div>
+            <div style={{ display: "flex", fontSize: 54, color: "#7a7a7a", marginLeft: 18 }}>{`/ ${season.totalDays}`}</div>
+          </div>
+          <div style={{ display: "flex", width: "100%", justifyContent: "space-between", marginTop: 18 }}>
+            {ticks.map((on, i) => (
+              <div key={i} style={{ display: "flex", width: 12, height: on ? 34 : 22, marginTop: on ? 0 : 12, borderRadius: 6, background: on ? "#fff" : "#333" }} />
+            ))}
+          </div>
+          <div style={{ display: "flex", marginTop: 30, fontSize: 38, fontStyle: "italic", color: "#d4d4d4" }}>{line}</div>
+        </div>
+
+        {/* the bottom: the numbers */}
+        <div style={{ display: "flex", flexDirection: "column", flexGrow: 1, justifyContent: "flex-end", padding: "0 84px 70px" }}>
           {stats.length > 0 && (
-            <div style={{ display: "flex", justifyContent: "space-between", borderTop: "2px solid #444", borderBottom: "2px solid #444", padding: "38px 0" }}>
-              {stats.map((s) => (
-                <div key={s.label} style={{ display: "flex", flexDirection: "column" }}>
-                  <div style={{ fontSize: 92, fontWeight: 800, lineHeight: 1 }}>{s.value}</div>
-                  <div style={{ fontSize: 26, letterSpacing: 8, color: "#bdbdbd", marginTop: 12 }}>{s.label}</div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              {stats.map((stat) => (
+                <div key={stat.label} style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 286, padding: "30px 0", borderRadius: 28, border: "2px solid #3a3a3a", background: "#111" }}>
+                  <div style={{ display: "flex", fontSize: 78, fontWeight: 800, lineHeight: 1 }}>{stat.value}</div>
+                  <div style={{ display: "flex", fontSize: 22, letterSpacing: 6, color: "#a3a3a3", marginTop: 12 }}>{stat.label}</div>
                 </div>
               ))}
             </div>
           )}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 44 }}>
-            <div style={{ fontSize: 34, letterSpacing: 4 }}>{SHARE_HASHTAGS.map((tag) => `#${tag}`).join("  ")}</div>
-            <div style={{ fontSize: 30, letterSpacing: 8, color: "#bdbdbd" }}>HABITFLOW</div>
+            <div style={{ display: "flex", fontSize: 34, letterSpacing: 4 }}>{SHARE_HASHTAGS.map((tag) => `#${tag}`).join("  ")}</div>
+            <div style={{ display: "flex", fontSize: 30, letterSpacing: 8, color: "#bdbdbd" }}>HABITFLOW</div>
           </div>
         </div>
       </div>

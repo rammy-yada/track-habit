@@ -131,6 +131,15 @@ html[data-theme="arc"] {
 html[data-theme="arc"]:has([data-true-color]) {
   filter: none;
 }
+/* The same while a full-screen Winter Arc scene is playing. A filter on the
+   whole page has to be redone for every frame of an animation, which is what
+   made these scenes stutter on phones; they are black and white already. */
+html[data-theme="arc"]:has([data-arc-scene]) {
+  filter: none;
+}
+html[data-theme="arc"]:has([data-arc-scene])::after {
+  display: none; /* the film grain too */
+}
 /* a fixed sheet of film grain; it ignores the pointer, so everything stays clickable */
 html[data-theme="arc"]::after {
   content: "";
@@ -247,7 +256,7 @@ summary {
 @keyframes snow {
   from { transform: translate3d(0, -12px, 0); opacity: 0; }
   12% { opacity: var(--o, 0.8); }
-  to { transform: translate3d(var(--sway, 12px), 480px, 0); opacity: 0; }
+  to { transform: translate3d(var(--sway, 12px), var(--fall, 480px), 0); opacity: 0; }
 }
 .snow {
   animation: snow var(--t, 7s) linear infinite;

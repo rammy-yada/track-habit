@@ -7,8 +7,10 @@ export type AppIcon = "classic" | "arc";
 export const iconFor = (choice: string, arcMember: boolean): AppIcon => (choice === "arc" || (choice !== "classic" && arcMember) ? "arc" : "classic");
 
 /** The browser-tab and iPhone home-screen icons for a page's <head>. */
-export const headIcons = (icon: AppIcon) =>
-  icon === "arc"
+export const headIcons = (icon: AppIcon | "current") =>
+  icon === "current"
+    ? { icon: [{ url: "/app-icon/current?s=192", type: "image/png", sizes: "192x192" }], apple: [{ url: "/app-icon/current?s=180", sizes: "180x180", type: "image/png" }] }
+    : icon === "arc"
     ? // through /app-icon, so an icon an admin has uploaded is used (it falls back to the built-in snowflake)
       { icon: [{ url: "/app-icon/arc?s=192", type: "image/png", sizes: "192x192" }], apple: [{ url: "/app-icon/arc?s=180", sizes: "180x180", type: "image/png" }] }
     : { icon: [{ url: "/icon.svg", type: "image/svg+xml", sizes: "any" }], apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }] };

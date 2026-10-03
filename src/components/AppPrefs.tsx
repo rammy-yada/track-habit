@@ -106,7 +106,9 @@ export function AppPrefs({ prefs, arcMember }: { prefs: Prefs; arcMember: boolea
             </button>
           ))}
         </div>
-        <p className="mt-1.5 text-xs leading-relaxed text-muted">The icon is set when the app is installed. On Android and computers it updates by itself within a day or so of a change; on an iPhone, remove the app from the Home Screen and add it again.</p>
+        <p className="mt-1.5 text-xs leading-relaxed text-muted">
+          <span className="font-semibold text-ink">When does it change?</span> A phone decides this, not the app. Android and computers re-check about once a day when you open the app, and may ask you to confirm. An iPhone never changes an installed icon: remove HabitFlow from the Home Screen and add it again.
+        </p>
       </fieldset>
 
       {canBadge && <Toggle on={badge} onClick={toggleBadge} title="Show habits left on the app icon" note="A small number on the icon: how many of today's habits are still open. It disappears when you're done." />}

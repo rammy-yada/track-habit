@@ -76,7 +76,7 @@ export default async function ArcPage() {
           </div>
         }
         quote={<ArcQuote member={member} saved={mine?.quote ?? ""} day={season.day} totalDays={season.totalDays} live={season.live} photoVersion={user.avatar_version} />}
-        leaderboard={<ArcScreen arc={arc} />}
+        leaderboard={<ArcScreen arc={arc} compact />}
       />
     </>
   );

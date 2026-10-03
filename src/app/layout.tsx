@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Geist, Geist_Mono, Italiana } from "next/font/google";
 import { Providers } from "@/components/Providers";
 import { APP_NAME, CREATOR } from "@/lib/constants";
-import { headIcons, manifestUrl } from "@/lib/manifest";
+import { headIcons } from "@/lib/manifest";
 import { SITE_DESCRIPTION, SITE_URL } from "@/lib/site";
 import "./globals.css";
 
@@ -20,8 +20,8 @@ export const metadata: Metadata = {
   description: SITE_DESCRIPTION,
   applicationName: APP_NAME,
   // the standard icon and install manifest; signed-in pages may swap in the Winter Arc ones
-  manifest: manifestUrl("classic"),
-  icons: headIcons("classic"),
+  // (the manifest link is written out in <head> below: it has to send the cookie that says which icon this account uses)
+  icons: headIcons("current"),
   keywords: ["habit tracker", "free habit tracker", "daily habit tracker", "streak tracker", "routine tracker", "offline habit tracker", "habit tracker app", "habit tracker online", "habit tracker for students", "winter arc", "winter arc challenge", "winter arc tracker"],
   authors: [{ name: CREATOR.handle }],
   creator: CREATOR.handle,
@@ -62,6 +62,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning className={`${geist.variable} ${geistMono.variable} ${bricolage.variable} ${italiana.variable}`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <link rel="manifest" href="/manifest.webmanifest" crossOrigin="use-credentials" />
       </head>
       <body>
         <Providers>{children}</Providers>

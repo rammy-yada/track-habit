@@ -33,7 +33,7 @@ const poster = "font-[family-name:var(--font-poster)]";
  * The Winter Arc as a phone screen. On a phone it simply is the screen; on a
  * wider display it sits inside a device frame and scrolls inside it.
  */
-export function ArcScreen({ arc }: { arc: Arc }) {
+export function ArcScreen({ arc, compact = false }: { arc: Arc; /** a short banner instead of the tall poster, so the podium is the first thing on screen */ compact?: boolean }) {
   const { season, board, me } = arc;
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -56,26 +56,26 @@ export function ArcScreen({ arc }: { arc: Arc }) {
   const progress = season.live ? season.day / season.totalDays : 0;
 
   return (
-    <div className="relative mx-auto w-full max-w-[420px] overflow-hidden rounded-[28px] bg-[#050505] text-white shadow-[0_30px_80px_-30px_rgb(0_0_0/0.9)] grayscale md:h-[790px] md:w-[392px] md:rounded-[54px] md:border-[11px] md:border-[#141414] md:ring-1 md:ring-white/15">
+    <div className={`relative mx-auto w-full overflow-hidden rounded-[28px] bg-[#050505] text-white shadow-[0_30px_80px_-30px_rgb(0_0_0/0.9)] grayscale ${compact ? "max-w-[560px]" : "max-w-[420px] md:h-[790px] md:w-[392px] md:rounded-[54px] md:border-[11px] md:border-[#141414] md:ring-1 md:ring-white/15"}`}>
       {/* device details, desktop only */}
-      <span aria-hidden className="absolute left-1/2 top-2.5 z-40 hidden h-[26px] w-[104px] -translate-x-1/2 rounded-full bg-black md:block" />
-      <span aria-hidden className="absolute bottom-2 left-1/2 z-40 hidden h-1 w-28 -translate-x-1/2 rounded-full bg-white/40 md:block" />
+      <span aria-hidden className={`absolute left-1/2 top-2.5 z-40 hidden h-[26px] w-[104px] -translate-x-1/2 rounded-full bg-black ${compact ? "" : "md:block"}`} />
+      <span aria-hidden className={`absolute bottom-2 left-1/2 z-40 hidden h-1 w-28 -translate-x-1/2 rounded-full bg-white/40 ${compact ? "" : "md:block"}`} />
       {/* film grain over everything */}
-      <span aria-hidden className="grain pointer-events-none absolute inset-0 z-30 opacity-70" />
+      {!compact && <span aria-hidden className="grain pointer-events-none absolute inset-0 z-30 opacity-70" />}
 
-      <div className="no-scrollbar relative md:h-full md:overflow-y-auto md:overscroll-contain">
+      <div className={`no-scrollbar relative ${compact ? "" : "md:h-full md:overflow-y-auto md:overscroll-contain"}`}>
         {/* ── Poster ── */}
-        <header className="relative h-[480px] overflow-hidden bg-[linear-gradient(180deg,#f4f4f4_0%,#dcdcdc_30%,#9b9b9b_58%,#3a3a3a_80%,#050505_100%)] text-black">
+        <header className={`relative ${compact ? "h-[150px]" : "h-[480px]"} overflow-hidden bg-[linear-gradient(180deg,#f4f4f4_0%,#dcdcdc_30%,#9b9b9b_58%,#3a3a3a_80%,#050505_100%)] text-black`}>
           {/* slow fog banks */}
-          <span aria-hidden className="aurora absolute -left-24 top-24 h-40 w-80 rounded-full bg-white/80 blur-[46px]" />
-          <span aria-hidden className="aurora absolute -right-28 top-44 h-36 w-72 rounded-full bg-[#5c5c5c]/70 blur-[50px] [animation-delay:-4s]" />
-          <Snow />
+          {!compact && <span aria-hidden className="aurora absolute -left-24 top-24 h-40 w-80 rounded-full bg-white/80 blur-[46px]" />}
+          {!compact && <span aria-hidden className="aurora absolute -right-28 top-44 h-36 w-72 rounded-full bg-[#5c5c5c]/70 blur-[50px] [animation-delay:-4s]" />}
+          {!compact && <Snow />}
 
-          <h2 className={`${poster} relative pt-10 text-center text-[4.6rem] leading-[0.86] tracking-[-0.04em] md:pt-14`} aria-label="Winter Arc">
+          <h2 className={`${poster} relative text-center tracking-[-0.04em] ${compact ? "pt-5 text-[2.6rem] leading-none [&>span]:inline [&>span]:px-1.5" : "pt-10 text-[4.6rem] leading-[0.86] md:pt-14"}`} aria-label="Winter Arc">
             {["WINTER", "ARC"].map((word, line) => (
               <span key={word} aria-hidden className="block">
                 {word.split("").map((ch, i) => (
-                  <motion.span key={i} className="inline-block" initial={{ y: 30, opacity: 0, filter: "blur(8px)" }} animate={{ y: 0, opacity: 1, filter: "blur(0px)" }} transition={{ delay: 0.1 + line * 0.3 + i * 0.06, duration: 0.7, ease: [0.2, 0.7, 0.2, 1] }}>
+                  <motion.span key={i} className="inline-block" initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 + line * 0.3 + i * 0.06, duration: 0.7, ease: [0.2, 0.7, 0.2, 1] }}>
                     {ch}
                   </motion.span>
                 ))}
@@ -83,7 +83,7 @@ export function ArcScreen({ arc }: { arc: Arc }) {
             ))}
           </h2>
 
-          <Knight />
+          {!compact && <Knight />}
 
           {/* day counter, bottom of the poster */}
           <div className="absolute inset-x-6 bottom-4 text-white" role="img" aria-label={season.live ? `Day ${season.day} of ${season.totalDays}` : `Starts in ${season.startsIn} days`}>

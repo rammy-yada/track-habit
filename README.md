@@ -150,6 +150,15 @@ In **Profile → App** each person chooses:
 - **Number on the icon**: how many of today's habits are still open, where
   the device supports it; it clears when everything is done.
 
+**When they are sent.** `src/lib/reminders.ts` does the sending. Nothing waits
+for an exact minute: each message is due from a time (the quote from 8 AM, a
+habit reminder from its set time, the evening nudge from 7 PM) and any run
+after that sends it, once. The "habits still open" reminders fall at a
+different, random time for each person each day. Two things run it: the
+GitHub Actions job (which on a free account is often hours late), and the app
+itself — any open app checks in every few minutes, and at most once in ten
+minutes that check-in also runs the reminders (`/api/version`).
+
 ### Notifications (optional)
 
 Real push notifications, like a native app — they arrive when the app is

@@ -25,6 +25,7 @@ export default async function ProfilePage() {
       <ProfileForms
         stats={stats}
         badges={badges.length > 0 ? <BadgeShelf badges={badges} /> : undefined}
+        badgeCount={badges.filter((b) => b.earned).length}
         user={{
           id: user.id,
           fullName: user.full_name,

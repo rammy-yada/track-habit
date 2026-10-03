@@ -30,9 +30,14 @@ type Props = {
   stats: { habits: number; checkins: number };
   /** The member's Winter Arc badges, if there are any to show. */
   badges?: React.ReactNode;
+  /** How many badges they have earned. */
+  badgeCount?: number;
 };
 
-export function ProfileForms({ user, stats, badges }: Props) {
+export function ProfileForms({ user, stats, badges, badgeCount }: Props) {
+  // which settings row is open (one at a time, like a phone's settings app)
+  const [open, setOpen] = useState<string | null>(null);
+  const toggle = (id: string) => setOpen((current) => (current === id ? null : id));
   const router = useRouter();
   const [profileState, profileAction, profilePending] = useActionState(updateProfileAction, null);
   const [passwordState, passwordAction, passwordPending] = useActionState(changePasswordAction, null);
@@ -69,8 +74,9 @@ export function ProfileForms({ user, stats, badges }: Props) {
   }
 
   return (
-    <div className="max-w-2xl space-y-5 px-4 py-6 md:px-8 md:py-7">
-      <motion.section className={`${card} flex flex-col items-center gap-5 p-6 text-center sm:flex-row sm:gap-6 sm:p-8 sm:text-left`} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+    <div className="mx-auto max-w-xl space-y-5 px-4 py-6 md:py-8">
+      {/* ── who you are ── */}
+      <motion.section className="flex flex-col items-center pt-2 text-center" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
         <div className="relative shrink-0">
           <motion.div initial={{ scale: 0.6, rotate: -20 }} animate={{ scale: 1, rotate: 0, opacity: uploading ? 0.5 : 1 }} transition={{ type: "spring", stiffness: 260, damping: 18 }}>
             {/* with no photo, the circle previews the colour being picked below */}
@@ -91,44 +97,36 @@ export function ProfileForms({ user, stats, badges }: Props) {
           </button>
           <input ref={fileInput} type="file" accept="image/*" hidden onChange={choosePhoto} data-photo-input />
         </div>
-        <div className="min-w-0">
-          <h2 className="truncate font-display text-2xl font-bold tracking-tight">{user.fullName}</h2>
-          <p className="truncate text-sm font-medium text-muted">
-            @{user.username} · {user.email}
+        <h2 className="mt-4 max-w-full truncate font-display text-2xl font-bold tracking-tight">{user.fullName}</h2>
+        <p className="max-w-full truncate text-sm font-medium text-muted">@{user.username}</p>
+        {photoError && (
+          <p role="alert" className="mt-2 text-xs font-medium text-bad">
+            {photoError}
           </p>
-          {!user.admin && (
-            <p className="mt-2 text-sm font-medium text-muted">
-              <span className="font-semibold text-ink">
-                <AnimatedNumber value={stats.habits} />
-              </span>{" "}
-              habits ·{" "}
-              <span className="font-semibold text-ink">
-                <AnimatedNumber value={stats.checkins} />
-              </span>{" "}
-              check-ins
-            </p>
-          )}
-          <div className="mt-3 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-            <button type="button" className={btnSmall} onClick={() => fileInput.current?.click()} disabled={uploading}>
-              {uploading ? "Uploading…" : user.photo ? "Change photo" : "Add photo"}
-            </button>
-            {user.photo > 0 && (
-              <button type="button" className={btnSmall} onClick={() => photoRequest({ method: "DELETE" })} disabled={uploading}>
-                Remove photo
-              </button>
-            )}
-          </div>
-          {photoError && (
-            <p role="alert" className="mt-2 text-xs font-medium text-bad">
-              {photoError}
-            </p>
-          )}
-        </div>
+        )}
+        {!user.admin && (
+          <dl className="mt-5 grid w-full max-w-sm grid-cols-3 divide-x divide-line rounded-2xl border border-line bg-card py-3">
+            {[
+              [stats.habits, "Habits"],
+              [stats.checkins, "Check-ins"],
+              [badgeCount ?? 0, "Badges"],
+            ].map(([value, text]) => (
+              <div key={text}>
+                <dd className="text-xl font-bold tabular-nums">
+                  <AnimatedNumber value={Number(value)} />
+                </dd>
+                <dt className="text-[11px] font-medium text-muted">{text}</dt>
+              </div>
+            ))}
+          </dl>
+        )}
       </motion.section>
 
-      <Reveal>
-        <section className={`${card} p-6 sm:p-7`}>
-          <h2 className="mb-5 border-b border-line pb-3 text-[15px] font-bold">Edit profile</h2>
+      {badges && <Reveal>{badges}</Reveal>}
+
+      {/* ── settings, grouped the way a phone's settings app groups them: tap a row to open it ── */}
+      <Group title="Account">
+        <Row id="edit" icon="👤" title="Name, colour and timezone" note={user.email} open={open} toggle={toggle}>
           <Alert kind={profileState?.error ? "error" : "success"} shakeKey={profileState}>
             {profileState?.error ?? profileState?.message}
           </Alert>
@@ -181,23 +179,26 @@ export function ProfileForms({ user, stats, badges }: Props) {
               Save changes
             </SubmitButton>
           </form>
-        </section>
-      </Reveal>
-
-      {badges && <Reveal>{badges}</Reveal>}
-
-      {user.details && (
-        <Reveal>
-          <section className={`${card} p-6 sm:p-7`}>
-            <h2 className="mb-5 border-b border-line pb-3 text-[15px] font-bold">About you</h2>
+        </Row>
+        <Row id="photo" icon="📷" title="Profile photo" note={user.photo ? "Change or remove it" : "Add one"} open={open} toggle={toggle}>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className={btnSmall} onClick={() => fileInput.current?.click()} disabled={uploading}>
+              {uploading ? "Uploading…" : user.photo ? "Change photo" : "Add photo"}
+            </button>
+            {user.photo > 0 && (
+              <button type="button" className={btnSmall} onClick={() => photoRequest({ method: "DELETE" })} disabled={uploading}>
+                Remove photo
+              </button>
+            )}
+          </div>
+          <p className="mt-2 text-xs text-muted">It is cropped to a square and stored as a small, compressed picture.</p>
+        </Row>
+        {user.details && (
+          <Row id="about" icon="🪪" title="About you" note="Gender, date of birth, country, and who can see them" open={open} toggle={toggle}>
             <AboutYou details={user.details} />
-          </section>
-        </Reveal>
-      )}
-
-      <Reveal>
-        <section className={`${card} p-6 sm:p-7`}>
-          <h2 className="mb-5 border-b border-line pb-3 text-[15px] font-bold">Change password</h2>
+          </Row>
+        )}
+        <Row id="password" icon="🔒" title="Password" note={user.google ? "You sign in with Google" : "Change it"} open={open} toggle={toggle}>
           <Alert kind={passwordState?.error ? "error" : "success"} shakeKey={passwordState}>
             {passwordState?.error ?? passwordState?.message}
           </Alert>
@@ -210,44 +211,33 @@ export function ProfileForms({ user, stats, badges }: Props) {
               Update password
             </SubmitButton>
           </form>
-        </section>
-      </Reveal>
+        </Row>
+      </Group>
 
-      <Reveal>
-        <section className={`${card} space-y-4 p-6 sm:p-7`}>
-          <div>
-            <h2 className="mb-1 text-[15px] font-bold">App</h2>
+      <Group title="App">
+        {!user.admin && (
+          <Row id="notify" icon="🔔" title="Notifications and app icon" note="Reminders, motivation, the icon on your phone" open={open} toggle={toggle}>
+            <div className="space-y-4">
+              <NotificationToggle publicKey={user.pushKey} />
+              {user.prefs && <AppPrefs prefs={user.prefs} arcMember={user.arcMember === true} />}
+            </div>
+          </Row>
+        )}
+        <Row id="install" icon="📲" title="Install and offline" note="Put HabitFlow on this device, update, sync" open={open} toggle={toggle}>
+          <div className="space-y-4">
             <p className="text-[13px] leading-relaxed text-muted">{user.admin ? "Install HabitFlow on this device for one-tap access to the admin area." : "Install HabitFlow on your phone. It works offline: ticks made without a connection are kept on the device and synced when you're back online."}</p>
+            <InstallButton />
+            <AppControls />
           </div>
-          <InstallButton />
-          {!user.admin && <NotificationToggle publicKey={user.pushKey} />}
-          {!user.admin && user.prefs && <AppPrefs prefs={user.prefs} arcMember={user.arcMember === true} />}
-          <AppControls />
-        </section>
-      </Reveal>
+        </Row>
+        {!user.admin && <Row id="guide" icon="❓" title="Welcome guide" note="See how everything works again" onClick={openGuide} />}
+      </Group>
 
-      {!user.admin && (
-        <Reveal>
-          <Link href="/support" className={`${card} flex items-center gap-4 p-5 transition-colors hover:border-brand`}>
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-brand-soft text-xl text-brand" aria-hidden>
-              ♥
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-[15px] font-bold">Support {CREATOR.handle}</span>
-              <span className="block text-[13px] text-muted">HabitFlow is free. If it helps you, you can leave a tip.</span>
-            </span>
-            <span aria-hidden className="text-muted">
-              →
-            </span>
-          </Link>
-        </Reveal>
-      )}
-
-      <Reveal>
-        <section className={`${card} p-6 sm:p-7`}>
-          <h2 className="mb-1 text-[15px] font-bold">Your data</h2>
+      <Group title="More">
+        {!user.admin && <Row id="support" icon="♥" title={`Support ${CREATOR.handle}`} note="HabitFlow is free. If it helps you, you can leave a tip." href="/support" />}
+        <Row id="data" icon="🗂️" title="Your data and privacy" note={`Member since ${user.memberSince}`} open={open} toggle={toggle}>
           <p className="text-[13px] leading-relaxed text-muted">
-            Member since {user.memberSince}. See the{" "}
+            See the{" "}
             <Link href="/privacy" className="font-semibold text-brand hover:underline">
               Privacy Policy
             </Link>{" "}
@@ -257,36 +247,26 @@ export function ProfileForms({ user, stats, badges }: Props) {
             </Link>
             .
           </p>
-          <div className="mt-4 flex flex-wrap gap-2.5">
-            {!user.admin && (
+          {user.admin ? (
+            <p className="mt-3 text-[13px] leading-relaxed text-muted">An administrator account can only be removed by another administrator.</p>
+          ) : (
+            <div className="mt-4 flex flex-wrap gap-2.5">
               <a href="/api/export" className={btnGhost} download>
                 Download my data
               </a>
-            )}
-            {!user.admin && (
               <button type="button" className={`${btnGhost} hover:!border-bad hover:!text-bad`} onClick={() => setConfirmingDelete(true)}>
                 Delete my account
               </button>
-            )}
-          </div>
-          {user.admin && <p className="mt-3 text-[13px] leading-relaxed text-muted">An administrator account can only be removed by another administrator, from Users.</p>}
-        </section>
-      </Reveal>
-
-      {/* the last things on the screen: the guide, and the way out */}
-      <Reveal>
-        <section className={`${card} divide-y divide-line overflow-hidden`} aria-label="More">
-          {!user.admin && (
-            <button type="button" onClick={openGuide} className="flex w-full items-center gap-3 px-5 py-4 text-left text-sm font-semibold hover:bg-raised" data-open-guide>
-              <span aria-hidden className="grid h-[18px] w-[18px] place-items-center text-base leading-none">
-                ?
-              </span>
-              Show the welcome guide again
-            </button>
+            </div>
           )}
-          <LogoutButton className="flex w-full items-center gap-3 px-5 py-4 text-left text-sm font-semibold text-bad hover:bg-bad-soft" />
-        </section>
-      </Reveal>
+        </Row>
+      </Group>
+
+      {/* the last thing on the screen: the way out */}
+      <section className={`${card} overflow-hidden`} aria-label="Log out">
+        <LogoutButton className="flex w-full items-center justify-center gap-2.5 px-5 py-4 text-sm font-bold text-bad hover:bg-bad-soft" />
+      </section>
+      <p className="pb-2 text-center text-[11px] text-muted">HabitFlow · made by {CREATOR.handle}</p>
 
       <Modal open={confirmingDelete} onClose={() => setConfirmingDelete(false)} title="Delete your account?" width="max-w-sm">
         <p className="text-sm leading-relaxed text-muted">This permanently deletes your habits, check-ins, notes, photo and leaderboard entry. It cannot be undone.</p>
@@ -314,6 +294,58 @@ export function ProfileForms({ user, stats, badges }: Props) {
           </div>
         </form>
       </Modal>
+    </div>
+  );
+}
+
+function Group({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <Reveal>
+      <section aria-label={title}>
+        <h2 className="mb-2 px-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted">{title}</h2>
+        <div className={`${card} divide-y divide-line overflow-hidden`}>{children}</div>
+      </section>
+    </Reveal>
+  );
+}
+
+type RowProps = { id: string; icon: string; title: string; note?: string; children?: React.ReactNode; open?: string | null; toggle?: (id: string) => void; href?: string; onClick?: () => void };
+
+/** One line of the settings list. With children it opens in place; with `href` or `onClick` it goes somewhere. */
+function Row({ id, icon, title, note, children, open, toggle, href, onClick }: RowProps) {
+  const isOpen = open === id;
+  const face = (
+    <>
+      <span aria-hidden className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-brand-soft text-base">
+        {icon}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[15px] font-semibold">{title}</span>
+        {note && <span className="block truncate text-xs text-muted">{note}</span>}
+      </span>
+      <svg aria-hidden width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className={`shrink-0 text-muted transition-transform ${isOpen ? "rotate-90" : ""}`}>
+        <path d="M9 6l6 6-6 6" />
+      </svg>
+    </>
+  );
+  const rowClass = "flex min-h-[60px] w-full items-center gap-3.5 px-4 py-3 text-left transition-colors hover:bg-raised";
+  if (href)
+    return (
+      <Link href={href} className={rowClass} data-row={id}>
+        {face}
+      </Link>
+    );
+  return (
+    <div data-row={id}>
+      <button type="button" className={rowClass} aria-expanded={children ? isOpen : undefined} onClick={onClick ?? (() => toggle?.(id))}>
+        {face}
+      </button>
+      {/* kept mounted while closed, so a half-filled form or a "saved" message isn't lost */}
+      {children && (
+        <div hidden={!isOpen} className="border-t border-line bg-bg/40 px-4 pb-5 pt-4">
+          {children}
+        </div>
+      )}
     </div>
   );
 }

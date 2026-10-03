@@ -137,7 +137,8 @@ export function ArcIntro({ firstName, images, totalDays = 123, onDone, auto = tr
         <motion.div
           role="dialog"
           aria-label="Winter Arc intro"
-          className="fixed inset-0 z-[70] overflow-hidden bg-black font-mono text-white grayscale"
+          data-arc-scene
+          className="fixed inset-0 z-[70] overflow-hidden bg-black font-mono text-white"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           // the scene lifts away like a curtain, uncovering the arc screen
@@ -205,7 +206,7 @@ export function ArcIntro({ firstName, images, totalDays = 123, onDone, auto = tr
 
               <AnimatePresence mode="popLayout">
                 {!strong ? (
-                  <motion.div key="before" className="absolute inset-0" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.92, filter: "blur(10px)" }} transition={{ duration: 0.6 }}>
+                  <motion.div key="before" className="absolute inset-0" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.92 }} transition={{ duration: 0.6 }}>
                     <Figure strong={false} src={images?.before ?? null} />
                   </motion.div>
                 ) : (
@@ -272,7 +273,6 @@ export function ArcIntro({ firstName, images, totalDays = 123, onDone, auto = tr
 
           {/* scanlines and grain: an old screen */}
           <span aria-hidden className="pointer-events-none absolute inset-0 bg-[repeating-linear-gradient(0deg,transparent_0,transparent_2px,rgba(0,0,0,0.28)_3px)]" />
-          <span aria-hidden className="grain pointer-events-none absolute inset-0 opacity-80" />
          </motion.div>
         </motion.div>
       )}
@@ -298,7 +298,7 @@ function Caption({ small, big }: { small: string; big: string }) {
 function Figure({ strong, src }: { strong: boolean; src: string | null }) {
   if (src) {
     // eslint-disable-next-line @next/next/no-img-element -- an uploaded WebP served by our own route
-    return <img src={src} alt="" className={`h-full w-full object-contain object-bottom ${strong ? "drop-shadow-[0_0_28px_rgba(255,255,255,0.55)]" : "opacity-70"}`} />;
+    return <img src={src} alt="" className={`h-full w-full object-contain object-bottom grayscale ${strong ? "drop-shadow-[0_0_28px_rgba(255,255,255,0.55)]" : "opacity-70"}`} />;
   }
   if (!strong) {
     return (

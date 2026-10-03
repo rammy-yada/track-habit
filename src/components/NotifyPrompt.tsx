@@ -8,7 +8,7 @@ const KEY = "habitflow:notify-prompt"; // { until: timestamp, times: how often i
 const SNOOZE_DAYS = [1, 3, 7]; // put off once → asked tomorrow; twice → in 3 days; three times → in a week; then never again
 
 /**
- * Asks, once the app has been open for a few seconds, whether to turn
+ * Asks, a few seconds after the installed app opens, whether to turn
  * notifications on. It only appears where they can actually work and haven't
  * been decided yet, it explains what will be sent before the browser's own
  * question pops up, and it backs off each time it is put off.
@@ -25,11 +25,11 @@ export function NotifyPrompt({ publicKey }: { publicKey: string | null }) {
       saved = JSON.parse(localStorage.getItem(KEY) ?? "{}");
     } catch {}
     if ((saved.times ?? 0) > SNOOZE_DAYS.length || (saved.until ?? 0) > Date.now()) return;
-    // sooner in the installed app (that is where reminders matter most), later in a browser tab
-    const timer = setTimeout(
-      () => void pushState().then((state) => state === "off" && setOpen(true), () => {}),
-      detectDevice().installed ? 2500 : 9000,
-    );
+    // Only in the installed app. In a browser tab nobody is asked: a website
+    // that pops up "allow notifications?" is an annoyance, an app that does is expected.
+    // (In a tab they can still be switched on by hand, in Profile.)
+    if (!detectDevice().installed) return;
+    const timer = setTimeout(() => void pushState().then((state) => state === "off" && setOpen(true), () => {}), 2500);
     return () => clearTimeout(timer);
   }, [publicKey]);
 

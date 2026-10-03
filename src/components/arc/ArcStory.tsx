@@ -105,13 +105,15 @@ export function ArcStory({ story }: { story: Story }) {
   return createPortal(
     <AnimatePresence>
       {open && (
-        <motion.div role="dialog" aria-modal="true" aria-label="Winter Arc story" className="fixed inset-0 z-[65] bg-black text-white grayscale" initial={{ opacity: 0, scale: 1.04 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, y: 40 }} transition={{ duration: 0.3 }} data-arc-story>
+        <motion.div role="dialog" aria-modal="true" aria-label="Winter Arc story" className="fixed inset-0 z-[65] bg-black text-white" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }} data-arc-story data-arc-scene>
           <div className="relative mx-auto h-full w-full max-w-[480px] overflow-hidden bg-[radial-gradient(120%_80%_at_50%_0%,#3b3b3b_0%,#0b0b0b_55%,#000_100%)]">
             {/* slow snow behind everything */}
             <span aria-hidden className="pointer-events-none absolute inset-0">
-              {Array.from({ length: 22 }, (_, i) => (
-                <motion.span key={i} className="absolute -top-2 h-1 w-1 rounded-full bg-white" style={{ left: `${(i * 37 + 11) % 100}%`, opacity: 0.25 + (i % 4) * 0.15 }} animate={reduced ? undefined : { y: ["0vh", "105vh"], x: [0, (i % 2 ? 1 : -1) * 18] }} transition={{ duration: 7 + (i % 5) * 2, delay: -(i % 9), repeat: Infinity, ease: "linear" }} />
-              ))}
+              {/* moved by the browser's compositor (a CSS animation), not by script: it stays smooth while the cards animate */}
+              {!reduced &&
+                Array.from({ length: 14 }, (_, i) => (
+                  <span key={i} className="snow absolute top-0 h-1 w-1 rounded-full bg-white" style={{ left: `${(i * 37 + 11) % 100}%`, ["--t" as string]: `${8 + (i % 5) * 2}s`, ["--delay" as string]: `${-((i * 1.7) % 11)}s`, ["--sway" as string]: `${i % 2 ? 22 : -16}px`, ["--o" as string]: 0.3 + (i % 4) * 0.15, ["--fall" as string]: "105vh" }} />
+                ))}
             </span>
 
             {/* progress: one bar per screen */}
@@ -208,7 +210,7 @@ function memberSlides(story: Story): Slide[] {
             <motion.span className="text-[clamp(6rem,36vw,10rem)] font-extrabold leading-[0.8] tabular-nums" initial={{ opacity: 0, y: 60 }} animate={{ opacity: 1, y: 0 }} transition={{ type: "spring", stiffness: 150, damping: 13 }}>
               <AnimatedNumber value={me.streak} />
             </motion.span>
-            <motion.span className="pb-3 text-5xl" aria-hidden animate={{ scale: [1, 1.2, 1], rotate: [0, -6, 6, 0] }} transition={{ duration: 1.4, repeat: Infinity }}>
+            <motion.span className="pb-3 text-5xl grayscale" aria-hidden animate={{ scale: [1, 1.2, 1], rotate: [0, -6, 6, 0] }} transition={{ duration: 1.4, repeat: Infinity }}>
               {me.streak > 0 ? "🔥" : "🧊"}
             </motion.span>
           </div>
@@ -274,7 +276,9 @@ function memberSlides(story: Story): Slide[] {
           <ul className="mt-6 space-y-2">
             {pack.habits.slice(0, 7).map((habit, i) => (
               <motion.li key={habit.name} className={`flex items-center gap-3 border px-3.5 py-2.5 text-sm ${habit.done ? "border-white bg-white text-black" : "border-white/20"}`} {...rise(0.2 + i * 0.09)}>
-                <span aria-hidden>{habit.icon}</span>
+                <span aria-hidden className="grayscale">
+                  {habit.icon}
+                </span>
                 <span className="min-w-0 flex-1 truncate font-semibold">{habit.name}</span>
                 <span className="text-xs font-bold">{habit.done ? "✓" : ""}</span>
               </motion.li>
@@ -293,7 +297,7 @@ function memberSlides(story: Story): Slide[] {
     render: () => (
       <>
         <Small>Today&apos;s word</Small>
-        <motion.blockquote className={`${poster} mt-4 text-[clamp(1.7rem,8vw,2.4rem)] leading-[1.15]`} initial={{ opacity: 0, filter: "blur(10px)" }} animate={{ opacity: 1, filter: "blur(0px)" }} transition={{ duration: 0.9 }}>
+        <motion.blockquote className={`${poster} mt-4 text-[clamp(1.7rem,8vw,2.4rem)] leading-[1.15]`} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
           “{quote}”
         </motion.blockquote>
         <motion.div {...rise(0.6)}>
