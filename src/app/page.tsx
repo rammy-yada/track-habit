@@ -3,6 +3,7 @@ import { Landing } from "@/components/landing/Landing";
 import type { Metadata } from "next";
 import { currentUser } from "@/lib/auth";
 import { APP_NAME, CREATOR } from "@/lib/constants";
+import { FAQ } from "@/lib/faq";
 import { SITE_DESCRIPTION, SITE_URL } from "@/lib/site";
 
 // One site for every country: search engines are told this page is the version for all regions.
@@ -13,7 +14,9 @@ export const metadata: Metadata = { alternates: { canonical: "/", languages: { e
 const structuredData = {
   "@context": "https://schema.org",
   "@graph": [
-    { "@type": "WebSite", "@id": `${SITE_URL}/#website`, url: SITE_URL, name: APP_NAME, description: SITE_DESCRIPTION, inLanguage: "en" },
+    { "@type": "WebSite", "@id": `${SITE_URL}/#website`, url: SITE_URL, name: APP_NAME, description: SITE_DESCRIPTION, inLanguage: "en", publisher: { "@id": `${SITE_URL}/#org` } },
+    { "@type": "Organization", "@id": `${SITE_URL}/#org`, name: APP_NAME, url: SITE_URL, logo: `${SITE_URL}/icons/icon-512.png` },
+    { "@type": "FAQPage", "@id": `${SITE_URL}/#faq`, mainEntity: FAQ.map((item) => ({ "@type": "Question", name: item.q, acceptedAnswer: { "@type": "Answer", text: item.a } })) },
     {
       "@type": "WebApplication",
       "@id": `${SITE_URL}/#app`,

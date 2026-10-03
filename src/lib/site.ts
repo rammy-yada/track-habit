@@ -8,6 +8,9 @@ export const SITE_DESCRIPTION =
 
 // Pages a search engine should list. Everything else is either private
 // (needs sign-in) or a step in a flow (verify, reset), and is marked noindex.
+/** For search results: they cut a description off at about 160 characters. */
+export const META_DESCRIPTION = "Free habit tracker that works offline, in any country. Build daily routines, keep streaks, see your progress, and take on the Winter Arc challenge.";
+
 export const PUBLIC_PAGES: { path: string; priority: number; changeFrequency: "daily" | "weekly" | "monthly" | "yearly" }[] = [
   { path: "/", priority: 1, changeFrequency: "weekly" },
   { path: "/winter-arc", priority: 0.9, changeFrequency: "daily" },

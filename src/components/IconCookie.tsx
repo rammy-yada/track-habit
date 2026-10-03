@@ -10,14 +10,10 @@ import { useEffect } from "react";
  */
 export function IconCookie({ icon }: { icon: "classic" | "arc" }) {
   useEffect(() => {
-    if (document.cookie.includes(`hf_icon=${icon}`)) return;
-    document.cookie = `hf_icon=${icon}; path=/; max-age=31536000; samesite=lax${location.protocol === "https:" ? "; secure" : ""}`;
-    // the page's own icon links were made before the cookie existed: point them at the fresh answer
-    for (const link of document.querySelectorAll<HTMLLinkElement>('link[rel="manifest"], link[rel="icon"], link[rel="apple-touch-icon"]')) {
-      const url = new URL(link.href);
-      url.searchParams.set("i", icon);
-      link.href = url.toString();
-    }
+    if (!document.cookie.includes(`hf_icon=${icon}`)) document.cookie = `hf_icon=${icon}; path=/; max-age=31536000; samesite=lax${location.protocol === "https:" ? "; secure" : ""}`;
+    // the manifest link was made before the cookie existed: point it at the fresh answer
+    const manifest = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
+    if (manifest && !manifest.href.includes(`i=${icon}`)) manifest.href = `/manifest.webmanifest?i=${icon}`;
   }, [icon]);
   return null;
 }

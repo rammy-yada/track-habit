@@ -5,7 +5,7 @@ import { APP_NAME } from "@/lib/constants";
 
 const description = `Work with ${APP_NAME}: creators, communities, colleges, gyms and developers. Run a habit challenge with your people, or build something with us.`;
 export const metadata: Metadata = {
-  title: "Collaborate",
+  title: "Collaborate — For Creators, Colleges & Gyms",
   description,
   alternates: { canonical: "/collaborate" },
   openGraph: { type: "website", siteName: APP_NAME, title: `Collaborate with ${APP_NAME}`, description, url: "/collaborate", images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: APP_NAME }] },

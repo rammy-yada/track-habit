@@ -13,7 +13,7 @@ export const headIcons = (icon: AppIcon | "current") =>
     : icon === "arc"
     ? // through /app-icon, so an icon an admin has uploaded is used (it falls back to the built-in snowflake)
       { icon: [{ url: "/app-icon/arc?s=192", type: "image/png", sizes: "192x192" }], apple: [{ url: "/app-icon/arc?s=180", sizes: "180x180", type: "image/png" }] }
-    : { icon: [{ url: "/icon.svg", type: "image/svg+xml", sizes: "any" }], apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }] };
+    : { icon: [{ url: "/favicon.ico", sizes: "48x48" }, { url: "/icon.svg", type: "image/svg+xml", sizes: "any" }, { url: "/icons/icon-192.png", type: "image/png", sizes: "192x192" }], apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }] };
 
 export const manifestUrl = (icon: AppIcon) => (icon === "arc" ? "/manifest-arc.webmanifest" : "/manifest.webmanifest");
 

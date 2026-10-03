@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Contact, LegalPage } from "@/components/LegalPage";
 import { APP_NAME, LEGAL_UPDATED } from "@/lib/constants";
 
-export const metadata: Metadata = { title: "Terms of Service", description: `The rules for using ${APP_NAME}.`, alternates: { canonical: "/terms" } };
+export const metadata: Metadata = { title: "Terms of Service", description: `The rules for using ${APP_NAME}, a free habit tracker: who can use it, what to expect from us, what we ask of you, and how the leaderboard is kept fair.`, alternates: { canonical: "/terms" } };
 
 export default function TermsPage() {
   return (

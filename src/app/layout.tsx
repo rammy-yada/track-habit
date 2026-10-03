@@ -3,7 +3,7 @@ import { Bricolage_Grotesque, Geist, Geist_Mono, Italiana } from "next/font/goog
 import { Providers } from "@/components/Providers";
 import { APP_NAME, CREATOR } from "@/lib/constants";
 import { headIcons } from "@/lib/manifest";
-import { SITE_DESCRIPTION, SITE_URL } from "@/lib/site";
+import { META_DESCRIPTION, SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
@@ -17,19 +17,20 @@ export const metadata: Metadata = {
   // lets the relative addresses below (canonical links, share images) become full URLs
   metadataBase: new URL(SITE_URL),
   title: { default: `${APP_NAME} — Free Habit Tracker & Winter Arc Challenge`, template: `%s — ${APP_NAME}` },
-  description: SITE_DESCRIPTION,
+  description: META_DESCRIPTION,
   applicationName: APP_NAME,
   // the standard icon and install manifest; signed-in pages may swap in the Winter Arc ones
   // (the manifest link is written out in <head> below: it has to send the cookie that says which icon this account uses)
-  icons: headIcons("current"),
+  // plain files, not redirects: search engines show a site's icon next to its results only if they can fetch it directly
+  icons: headIcons("classic"),
   keywords: ["habit tracker", "free habit tracker", "daily habit tracker", "streak tracker", "routine tracker", "offline habit tracker", "habit tracker app", "habit tracker online", "habit tracker for students", "winter arc", "winter arc challenge", "winter arc tracker"],
   authors: [{ name: CREATOR.handle }],
   creator: CREATOR.handle,
   category: "productivity",
   // what a shared link looks like on Facebook, WhatsApp, Messenger, X…
   // (the picture comes from opengraph-image.tsx)
-  openGraph: { type: "website", siteName: APP_NAME, title: `${APP_NAME} — Free Habit Tracker & Winter Arc Challenge`, description: SITE_DESCRIPTION, url: "/", locale: "en_US" },
-  twitter: { card: "summary_large_image", title: `${APP_NAME} — Free Habit Tracker & Winter Arc Challenge`, description: SITE_DESCRIPTION },
+  openGraph: { type: "website", siteName: APP_NAME, title: `${APP_NAME} — Free Habit Tracker & Winter Arc Challenge`, description: META_DESCRIPTION, url: "/", locale: "en_US" },
+  twitter: { card: "summary_large_image", title: `${APP_NAME} — Free Habit Tracker & Winter Arc Challenge`, description: META_DESCRIPTION },
   robots: { index: true, follow: true, googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 } },
   // Proves to Google Search Console that this site is yours: paste the code
   // from its "HTML tag" method into GOOGLE_SITE_VERIFICATION.

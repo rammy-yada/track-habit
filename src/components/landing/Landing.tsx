@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { SiteFooter } from "@/components/PublicPage";
+import { FAQ } from "@/lib/faq";
 import { motion } from "motion/react";
 import { FlowField } from "@/components/FlowField";
 import { Logo } from "@/components/Logo";
@@ -175,6 +176,25 @@ export function Landing() {
                 <motion.circle cx="158" cy="4" r="4.5" className="fill-chart stroke-card" strokeWidth="2" initial={{ scale: 0 }} whileInView={{ scale: 1 }} viewport={{ once: true }} transition={{ delay: 1.6, type: "spring" }} />
               </svg>
             </Feature>
+          </div>
+        </section>
+        {/* ── questions people ask before signing up (also given to search engines, see app/page.tsx) ── */}
+        <section aria-labelledby="faq-title" className="relative mx-auto max-w-3xl px-5 pb-20 sm:px-10">
+          <h2 id="faq-title" className="font-display text-3xl font-bold tracking-tight">
+            Questions, answered
+          </h2>
+          <div className="mt-6 divide-y divide-line rounded-2xl border border-line bg-card">
+            {FAQ.map((item) => (
+              <details key={item.q} className="group px-5">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-4 text-[15px] font-semibold [&::-webkit-details-marker]:hidden">
+                  {item.q}
+                  <span aria-hidden className="text-muted transition-transform group-open:rotate-45">
+                    +
+                  </span>
+                </summary>
+                <p className="pb-4 text-sm leading-relaxed text-muted">{item.a}</p>
+              </details>
+            ))}
           </div>
         </section>
       </main>

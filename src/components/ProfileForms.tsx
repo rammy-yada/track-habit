@@ -22,6 +22,7 @@ import { changePasswordAction, deleteAccountAction, updateProfileAction } from "
 import { TimezoneOptions } from "@/components/TimezoneOptions";
 import { AVATAR_COLORS, CREATOR } from "@/lib/constants";
 import { clearOfflineData } from "@/lib/offline";
+import { ageOn, countryName, flag, genderLabel } from "@/lib/people";
 import { openGuide } from "@/lib/pwa";
 import { shrinkImage } from "@/lib/shrink";
 
@@ -38,6 +39,24 @@ export function ProfileForms({ user, stats, badges, badgeCount }: Props) {
   // which settings row is open (one at a time, like a phone's settings app)
   const [open, setOpen] = useState<string | null>(null);
   const toggle = (id: string) => setOpen((current) => (current === id ? null : id));
+  const [editing, setEditing] = useState(false);
+  // what the "My details" card lists: [label, value, small note]
+  const d = user.details;
+  const hidden = (shown: boolean) => (shown ? "Shown on your leaderboard profile" : "Hidden from others");
+  const details: [string, string, string?][] = [
+    ["Name", user.fullName],
+    ["Username", `@${user.username}`],
+    ["Email", user.email, "Only you can see this"],
+    ...(d
+      ? ([
+          ["Gender", genderLabel(d.gender), hidden(d.showGender)],
+          ["Date of birth", d.birthDate ? `${new Date(`${d.birthDate}T00:00:00Z`).toLocaleDateString("en-US", { timeZone: "UTC", day: "numeric", month: "long", year: "numeric" })} · ${ageOn(d.birthDate, new Date().toISOString().slice(0, 10))} years old` : "", d.showAge ? "Others see only your age" : "Hidden from others"],
+          ["Country", d.country ? `${flag(d.country)} ${countryName(d.country)}` : "", hidden(d.showCountry)],
+        ] as [string, string, string?][])
+      : []),
+    ["Timezone", user.timezone.replace(/_/g, " ")],
+    ["Member since", user.memberSince],
+  ];
   const router = useRouter();
   const [profileState, profileAction, profilePending] = useActionState(updateProfileAction, null);
   const [passwordState, passwordAction, passwordPending] = useActionState(changePasswordAction, null);
@@ -122,11 +141,29 @@ export function ProfileForms({ user, stats, badges, badgeCount }: Props) {
         )}
       </motion.section>
 
-      {badges && <Reveal>{badges}</Reveal>}
-
-      {/* ── settings, grouped the way a phone's settings app groups them: tap a row to open it ── */}
-      <Group title="Account">
-        <Row id="edit" icon="👤" title="Name, colour and timezone" note={user.email} open={open} toggle={toggle}>
+      {/* ── their details: shown plainly, changed after pressing Edit ── */}
+      <Reveal>
+        <section className={`${card} overflow-hidden`} aria-label="My details" data-my-details>
+          <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
+            <h2 className="text-[15px] font-bold">My details</h2>
+            <button type="button" className={btnSmall} onClick={() => setEditing((v) => !v)} aria-expanded={editing}>
+              {editing ? "Done" : "Edit"}
+            </button>
+          </div>
+          {/* the forms stay mounted while hidden, so a "saved" message or half-typed change isn't lost */}
+          <dl hidden={editing} className="divide-y divide-line">
+            {details.map(([name, value, hint]) => (
+              <div key={name} className="flex items-baseline justify-between gap-4 px-4 py-3 text-sm">
+                <dt className="shrink-0 text-muted">{name}</dt>
+                <dd className="min-w-0 text-right font-semibold">
+                  <span className="block truncate">{value || "—"}</span>
+                  {hint && <span className="block text-[11px] font-medium text-muted">{hint}</span>}
+                </dd>
+              </div>
+            ))}
+          </dl>
+          <div hidden={!editing} className="space-y-6 px-4 py-5">
+            <div>
           <Alert kind={profileState?.error ? "error" : "success"} shakeKey={profileState}>
             {profileState?.error ?? profileState?.message}
           </Alert>
@@ -179,7 +216,20 @@ export function ProfileForms({ user, stats, badges, badgeCount }: Props) {
               Save changes
             </SubmitButton>
           </form>
-        </Row>
+            </div>
+            {user.details && (
+              <div className="border-t border-line pt-5">
+                <AboutYou details={user.details} />
+              </div>
+            )}
+          </div>
+        </section>
+      </Reveal>
+
+      {badges && <Reveal>{badges}</Reveal>}
+
+      {/* ── settings, grouped the way a phone's settings app groups them: tap a row to open it ── */}
+      <Group title="Account">
         <Row id="photo" icon="📷" title="Profile photo" note={user.photo ? "Change or remove it" : "Add one"} open={open} toggle={toggle}>
           <div className="flex flex-wrap gap-2">
             <button type="button" className={btnSmall} onClick={() => fileInput.current?.click()} disabled={uploading}>
@@ -193,11 +243,6 @@ export function ProfileForms({ user, stats, badges, badgeCount }: Props) {
           </div>
           <p className="mt-2 text-xs text-muted">It is cropped to a square and stored as a small, compressed picture.</p>
         </Row>
-        {user.details && (
-          <Row id="about" icon="🪪" title="About you" note="Gender, date of birth, country, and who can see them" open={open} toggle={toggle}>
-            <AboutYou details={user.details} />
-          </Row>
-        )}
         <Row id="password" icon="🔒" title="Password" note={user.google ? "You sign in with Google" : "Change it"} open={open} toggle={toggle}>
           <Alert kind={passwordState?.error ? "error" : "success"} shakeKey={passwordState}>
             {passwordState?.error ?? passwordState?.message}

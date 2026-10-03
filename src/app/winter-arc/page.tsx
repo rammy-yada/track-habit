@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SITE_URL } from "@/lib/site";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Knight, Snow } from "@/components/arc/ArcScreen";
@@ -41,7 +42,26 @@ export default async function WinterArcPage() {
     { n: "III", title: "Begin", body: "Tick them off each day. Every tick earns points and moves you up the leaderboard." },
   ];
 
+  // Tells search engines this is an event with dates, free to join, held online.
+  const event = {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    name: `Winter Arc ${season.year}`,
+    description,
+    startDate: season.start,
+    endDate: season.end,
+    eventAttendanceMode: "https://schema.org/OnlineEventAttendanceMode",
+    eventStatus: "https://schema.org/EventScheduled",
+    location: { "@type": "VirtualLocation", url: `${SITE_URL}/winter-arc` },
+    image: `${SITE_URL}/opengraph-image`,
+    isAccessibleForFree: true,
+    offers: { "@type": "Offer", price: "0", priceCurrency: "USD", url: `${SITE_URL}/register?join=arc`, availability: "https://schema.org/InStock" },
+    organizer: { "@type": "Organization", name: "HabitFlow", url: SITE_URL },
+  };
+
   return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(event).replace(/</g, "\\u003c") }} />
     <div className="min-h-dvh bg-[#050505] text-white">
       <header className="relative z-10 flex items-center justify-between px-5 py-5 sm:px-10">
         <Link href="/" className="font-display text-lg font-bold tracking-tight text-white">
@@ -135,5 +155,6 @@ export default async function WinterArcPage() {
         </p>
       </main>
     </div>
+    </>
   );
 }
