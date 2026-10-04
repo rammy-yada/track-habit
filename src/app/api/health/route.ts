@@ -1,4 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
+import { currentUser } from "@/lib/auth";
+import { safeEqual } from "@/lib/safe-equal";
 import { queryOne } from "@/lib/db";
 import { connectionConfig } from "@/lib/db-config.mjs";
 
@@ -10,7 +12,7 @@ export const dynamic = "force-dynamic";
 // here (200 = yes, 503 = no), and a person can open it to see *which* part of
 // the setup is broken. It reports short codes only — never hosts, usernames,
 // passwords or secrets.
-export async function GET() {
+export async function GET(request: NextRequest) {
   const secret = process.env.SESSION_SECRET ?? "";
   const session = secret.length >= 32 ? "ok" : secret ? "SESSION_SECRET is shorter than 32 characters" : "SESSION_SECRET is not set";
 
@@ -23,6 +25,13 @@ export async function GET() {
   }
 
   const healthy = session === "ok" && database === "ok";
+  // Anyone may know whether the site is up (a load balancer has to). *Why* it
+  // is down — which setting is wrong — is told only to an administrator, or
+  // to a caller holding the scheduler's secret.
+  const cronSecret = process.env.CRON_SECRET ?? "";
+  const bearer = request.headers.get("authorization")?.replace(/^Bearer /, "") ?? "";
+  const trusted = (cronSecret.length >= 16 && safeEqual(bearer, cronSecret)) || (database === "ok" && (await currentUser().catch(() => null))?.role === "admin");
+  if (!trusted) return NextResponse.json({ status: healthy ? "ok" : "error", ...(healthy ? { session, database } : {}), time: new Date().toISOString() }, { status: healthy ? 200 : 503, headers: { "Cache-Control": "no-store" } });
   return NextResponse.json(
     { status: healthy ? "ok" : "error", session, database, tls: connectionConfig().ssl ? "on" : "off", time: new Date().toISOString() },
     { status: healthy ? 200 : 503, headers: { "Cache-Control": "no-store" } },

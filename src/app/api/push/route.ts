@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { currentUser } from "@/lib/auth";
 import { execute } from "@/lib/db";
 import { sameOrigin } from "@/lib/http";
+import { overLimit } from "@/lib/throttle";
 import { pushPublicKey, validPushEndpoint } from "@/lib/push";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +19,7 @@ export async function POST(request: NextRequest) {
   if (user instanceof NextResponse) return user;
   if (!pushPublicKey()) return NextResponse.json({ error: "Notifications aren't set up on this site." }, { status: 503 });
 
+  if (await overLimit(`push:${user.id}`, 20, 60)) return NextResponse.json({ error: "Too many requests. Please wait a while and try again." }, { status: 429 });
   const body = await request.json().catch(() => null);
   const p256dh = body?.keys?.p256dh;
   const auth = body?.keys?.auth;

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { currentUser } from "@/lib/auth";
 import { query } from "@/lib/db";
+import { overLimit } from "@/lib/throttle";
 
 export const dynamic = "force-dynamic";
 
@@ -8,6 +9,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const user = await currentUser();
   if (!user) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+  if (await overLimit(`export:${user.id}`, 10, 60)) return NextResponse.json({ error: "Too many requests. Please wait a while and try again." }, { status: 429 });
 
   const [habits, logs, arc] = await Promise.all([
     query("SELECT id, name, description, category, icon, color, frequency, target_count, reminder_time, is_active, created_at FROM habits WHERE user_id = ? ORDER BY id", [user.id]),

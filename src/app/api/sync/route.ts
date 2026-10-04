@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { currentUser, profileComplete } from "@/lib/auth";
 import { setHabitDone } from "@/lib/habit-log";
 import { sameOrigin } from "@/lib/http";
+import { overLimit } from "@/lib/throttle";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,8 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
   if (!profileComplete(user)) return NextResponse.json({ error: "Finish setting up your profile first." }, { status: 403 });
 
+  // generous (an app syncing normally sends a handful), but a loop hammering it is stopped
+  if (await overLimit(`sync:${user.id}`, 300, 10)) return NextResponse.json({ error: "Too many requests. Please wait a while and try again." }, { status: 429 });
   let ops: Op[];
   try {
     ops = (await request.json()).ops;

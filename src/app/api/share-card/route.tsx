@@ -7,6 +7,7 @@ import { SHARE_HASHTAGS } from "@/lib/constants";
 import { todayIn } from "@/lib/dates";
 import { queryOne } from "@/lib/db";
 import { initial } from "@/lib/text";
+import { overLimit } from "@/lib/throttle";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,8 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   const user = await currentUser();
   if (!user) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+  // drawing a picture is the most expensive thing the server does for one request
+  if (await overLimit(`card:${user.id}`, 60, 60)) return NextResponse.json({ error: "Too many requests. Please wait a while and try again." }, { status: 429 });
   if (request.nextUrl.searchParams.get("kind") === "quote") return quoteCard(user);
   const [arc, photo] = await Promise.all([getArc(user), avatarPng(user.id)]);
   const me = arc.me;

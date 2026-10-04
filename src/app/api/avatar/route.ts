@@ -5,6 +5,7 @@ import { currentUser } from "@/lib/auth";
 import { execute } from "@/lib/db";
 import { sameOrigin } from "@/lib/http";
 import { STORAGE_FULL_MESSAGE, storageFull } from "@/lib/storage";
+import { overLimit } from "@/lib/throttle";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,8 @@ export async function POST(request: NextRequest) {
   const user = await currentUser();
   if (!user) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
 
+  // re-encoding a picture is real work for the server: 20 an hour is plenty for a person, and no use to a script
+  if (await overLimit(`avatar:${user.id}`, 20, 60)) return NextResponse.json({ error: "Too many requests. Please wait a while and try again." }, { status: 429 });
   if (await storageFull()) return NextResponse.json({ error: STORAGE_FULL_MESSAGE }, { status: 507 });
   const declared = Number(request.headers.get("content-length") ?? 0);
   if (declared > MAX_UPLOAD) return NextResponse.json({ error: "That image is too large." }, { status: 413 });

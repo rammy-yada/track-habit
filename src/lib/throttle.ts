@@ -28,3 +28,14 @@ export async function clientIp(): Promise<string> {
   const h = await headers();
   return (h.get("x-forwarded-for")?.split(",")[0].trim() || h.get("x-real-ip") || "unknown").slice(0, 60);
 }
+
+/**
+ * For API routes: counts this use and says whether the key is over its limit.
+ * (One call instead of limited() + record(), for things that are counted
+ * whether or not they succeed — uploads, generated pictures, exports.)
+ */
+export async function overLimit(key: string, limit: number, minutes: number): Promise<boolean> {
+  if (await limited(key, limit, minutes)) return true;
+  await record(key);
+  return false;
+}
