@@ -94,7 +94,7 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
         </p>
         {post.cover && (
           // eslint-disable-next-line @next/next/no-img-element -- a small WebP served (and cached for a year) by our own route
-          <img src={post.cover} alt="" width={1200} height={630} fetchPriority="high" decoding="async" className="mt-7 aspect-[1200/630] w-full rounded-2xl border border-line object-cover" />
+          <img src={post.cover} alt={post.title} width={1200} height={630} fetchPriority="high" decoding="async" className="mt-7 aspect-[1200/630] w-full rounded-2xl border border-line object-cover" />
         )}
         {post.excerpt && <p className="mt-7 text-xl leading-relaxed text-muted">{post.excerpt}</p>}
         <div className="mt-7">

@@ -12,6 +12,5 @@ export default function robots(): MetadataRoute.Robots {
       disallow: ["/api/", "/auth/", "/dashboard", "/analytics", "/monthly", "/profile", "/support", "/arc", "/verify", "/reset", "/forgot", "/unsubscribed"],
     },
     sitemap: `${SITE_URL}/sitemap.xml`,
-    host: SITE_URL,
   };
 }
