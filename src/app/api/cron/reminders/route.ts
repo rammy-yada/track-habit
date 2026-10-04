@@ -22,5 +22,10 @@ export async function GET(request: NextRequest) {
   // `at` and `dry` exist for testing: pretend it is another time / only count, don't send
   const atParam = request.nextUrl.searchParams.get("at");
   const now = atParam && !Number.isNaN(Date.parse(atParam)) ? new Date(atParam) : new Date();
-  return NextResponse.json(await runReminders({ origin: siteOrigin(request), now, dry: request.nextUrl.searchParams.get("dry") === "1" }));
+  try {
+    return NextResponse.json(await runReminders({ origin: siteOrigin(request), now, dry: request.nextUrl.searchParams.get("dry") === "1" }));
+  } catch (err) {
+    // say what went wrong (the caller holds the secret), rather than a bare 500
+    return NextResponse.json({ error: (err as Error).message.slice(0, 300) }, { status: 500 });
+  }
 }

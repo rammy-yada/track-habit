@@ -11,7 +11,39 @@ import { execute, query } from "./db";
 // `npm run push:keys`). VAPID is how the push service knows a message really
 // comes from this site.
 
-export const pushPublicKey = (): string | null => (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY ? process.env.VAPID_PUBLIC_KEY : null);
+// Values pasted into a hosting dashboard often arrive with quotes, spaces or
+// a trailing "# comment" still attached; those are stripped here.
+const tidy = (value: string | undefined) => (value ?? "").replace(/\s+#.*$/, "").trim().replace(/^(["'])(.*)\1$/, "$2").trim();
+const publicKey = () => tidy(process.env.VAPID_PUBLIC_KEY);
+const privateKey = () => tidy(process.env.VAPID_PRIVATE_KEY);
+/** The contact address push services ask for. Anything that isn't a mailto:/https: address is turned into one, or replaced. */
+function subject(): string {
+  const value = tidy(process.env.VAPID_SUBJECT);
+  if (/^(mailto:\S+@\S+|https:\/\/\S+)$/.test(value)) return value;
+  if (/^\S+@\S+\.\S+$/.test(value)) return `mailto:${value}`;
+  return "mailto:admin@habitflow.app";
+}
+
+export const pushPublicKey = (): string | null => (publicKey() && privateKey() ? publicKey() : null);
+
+let configured = false;
+let problem: string | null = null;
+/**
+ * Hands the keys to the push library, once. If they are not a valid pair it
+ * says why (shown in Admin → Notifications and in the scheduler's answer)
+ * instead of throwing, so a bad setting can never take the reminders down.
+ */
+export function pushProblem(): string | null {
+  if (configured || problem) return problem;
+  if (!pushPublicKey()) return (problem = "VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY are not set.");
+  try {
+    webpush.setVapidDetails(subject(), publicKey(), privateKey());
+    configured = true;
+  } catch (err) {
+    problem = `The VAPID keys aren't valid: ${(err as Error).message}. Run "npm run push:keys" and paste the two keys again, without quotes.`;
+  }
+  return problem;
+}
 
 // Only real push services. A subscription is an address this server will send
 // requests to, so it must never be an arbitrary URL someone typed in.
@@ -38,16 +70,12 @@ export type PushMessage = {
   badge?: number;
 };
 
-let configured = false;
+/** Why the most recent delivery failed, if one did (for diagnosis). */
+export let lastPushError: string | null = null;
 
 /** Sends to every device the user has turned notifications on for. Returns how many accepted it. */
 export async function sendPush(userId: number, message: PushMessage): Promise<number> {
-  const publicKey = pushPublicKey();
-  if (!publicKey) return 0;
-  if (!configured) {
-    webpush.setVapidDetails(process.env.VAPID_SUBJECT ?? "mailto:admin@habitflow.app", publicKey, process.env.VAPID_PRIVATE_KEY!);
-    configured = true;
-  }
+  if (pushProblem()) return 0;
   const devices = await query<{ id: number; endpoint: string; p256dh: string; auth: string }>("SELECT id, endpoint, p256dh, auth FROM push_subscriptions WHERE user_id = ?", [userId]);
   let delivered = 0;
   for (const device of devices) {
@@ -57,6 +85,7 @@ export async function sendPush(userId: number, message: PushMessage): Promise<nu
     } catch (err) {
       // 404 / 410: the app was uninstalled or notifications were switched off on that device
       const status = (err as { statusCode?: number }).statusCode;
+      lastPushError = `${status ?? ""} ${(err as { body?: string; message?: string }).body ?? (err as Error).message ?? ""}`.trim().slice(0, 200);
       if (status === 404 || status === 410) await execute("DELETE FROM push_subscriptions WHERE id = ?", [device.id]);
     }
   }

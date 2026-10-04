@@ -13,7 +13,8 @@ type Props = {
   messages: CustomMessages;
   icons: { arc: number; away: number };
   builtIn: { quotes: string[]; nudges: string[]; comeback: Record<number, { title: string; body: string }> };
-  ready: boolean;
+  /** Why notifications can't be sent, if they can't. */
+  problem: string | null;
   devices: number;
   people: number;
 };
@@ -31,7 +32,8 @@ const toLines = (text: string) => text.split("\n").map((line) => line.trim()).fi
  * that go with them. Anything left empty uses the built-in wording (which
  * comes in English and Nepali; your own text is sent to everyone as written).
  */
-export function AdminMessages({ messages, icons, builtIn, ready, devices, people }: Props) {
+export function AdminMessages({ messages, icons, builtIn, problem, devices, people }: Props) {
+  const ready = problem === null;
   const router = useRouter();
   const [quotes, setQuotes] = useState(messages.quotes.join("\n"));
   const [nudges, setNudges] = useState(messages.nudges.join("\n"));
@@ -77,7 +79,7 @@ export function AdminMessages({ messages, icons, builtIn, ready, devices, people
               <span className="font-bold text-ink">{people}</span> {people === 1 ? "person has" : "people have"} notifications on, across <span className="font-bold text-ink">{devices}</span> {devices === 1 ? "device" : "devices"}. Each person chooses how many they get in their Profile.
             </>
           ) : (
-            "Notifications aren't switched on for this site yet: the VAPID keys are missing from the server's settings, so nothing here is sent."
+            `Notifications can't be sent yet. ${problem}`
           )}
         </p>
         {note && (

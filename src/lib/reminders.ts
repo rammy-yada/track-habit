@@ -6,7 +6,7 @@ import { getMessages, iconVersions } from "@/lib/messages";
 import { formatBytes, getStorage } from "@/lib/storage";
 import { storageEmail } from "@/lib/mail";
 import { arcReminderEmail, comebackEmail, emailLang, mailEnabled, sendMail, unsubscribeUrl } from "@/lib/mail";
-import { pushPublicKey, sendPush } from "@/lib/push";
+import { lastPushError, pushProblem, sendPush } from "@/lib/push";
 import { COMEBACK_DAYS, comebackFor, nudgeFor, QUIET_AFTER_DAYS, quoteFor } from "@/lib/quotes";
 import { decodeEntities } from "@/lib/text";
 
@@ -78,7 +78,8 @@ function clockIn(timezone: string, at: Date) {
  * sending), so running this often never repeats anything.
  */
 export async function runReminders({ origin, now = new Date(), dry = false }: { origin: string; now?: Date; dry?: boolean }) {
-  const canPush = pushPublicKey() !== null;
+  const pushIssue = pushProblem();
+  const canPush = pushIssue === null;
   const canMail = mailEnabled();
   if (!canPush && !canMail) return { note: "Neither email (RESEND_API_KEY / EMAIL_FROM) nor notifications (VAPID keys) are configured." };
 
@@ -126,9 +127,19 @@ export async function runReminders({ origin, now = new Date(), dry = false }: { 
   const claim = async (userId: number, kind: string, day: string) => dry || (await execute("INSERT INTO email_log (user_id, kind, day) VALUES (?, ?, ?) ON CONFLICT DO NOTHING", [userId, kind, day])).rowCount > 0;
   const release = (userId: number, kind: string, day: string) => execute("DELETE FROM email_log WHERE user_id = ? AND kind = ? AND day = ?", [userId, kind, day]);
 
+  const failed: string[] = [];
   for (const person of people) {
+    // one person's trouble must not stop everyone after them
+    try {
+      await remind(person);
+    } catch (err) {
+      failed.push(`#${person.id}: ${(err as Error).message.slice(0, 120)}`);
+    }
+  }
+
+  async function remind(person: Person) {
     const clock = clockIn(person.timezone, now);
-    if (!clock) continue;
+    if (!clock) return;
     const { today } = clock;
     const lang = emailLang(person);
     const ne = lang === "ne";
@@ -219,9 +230,9 @@ export async function runReminders({ origin, now = new Date(), dry = false }: { 
 
     // ── evening: Winter Arc members with habits still open ──
     const season = arcSeason(today);
-    if (clock.hour < EVENING_HOUR || clock.hour >= DAY_ENDS || !person.member || !season.live || quiet) continue;
+    if (clock.hour < EVENING_HOUR || clock.hour >= DAY_ENDS || !person.member || !season.live || quiet) return;
     const left = await habitsLeft();
-    if (left <= 0) continue; // nothing to remind them of
+    if (left <= 0) return; // nothing to remind them of
 
     if (push && (await claim(person.id, "push_arc", today))) {
       if (!dry)
@@ -245,7 +256,7 @@ export async function runReminders({ origin, now = new Date(), dry = false }: { 
         const ok = await sendMail({ to: person.email, unsubscribeUrl: unsubscribe, ...arcReminderEmail(lang, { name, day: season.day, totalDays: season.totalDays, left, streak, url: `${origin}/dashboard`, unsubscribe }) });
         if (!ok) {
           await release(person.id, "arc_reminder", today); // let a later run try again
-          continue;
+          return;
         }
         await new Promise((resolve) => setTimeout(resolve, 600)); // stay under the provider's rate limit
       }
@@ -254,7 +265,7 @@ export async function runReminders({ origin, now = new Date(), dry = false }: { 
     }
   }
 
-  return { people: people.length, ...sent, delivered, dry, ...(storage ? { storage } : {}) };
+  return { people: people.length, ...sent, delivered, dry, ...(storage ? { storage } : {}), ...(pushIssue ? { pushProblem: pushIssue } : {}), ...(lastPushError && delivered === 0 ? { lastPushError } : {}), ...(failed.length ? { failed } : {}) };
 }
 
 /**
