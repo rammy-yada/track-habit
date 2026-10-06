@@ -63,17 +63,43 @@ export function validUnsubscribe(userId: number, key: string): boolean {
 
 const esc = (text: string) => text.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
-/** One plain layout for every email: black on white, a single button, a short footer. */
+/**
+ * The one layout every email uses. It fills the whole width of the message —
+ * no grey margin around a small card — with a dark banner across the top, the
+ * content below it, one large button, and a dark footer.
+ *
+ * Built the way email has to be: tables and inline styles only (mail apps
+ * ignore stylesheets), and no pictures to download, so it looks the same
+ * whether or not the reader's app shows images.
+ */
 function layout({ heading, lines, button, footer }: { heading: string; lines: string[]; button?: { label: string; url: string }; footer: string[] }) {
-  const html = `<!doctype html><html><body style="margin:0;padding:24px;background:#f4f4f4;font-family:-apple-system,'Segoe UI','Noto Sans Devanagari',Roboto,sans-serif;color:#111">
-<table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center">
-<table role="presentation" width="100%" style="max-width:480px;background:#ffffff;border-radius:16px;padding:32px" cellspacing="0" cellpadding="0"><tr><td>
-<p style="margin:0 0 20px;font-size:13px;font-weight:700;letter-spacing:2px;color:#111">HABITFLOW</p>
-<h1 style="margin:0 0 16px;font-size:22px;line-height:1.3;color:#111">${esc(heading)}</h1>
-${lines.map((line) => `<p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:#333">${line}</p>`).join("\n")}
-${button ? `<p style="margin:24px 0"><a href="${esc(button.url)}" style="display:inline-block;background:#111;color:#fff;text-decoration:none;font-weight:700;font-size:15px;padding:13px 26px;border-radius:10px">${esc(button.label)}</a></p>` : ""}
-${footer.map((line) => `<p style="margin:16px 0 0;font-size:12px;line-height:1.6;color:#888">${line}</p>`).join("\n")}
-</td></tr></table></td></tr></table></body></html>`;
+  const font = "-apple-system,'Segoe UI','Noto Sans Devanagari',Roboto,Helvetica,Arial,sans-serif";
+  const origin = button ? new URL(button.url).origin : "https://habitflow.hellnah.dev";
+  const html = `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"></head>
+<body style="margin:0;padding:0;background:#ffffff;font-family:${font};color:#111111;-webkit-text-size-adjust:100%">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:collapse;background:#ffffff">
+<tr><td style="background:#0b1020;background-image:linear-gradient(135deg,#0b1020 0%,#16224a 60%,#2563eb 140%);padding:28px 24px 30px">
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr>
+    <td style="width:38px;height:38px;border-radius:11px;background:#2563eb;text-align:center;vertical-align:middle;font-size:20px;line-height:38px;color:#ffffff;font-weight:800">&#10003;</td>
+    <td style="padding-left:12px;font-size:19px;font-weight:800;letter-spacing:0.5px;color:#ffffff">HabitFlow</td>
+  </tr></table>
+  <h1 style="margin:22px 0 0;font-size:27px;line-height:1.25;font-weight:800;color:#ffffff">${esc(heading)}</h1>
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin-top:16px"><tr>
+    ${[1, 1, 1, 0, 1, 1, 1].map((on) => `<td style="width:26px;height:6px;border-radius:3px;background:${on ? "#60a5fa" : "#334155"};font-size:0;line-height:0">&nbsp;</td><td style="width:5px;font-size:0;line-height:0">&nbsp;</td>`).join("")}
+  </tr></table>
+</td></tr>
+<tr><td style="padding:28px 24px 8px">
+${lines.map((line) => `<p style="margin:0 0 16px;font-size:16px;line-height:1.65;color:#1f2937">${line}</p>`).join("\n")}
+${button ? `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:10px 0 22px"><tr><td align="center" style="background:#2563eb;border-radius:14px"><a href="${esc(button.url)}" style="display:block;padding:17px 20px;font-size:16px;font-weight:800;color:#ffffff;text-decoration:none;font-family:${font}">${esc(button.label)} &rarr;</a></td></tr></table>` : ""}
+</td></tr>
+<tr><td style="padding:0 24px 26px">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr><td style="background:#eff6ff;border-left:4px solid #2563eb;border-radius:0 12px 12px 0;padding:14px 16px;font-size:14px;line-height:1.55;color:#1e3a8a"><b>Small steps, every day.</b> One tick today is worth more than a perfect plan for tomorrow.</td></tr></table>
+</td></tr>
+<tr><td style="background:#0b1020;padding:22px 24px 26px">
+${footer.map((line) => `<p style="margin:0 0 10px;font-size:12.5px;line-height:1.6;color:#94a3b8">${line.replace(/color:#888/g, "color:#cbd5e1")}</p>`).join("\n")}
+  <p style="margin:12px 0 0;font-size:12.5px;line-height:1.6;color:#64748b"><a href="${esc(origin)}" style="color:#93c5fd;text-decoration:none;font-weight:700">HabitFlow</a> &middot; Free habit tracker &middot; <a href="${esc(origin)}/privacy" style="color:#94a3b8">Privacy</a></p>
+</td></tr>
+</table></body></html>`;
   // plain-text copy: links keep their address ("label: https://…"), other tags are dropped
   const strip = (s: string) => s.replace(/<a href="([^"]+)"[^>]*>(.*?)<\/a>/g, "$2: $1").replace(/<[^>]+>/g, "").replace(/&amp;/g, "&");
   const text = [heading, "", ...lines.map(strip), ...(button ? ["", `${button.label}: ${button.url}`] : []), "", ...footer.map(strip)].join("\n");
@@ -81,7 +107,7 @@ ${footer.map((line) => `<p style="margin:16px 0 0;font-size:12px;line-height:1.6
 }
 
 export function verificationEmail(lang: Lang, code: string) {
-  const big = `<span style="display:inline-block;font-size:30px;font-weight:700;letter-spacing:8px;color:#111;background:#f4f4f4;border-radius:10px;padding:12px 18px">${esc(code)}</span>`;
+  const big = `<span style="display:block;text-align:center;font-size:38px;font-weight:800;letter-spacing:12px;color:#0b1020;background:#eff6ff;border:2px dashed #2563eb;border-radius:14px;padding:18px 8px">${esc(code)}</span>`;
   return lang === "ne"
     ? { subject: `${code} — तपाईंको HabitFlow प्रमाणीकरण कोड`, ...layout({ heading: "आफ्नो इमेल प्रमाणित गर्नुहोस्", lines: ["HabitFlow खाता बनाउन यो कोड प्रयोग गर्नुहोस्:", big, "यो कोड १० मिनेटसम्म मात्र काम गर्छ।"], footer: ["यदि तपाईंले यो अनुरोध गर्नुभएको होइन भने, यो इमेललाई बेवास्ता गर्नुहोस्।"] }) }
     : { subject: `${code} is your HabitFlow verification code`, ...layout({ heading: "Verify your email", lines: ["Use this code to finish creating your HabitFlow account:", big, "It works for 10 minutes."], footer: ["If you didn't ask for this, you can ignore this email."] }) };
