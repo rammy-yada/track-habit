@@ -9,6 +9,7 @@ import { saveArcSettingsAction } from "@/lib/actions/arc-admin";
 import { DEFAULT_SURPRISES, MAX_SURPRISES, MILESTONES, normalizeIntro, SHAKE_OPTIONS, SOUND_OPTIONS, TEXT_FIELDS, TEXT_PRESETS, type IntroText, type Shake, type Sound } from "@/lib/arc-config";
 import type { ArcIntroSetup } from "@/lib/arc-settings";
 import { whenOnline } from "@/lib/offline";
+import { send } from "@/lib/request";
 
 type Props = {
   intro: ArcIntroSetup;
@@ -49,19 +50,13 @@ export function IntroSettings({ intro, surprises, images, adminName, totalDays }
   async function sendSound(init: RequestInit) {
     setUploading(true);
     setMessage(null);
-    try {
-      const response = await fetch("/api/sigmadev/intro-image?slot=sound", init);
-      if (response.ok) {
-        if (init.method === "POST") setSound("custom");
-        else if (sound === "custom") setSound("none");
-        setMessage({ ok: true, text: init.method === "POST" ? "Sound uploaded. Press Save to use it." : "Sound removed." });
-        router.refresh();
-      } else setMessage({ ok: false, text: (await response.json().catch(() => null))?.error ?? "That didn't work. Please try again." });
-    } catch {
-      setMessage({ ok: false, text: "That didn't work. Check your connection and try again." });
-    } finally {
-      setUploading(false);
-    }
+    const result = await send("/api/sigmadev/intro-image?slot=sound", init);
+    setUploading(false);
+    if (!result.ok) return setMessage({ ok: false, text: result.error });
+    if (init.method === "POST") setSound("custom");
+    else if (sound === "custom") setSound("none");
+    setMessage({ ok: true, text: init.method === "POST" ? "Sound uploaded. Press Save to use it." : "Sound removed." });
+    router.refresh();
   }
 
   return (

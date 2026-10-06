@@ -7,6 +7,7 @@ import { UploadTile } from "@/components/ui/UploadTile";
 import { btnPrimary, btnSmall, card, input, label } from "@/components/ui/styles";
 import { saveMessagesAction } from "@/lib/actions/site-admin";
 import { whenOnline } from "@/lib/offline";
+import { send } from "@/lib/request";
 import { COMEBACK_DAYS, type CustomMessages } from "@/lib/quotes";
 
 type Props = {
@@ -53,15 +54,10 @@ export function AdminMessages({ messages, icons, builtIn, problem, devices, peop
   async function sendIcon(slot: string, init: RequestInit) {
     setUploading(slot);
     setNote(null);
-    try {
-      const response = await fetch(`/api/sigmadev/intro-image?slot=${slot}`, init);
-      if (response.ok) router.refresh();
-      else setNote({ ok: false, text: (await response.json().catch(() => null))?.error ?? "That didn't work. Please try again." });
-    } catch {
-      setNote({ ok: false, text: "That didn't work. Check your connection and try again." });
-    } finally {
-      setUploading(null);
-    }
+    const result = await send(`/api/sigmadev/intro-image?slot=${slot}`, init);
+    setUploading(null);
+    if (result.ok) router.refresh();
+    else setNote({ ok: false, text: result.error });
   }
 
   return (

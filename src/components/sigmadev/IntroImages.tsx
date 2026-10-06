@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { send } from "@/lib/request";
 import { replayArcIntro } from "@/components/arc/ArcIntro";
 import { UploadTile } from "@/components/ui/UploadTile";
 import { btnGhost, card } from "@/components/ui/styles";
@@ -19,18 +20,13 @@ export function IntroImages({ images }: { images: Images }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function send(slot: string, init: RequestInit) {
+  async function upload(slot: string, init: RequestInit) {
     setBusy(slot);
     setError(null);
-    try {
-      const response = await fetch(`/api/sigmadev/intro-image?slot=${slot}`, init);
-      if (response.ok) router.refresh();
-      else setError((await response.json().catch(() => null))?.error ?? "That didn't work. Please try again.");
-    } catch {
-      setError("That didn't work. Check your connection and try again.");
-    } finally {
-      setBusy(null);
-    }
+    const result = await send(`/api/sigmadev/intro-image?slot=${slot}`, init);
+    setBusy(null);
+    if (result.ok) router.refresh();
+    else setError(result.error);
   }
 
   return (
@@ -70,8 +66,8 @@ export function IntroImages({ images }: { images: Images }) {
               busy={busy === slot}
               blocked={busy !== null && busy !== slot ? "One at a time…" : null}
               inputData={{ "data-intro-input": slot }}
-              onPick={(file) => void send(slot, { method: "POST", body: file, headers: { "Content-Type": file.type || "application/octet-stream" } })}
-              onRemove={() => send(slot, { method: "DELETE" })}
+              onPick={(file) => void upload(slot, { method: "POST", body: file, headers: { "Content-Type": file.type || "application/octet-stream" } })}
+              onRemove={() => upload(slot, { method: "DELETE" })}
             />
           </div>
         ))}

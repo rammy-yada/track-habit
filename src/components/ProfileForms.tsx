@@ -25,6 +25,7 @@ import { APP_VERSION, AVATAR_COLORS, CREATOR } from "@/lib/constants";
 import { clearOfflineData } from "@/lib/offline";
 import { ageOn, countryName, flag, genderLabel } from "@/lib/people";
 import { openGuide } from "@/lib/pwa";
+import { send } from "@/lib/request";
 import { shrinkImage } from "@/lib/shrink";
 
 type Props = {
@@ -70,18 +71,12 @@ export function ProfileForms({ user, stats, badges, badgeCount }: Props) {
   const palette = AVATAR_COLORS.includes(color) ? AVATAR_COLORS : [color, ...AVATAR_COLORS];
 
   async function photoRequest(init: RequestInit) {
-    if (!navigator.onLine) return setPhotoError("You're offline. Changing your photo needs a connection.");
     setUploading(true);
     setPhotoError(null);
-    try {
-      const response = await fetch("/api/avatar", init);
-      if (response.ok) router.refresh();
-      else setPhotoError((await response.json().catch(() => null))?.error ?? "That didn't work. Please try again.");
-    } catch {
-      setPhotoError("That didn't work. Please check your connection and try again.");
-    } finally {
-      setUploading(false);
-    }
+    const result = await send("/api/avatar", init);
+    setUploading(false);
+    if (result.ok) router.refresh();
+    else setPhotoError(result.error);
   }
 
   async function choosePhoto(event: React.ChangeEvent<HTMLInputElement>) {

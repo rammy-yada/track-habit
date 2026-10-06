@@ -81,7 +81,8 @@ export async function getAdminUsers(search: string, role: "user" | "admin" = "us
             (SELECT COUNT(*) FROM habit_logs l WHERE l.user_id = u.id AND l.completed_count > 0) AS checkin_count
      FROM users u
      WHERE u.role = ? ${search ? "AND (u.username ILIKE ? OR u.email ILIKE ? OR u.full_name ILIKE ?)" : ""}
-     ORDER BY u.created_at DESC, u.id DESC`,
+     ORDER BY u.created_at DESC, u.id DESC
+     LIMIT 300`, // the newest 300; older accounts are found with the search box
     search ? [role, like, like, like] : [role],
   );
   return rows.map(({ google_id, ...u }) => ({ ...u, full_name: decodeEntities(u.full_name), google: google_id !== null, habit_count: Number(u.habit_count), checkin_count: Number(u.checkin_count) }));

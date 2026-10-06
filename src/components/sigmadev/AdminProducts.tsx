@@ -9,6 +9,7 @@ import { UploadTile } from "@/components/ui/UploadTile";
 import { btnGhost, btnPrimary, btnSmall, card, eyebrow, input, label } from "@/components/ui/styles";
 import { deleteProduct, saveProduct } from "@/lib/actions/site-admin";
 import { whenOnline } from "@/lib/offline";
+import { send } from "@/lib/request";
 import type { Product } from "@/lib/products";
 import { shrinkImage } from "@/lib/shrink";
 
@@ -59,18 +60,11 @@ export function AdminProducts({ products }: { products: Row[] }) {
   async function sendImage(id: number, init: RequestInit) {
     setUploading(true);
     setMessage(null);
-    try {
-      const response = await fetch(`/api/sigmadev/product-image?id=${id}`, init);
-      const data = await response.json().catch(() => null);
-      if (response.ok) {
-        setDraft((d) => (d ? { ...d, image: data?.url ?? null } : d));
-        router.refresh();
-      } else setMessage({ ok: false, text: data?.error ?? "The picture couldn't be uploaded. Please try again." });
-    } catch {
-      setMessage({ ok: false, text: "The picture couldn't be uploaded. Check your connection and try again." });
-    } finally {
-      setUploading(false);
-    }
+    const result = await send<{ url?: string }>(`/api/sigmadev/product-image?id=${id}`, init);
+    setUploading(false);
+    if (!result.ok) return setMessage({ ok: false, text: result.error });
+    setDraft((d) => (d ? { ...d, image: result.data.url ?? null } : d));
+    router.refresh();
   }
 
   return (

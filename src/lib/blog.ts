@@ -38,7 +38,7 @@ const COLUMNS = "id, slug, title, excerpt, body, published, published_at, update
 
 /** Posts, newest first. Visitors only ever get published ones. */
 export async function getPosts(options: { drafts?: boolean } = {}): Promise<Post[]> {
-  return (await query<Row>(`SELECT ${COLUMNS} FROM blog_posts ${options.drafts ? "" : "WHERE published = 1"} ORDER BY COALESCE(published_at, created_at) DESC, id DESC`)).map(toPost);
+  return (await query<Row>(`SELECT ${COLUMNS} FROM blog_posts ${options.drafts ? "" : "WHERE published = 1"} ORDER BY COALESCE(published_at, created_at) DESC, id DESC LIMIT 100`)).map(toPost);
 }
 
 /** One published post, by its address. */

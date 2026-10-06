@@ -11,6 +11,7 @@ import { btnGhost, btnPrimary, btnSmall, card, input, label } from "@/components
 import { deletePost, savePost } from "@/lib/actions/site-admin";
 import { parsePost, plainText, readingMinutes, SEO_DESCRIPTION_MAX, SEO_TITLE_MAX, slugify, wordCount } from "@/lib/blog-format";
 import { whenOnline } from "@/lib/offline";
+import { send } from "@/lib/request";
 import { shrinkImage } from "@/lib/shrink";
 
 export type EditablePost = { id: number | null; title: string; slug: string; excerpt: string; body: string; published: boolean; seoTitle: string; seoDescription: string; tags: string; cover: string | null };
@@ -133,16 +134,10 @@ export function PostEditor({ post, siteUrl }: { post: EditablePost; siteUrl: str
     if (draft.id === null) return;
     setUploading(true);
     setMessage(null);
-    try {
-      const response = await fetch(`/api/sigmadev/post-cover?id=${draft.id}`, init);
-      const data = await response.json().catch(() => null);
-      if (response.ok) set("cover", data?.url ?? null);
-      else setMessage({ ok: false, text: data?.error ?? (response.status === 413 ? "That picture is too large to upload. Try a smaller one." : "The picture couldn't be uploaded just now. Please try again in a moment.") });
-    } catch {
-      setMessage({ ok: false, text: "That didn't work. Check your connection and try again." });
-    } finally {
-      setUploading(false);
-    }
+    const result = await send<{ url?: string }>(`/api/sigmadev/post-cover?id=${draft.id}`, init);
+    setUploading(false);
+    if (result.ok) set("cover", result.data.url ?? null);
+    else setMessage({ ok: false, text: result.error });
   }
 
   // ── what search engines will show, and a few checks ──

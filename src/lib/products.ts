@@ -8,5 +8,5 @@ const toProduct = (r: Row): Product => ({ id: r.id, name: r.name, price: r.price
 
 /** Products, newest first. Members only ever get the ones that are switched on. */
 export async function getProducts(options: { all?: boolean } = {}): Promise<Product[]> {
-  return (await query<Row>(`SELECT id, name, price, description, url, category, is_active, clicks, image_version, created_at FROM products ${options.all ? "" : "WHERE is_active = 1"} ORDER BY created_at DESC, id DESC`)).map(toProduct);
+  return (await query<Row>(`SELECT id, name, price, description, url, category, is_active, clicks, image_version, created_at FROM products ${options.all ? "" : "WHERE is_active = 1"} ORDER BY created_at DESC, id DESC LIMIT 200`)).map(toProduct);
 }

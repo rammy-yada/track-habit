@@ -111,7 +111,7 @@ export function ArcQuote({ member, saved, day, totalDays, live, photoVersion }: 
 
       <section className={`${card} p-4`} aria-label="Your picture" data-true-color>
         {/* eslint-disable-next-line @next/next/no-img-element -- generated per request, nothing to optimise */}
-        <img src={picture} alt={current ? `Your quote: ${current}` : "Your quote picture"} width={1080} height={1350} className="aspect-[4/5] w-full rounded-xl border border-line bg-black object-cover" data-quote-picture />
+        <img src={picture} alt={current ? `Your quote: ${current}` : "Your quote picture"} width={1080} height={1350} loading="lazy" decoding="async" className="aspect-[4/5] w-full rounded-xl border border-line bg-black object-cover" data-quote-picture />
         <div className="mt-3 space-y-2">
           {share && (
             <button type="button" className={`${btnPrimary} w-full py-3`} onClick={() => post("share")} disabled={working || dirty}>

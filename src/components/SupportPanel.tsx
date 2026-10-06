@@ -12,6 +12,7 @@ const HEARTS = [8, 22, 37, 55, 71, 86];
 export function SupportPanel() {
   const [copied, setCopied] = useState(false);
   const [canShare, setCanShare] = useState(false);
+  const [photo, setPhoto] = useState(true);
 
   // The system share sheet exists on phones (and a few desktop browsers).
   useEffect(() => setCanShare(typeof navigator.share === "function"), []);
@@ -61,12 +62,17 @@ export function SupportPanel() {
           <div className="relative mx-auto mb-5 h-24 w-24">
             <span className="absolute inset-0 rounded-full bg-[conic-gradient(from_0deg,var(--brand),transparent_55%,var(--brand))] [animation:spin-slow_5s_linear_infinite]" />
             <motion.span
-              className="absolute inset-[3px] grid place-items-center rounded-full bg-brand-solid font-display text-4xl font-extrabold text-on-brand"
+              className="absolute inset-[3px] grid place-items-center overflow-hidden rounded-full bg-brand-solid font-display text-4xl font-extrabold text-on-brand"
               initial={{ scale: 0.5, rotate: -25 }}
               animate={{ scale: 1, rotate: 0 }}
               transition={{ type: "spring", stiffness: 220, damping: 14 }}
             >
               {CREATOR.handle[0].toUpperCase()}
+              {/* the creator's own photo sits over the initial; if there isn't one, the initial stays */}
+              {photo && (
+                // eslint-disable-next-line @next/next/no-img-element -- a small WebP served by our own route
+                <img src="/api/creator-photo" alt={`${CREATOR.handle}, creator of HabitFlow`} width={96} height={96} decoding="async" onError={() => setPhoto(false)} className="absolute inset-0 h-full w-full rounded-full object-cover" data-creator-photo />
+              )}
             </motion.span>
           </div>
 
