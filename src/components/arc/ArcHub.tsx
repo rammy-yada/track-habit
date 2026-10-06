@@ -7,10 +7,10 @@ import { Modal } from "@/components/ui/Modal";
 import { replayArcIntro } from "./ArcIntro";
 
 const TABS = [
-  { id: "leaderboard", label: "Ranks", icon: <path d="M8 21h8m-4-4v4M7 4h10v5a5 5 0 0 1-10 0V4zm0 2H4a3 3 0 0 0 3 4m10-4h3a3 3 0 0 1-3 4" /> },
   { id: "pack", label: "My pack", icon: <path d="M21 8l-9-5-9 5m18 0v8l-9 5m9-13l-9 5m0 8l-9-5V8m9 13V13M3 8l9 5" /> },
   { id: "tips", label: "Tips", icon: <path d="M9 18h6m-5 3h4M12 3a6 6 0 0 0-3.6 10.8c.6.5 1.1 1.3 1.1 2.2h5c0-.9.5-1.7 1.1-2.2A6 6 0 0 0 12 3z" /> },
   { id: "quote", label: "Quote", icon: <path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17v3zM14 7l3 3" /> },
+  { id: "leaderboard", label: "Ranks", icon: <path d="M8 21h8m-4-4v4M7 4h10v5a5 5 0 0 1-10 0V4zm0 2H4a3 3 0 0 0 3 4m10-4h3a3 3 0 0 1-3 4" /> },
 ] as const;
 type Tab = (typeof TABS)[number]["id"];
 
@@ -29,12 +29,12 @@ const round = "grid h-10 w-10 place-items-center rounded-full border border-line
 
 /**
  * The Winter Arc as a place of its own: it covers the whole screen, opens on
- * the leaderboard, and has its sections along the bottom. At the top there is
+ * your pack, and has its sections along the bottom. At the top there is
  * only a way back and a ⋯ menu, which holds the things used less often — your
  * goals, and playing the intro again.
  */
 export function ArcHub({ status, leaderboard, pack, tips, quote, goals }: Props) {
-  const [tab, setTab] = useState<Tab>("leaderboard");
+  const [tab, setTab] = useState<Tab>("pack");
   const [menu, setMenu] = useState(false);
   const [showGoals, setShowGoals] = useState(false);
   const panels: Record<Tab, React.ReactNode> = { leaderboard, pack, tips, quote };

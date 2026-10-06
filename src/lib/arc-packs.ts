@@ -139,6 +139,7 @@ export async function getArcPanel(user: User) {
     done.get(log.habit_id)!.add(log.log_date);
   }
   return {
+    today,
     pack,
     packs: packs.map(({ id, name, icon, tagline, habits: list }) => ({ id, name, icon, tagline, habits: list.map((h) => `${h.icon} ${h.name}`) })),
     habits: habits.map((h) => ({ id: h.id, name: decodeEntities(h.name), icon: h.icon, doneToday: done.get(h.id)?.has(today) ?? false })),

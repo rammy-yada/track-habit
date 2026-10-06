@@ -228,7 +228,9 @@ export function ArcScreen({ arc, compact = false }: { arc: Arc; /** a short bann
               {showRules && (
                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
                   <ul className="space-y-1.5 px-4 pb-3 text-xs leading-relaxed text-white/60">
-                    <li>• 10 points for each habit you tick, up to 5 habits a day (50 points).</li>
+                    <li>• 10 points for each habit you tick, up to 5 habits a day.</li>
+                    <li>• +10 bonus for a full day of five: 60 points is the most a day can earn.</li>
+                    <li>• Bonus points can also be awarded by the organisers, for events and prizes.</li>
                     <li>• Only ticks made on the day count. Filling in old days fixes your record, not your score.</li>
                     <li>• Ticks made offline count once they sync, if that happens within a day.</li>
                     <li>• Ties go to whoever has more active days, then whoever joined first.</li>

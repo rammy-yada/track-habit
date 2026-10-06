@@ -10,6 +10,13 @@ import { decodeEntities } from "./text";
 
 export const ARC_POINTS_PER_HABIT = 10;
 export const ARC_HABITS_PER_DAY = 5; // only the first five habits of a day score
+export const ARC_FULL_DAY_BONUS = 10; // extra for a day with all five
+/** The most one day can earn. */
+export const ARC_DAILY_MAX = ARC_HABITS_PER_DAY * ARC_POINTS_PER_HABIT + ARC_FULL_DAY_BONUS;
+/** Points for a day with this many ticks. (The same sum is written in SQL below.) */
+export const arcDayPoints = (ticks: number) => Math.min(ticks, ARC_HABITS_PER_DAY) * ARC_POINTS_PER_HABIT + (ticks >= ARC_HABITS_PER_DAY ? ARC_FULL_DAY_BONUS : 0);
+/** SQL for a member's admin-given bonus points this season. */
+export const BONUS_SQL = "COALESCE((SELECT SUM(b.points) FROM arc_bonus b WHERE b.user_id = m.user_id AND b.season = m.season), 0)";
 
 export function arcSeason(today: string) {
   const calendarYear = Number(today.slice(0, 4));
@@ -40,7 +47,7 @@ export async function isArcMember(user: User): Promise<boolean> {
 // for — filling in old days from the monthly grid fixes your record but
 // doesn't move you up the leaderboard.
 const DAILY_POINTS = `
-  SELECT user_id, log_date, LEAST(COUNT(*), ${ARC_HABITS_PER_DAY}) * ${ARC_POINTS_PER_HABIT} AS pts
+  SELECT user_id, log_date, LEAST(COUNT(*), ${ARC_HABITS_PER_DAY}) * ${ARC_POINTS_PER_HABIT} + CASE WHEN COUNT(*) >= ${ARC_HABITS_PER_DAY} THEN ${ARC_FULL_DAY_BONUS} ELSE 0 END AS pts
   FROM habit_logs
   WHERE completed_count > 0 AND log_date BETWEEN ? AND ?
     AND ABS(completed_at::date - log_date) <= 1
@@ -61,12 +68,12 @@ export async function getArc(user: User) {
   const [rows, myDays] = await Promise.all([
     query<BoardRow>(
       `SELECT u.id, u.username, u.full_name, u.avatar_color, u.avatar_version,
-              COALESCE(SUM(d.pts), 0) AS points, COUNT(d.log_date) AS active_days
+              COALESCE(SUM(d.pts), 0) + ${BONUS_SQL} AS points, COUNT(d.log_date) AS active_days
        FROM winter_arc_members m
        JOIN users u ON u.id = m.user_id AND u.is_active = 1
        LEFT JOIN (${DAILY_POINTS}) d ON d.user_id = m.user_id
        WHERE m.season = ?
-       GROUP BY u.id, u.username, u.full_name, u.avatar_color, u.avatar_version, m.joined_at
+       GROUP BY u.id, u.username, u.full_name, u.avatar_color, u.avatar_version, m.joined_at, m.user_id, m.season
        ORDER BY points DESC, active_days DESC, m.joined_at ASC, u.id ASC`,
       [season.start, season.end, season.year],
     ),
@@ -98,6 +105,6 @@ export async function getArc(user: User) {
     season,
     members: board.length,
     board: board.slice(0, 30),
-    me: mine && { ...mine, streak, today: scored.get(today) ?? 0, dailyMax: ARC_HABITS_PER_DAY * ARC_POINTS_PER_HABIT },
+    me: mine && { ...mine, streak, today: scored.get(today) ?? 0, dailyMax: ARC_DAILY_MAX },
   };
 }

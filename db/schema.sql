@@ -412,3 +412,16 @@ CREATE TABLE IF NOT EXISTS products (
     clicks        INT          NOT NULL DEFAULT 0,
     created_at    TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
 );
+
+-- ── Winter Arc bonus points ──────────────────────────────────
+-- Extra points an admin gives a member (for an event, a referral, a prize…),
+-- added to what their daily ticks earn. Negative rows take points away.
+CREATE TABLE IF NOT EXISTS arc_bonus (
+    id         SERIAL PRIMARY KEY,
+    user_id    INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    season     INT NOT NULL,
+    points     INT NOT NULL,
+    reason     VARCHAR(120) NOT NULL DEFAULT '',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS arc_bonus_user ON arc_bonus (user_id, season);

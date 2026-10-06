@@ -1,6 +1,6 @@
 import "server-only";
 import { query, queryOne } from "./db";
-import { ARC_HABITS_PER_DAY, ARC_POINTS_PER_HABIT, arcSeason } from "./arc";
+import { ARC_FULL_DAY_BONUS, ARC_HABITS_PER_DAY, ARC_POINTS_PER_HABIT, arcSeason, BONUS_SQL } from "./arc";
 import { getCategories } from "./data";
 import { addDays, formatDate, todayIn } from "./dates";
 import { decodeEntities } from "./text";
@@ -101,22 +101,22 @@ export async function getAdminArc() {
   const season = arcSeason(today);
   const rows = await query<{ id: number; username: string; full_name: string; avatar_color: string; avatar_version: number; joined_at: string; points: number | string; active_days: number | string }>(
     `SELECT u.id, u.username, u.full_name, u.avatar_color, u.avatar_version, m.joined_at,
-            COALESCE(SUM(d.pts), 0) AS points, COUNT(d.log_date) AS active_days
+            COALESCE(SUM(d.pts), 0) + ${BONUS_SQL} AS points, ${BONUS_SQL} AS bonus, COUNT(d.log_date) AS active_days
      FROM winter_arc_members m
      JOIN users u ON u.id = m.user_id
      LEFT JOIN (
-       SELECT user_id, log_date, LEAST(COUNT(*), ${ARC_HABITS_PER_DAY}) * ${ARC_POINTS_PER_HABIT} AS pts
+       SELECT user_id, log_date, LEAST(COUNT(*), ${ARC_HABITS_PER_DAY}) * ${ARC_POINTS_PER_HABIT} + CASE WHEN COUNT(*) >= ${ARC_HABITS_PER_DAY} THEN ${ARC_FULL_DAY_BONUS} ELSE 0 END AS pts
        FROM habit_logs
        WHERE completed_count > 0 AND log_date BETWEEN ? AND ? AND ABS(completed_at::date - log_date) <= 1
        GROUP BY user_id, log_date
      ) d ON d.user_id = m.user_id
      WHERE m.season = ?
-     GROUP BY u.id, u.username, u.full_name, u.avatar_color, u.avatar_version, m.joined_at
+     GROUP BY u.id, u.username, u.full_name, u.avatar_color, u.avatar_version, m.joined_at, m.user_id, m.season
      ORDER BY points DESC, active_days DESC, m.joined_at ASC, u.id ASC`,
     [season.start, season.end, season.year],
   );
   return {
     season,
-    members: rows.map((r, i) => ({ ...r, rank: i + 1, full_name: decodeEntities(r.full_name), points: Number(r.points), active_days: Number(r.active_days) })),
+    members: rows.map((r, i) => ({ ...r, rank: i + 1, full_name: decodeEntities(r.full_name), points: Number(r.points), bonus: Number((r as { bonus?: number | string }).bonus ?? 0), active_days: Number(r.active_days) })),
   };
 }

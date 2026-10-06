@@ -1,6 +1,6 @@
 import "server-only";
 import { addDays } from "./dates";
-import { ARC_HABITS_PER_DAY, ARC_POINTS_PER_HABIT, arcSeason } from "./arc";
+import { arcDayPoints, arcSeason } from "./arc";
 import type { BadgeRule } from "./arc-config";
 import { countPerfectDays } from "./arc-packs";
 import { query } from "./db";
@@ -29,7 +29,8 @@ export async function arcNumbers(userId: number, today: string) {
     query<{ id: number; created: string }>("SELECT id, created_at::date::text AS created FROM habits WHERE user_id = ? AND is_active = 1 AND arc_season = ?", [userId, season.year]),
   ]);
   const scored = new Set(days.map((d) => d.log_date));
-  const points = days.reduce((sum, d) => sum + Math.min(Number(d.n), ARC_HABITS_PER_DAY) * ARC_POINTS_PER_HABIT, 0);
+  const bonus = await query<{ n: number | string }>("SELECT COALESCE(SUM(points), 0) AS n FROM arc_bonus WHERE user_id = ? AND season = ?", [userId, season.year]);
+  const points = days.reduce((sum, d) => sum + arcDayPoints(Number(d.n)), 0) + Number(bonus[0]?.n ?? 0);
   let streak = 0;
   let cursor = scored.has(today) ? today : addDays(today, -1);
   while (scored.has(cursor)) {

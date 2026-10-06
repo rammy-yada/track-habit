@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { motion } from "motion/react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { btnPrimary, btnSmall, card, eyebrow } from "@/components/ui/styles";
+import { btnSmall, card, eyebrow } from "@/components/ui/styles";
 import { choosePack } from "@/lib/actions/arc";
 import { MILESTONES } from "@/lib/arc-config";
 import type { getArcPanel } from "@/lib/arc-packs";
-import { whenOnline } from "@/lib/offline";
+import { resolveDone, setDone, settle, useOfflineQueue, whenOnline } from "@/lib/offline";
 
 type Panel = Awaited<ReturnType<typeof getArcPanel>>;
 
@@ -18,7 +18,13 @@ type Panel = Awaited<ReturnType<typeof getArcPanel>>;
  * a pack picks one here.
  */
 export function ArcPackPanel({ panel }: { panel: Panel }) {
-  const { pack, packs, habits, perfectDays } = panel;
+  const { pack, packs, perfectDays } = panel;
+  // ticks made here go through the same on-device queue as the Today screen, so they show at once and work offline
+  const queue = useOfflineQueue();
+  const habits = panel.habits.map((h) => ({ ...h, doneToday: resolveDone(queue, h.id, panel.today, h.doneToday) }));
+  useEffect(() => {
+    for (const h of panel.habits) settle(h.id, panel.today, h.doneToday);
+  }, [panel.habits, panel.today, queue]);
   const [choosing, setChoosing] = useState(pack === null);
   const [swapTo, setSwapTo] = useState<Panel["packs"][number] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -67,18 +73,32 @@ export function ArcPackPanel({ panel }: { panel: Panel }) {
               {done}/{habits.length} <span className="text-xs font-medium text-muted">today</span>
             </span>
           </div>
-          <ul className="mt-3 grid gap-1.5 sm:grid-cols-2">
+          <ul className="mt-3 space-y-2">
             {habits.map((h) => (
-              <li key={h.id} className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm ${h.doneToday ? "bg-good-soft text-good" : "bg-raised"}`}>
-                <span aria-hidden>{h.icon}</span>
-                <span className="min-w-0 flex-1 truncate font-medium">{h.name}</span>
-                <span className="text-xs font-bold">{h.doneToday ? "✓" : ""}</span>
+              <li key={h.id}>
+                <motion.button type="button" role="checkbox" aria-checked={h.doneToday} whileTap={{ scale: 0.98 }} onClick={() => setDone(h.id, panel.today, !h.doneToday)} className={`flex min-h-[54px] w-full items-center gap-3 rounded-xl border px-3.5 py-2.5 text-left transition-colors ${h.doneToday ? "border-transparent bg-good-soft" : "border-line bg-card"}`} data-pack-habit={h.name}>
+                  <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg border-2 text-sm font-bold transition-colors ${h.doneToday ? "border-good bg-good text-white" : "border-line text-transparent"}`}>✓</span>
+                  <span aria-hidden className="text-lg">
+                    {h.icon}
+                  </span>
+                  <span className={`min-w-0 flex-1 truncate text-sm font-semibold ${h.doneToday ? "text-good line-through" : ""}`}>{h.name}</span>
+                  <span className="text-[11px] font-semibold text-muted">{h.doneToday ? "+10" : ""}</span>
+                </motion.button>
               </li>
             ))}
           </ul>
-          <Link href="/dashboard" className={`${btnPrimary} mt-4 w-full sm:w-auto`}>
-            {done === habits.length && habits.length > 0 ? "Open today's surprise" : "Tick them off on Today"}
-          </Link>
+          <p className="mt-3 text-xs text-muted">
+            {done === habits.length && habits.length > 0 ? (
+              <>
+                All done for today. 🎉{" "}
+                <Link href="/dashboard" className="font-semibold text-brand hover:underline">
+                  Open today&apos;s surprise
+                </Link>
+              </>
+            ) : (
+              "Tap a habit when it's done. It works offline too, and counts once it syncs."
+            )}
+          </p>
 
           {/* badges for perfect days: every habit of the pack done */}
           <div className="mt-6 border-t border-line pt-4">

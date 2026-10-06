@@ -157,3 +157,21 @@ export async function setBadgeHolder(badgeIdInput: number, usernameInput: string
   refresh();
   return { ok: true, note: give === true ? `Given to ${user.full_name}.` : `Taken back from ${user.full_name}.` };
 }
+
+// ── Bonus points ─────────────────────────────────────────────────────────────
+
+/** Gives a Winter Arc member extra points (or, with a negative number, takes some away), with a reason. */
+export async function giveBonus(userIdInput: number, pointsInput: number, reasonInput: string): Promise<Result> {
+  await requireAdmin();
+  const userId = toId(userIdInput);
+  const points = Math.trunc(Number(pointsInput));
+  const reason = clean(reasonInput, 120);
+  if (!userId) return INVALID;
+  if (!Number.isFinite(points) || points === 0 || Math.abs(points) > 1000) return { ok: false, error: "Enter a number of points between -1000 and 1000 (not 0)." };
+  if (reason.length < 3) return { ok: false, error: "Say what the points are for." };
+  const year = season();
+  if (!(await queryOne("SELECT 1 AS ok FROM winter_arc_members WHERE user_id = ? AND season = ?", [userId, year]))) return { ok: false, error: "That person isn't in this season's Winter Arc." };
+  await execute("INSERT INTO arc_bonus (user_id, season, points, reason) VALUES (?, ?, ?, ?)", [userId, year, points, reason]);
+  refresh();
+  return { ok: true, note: `${points > 0 ? "+" : ""}${points} points recorded.` };
+}

@@ -282,6 +282,15 @@ const UPGRADES = `
       clicks        INT          NOT NULL DEFAULT 0,
       created_at    TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
   );
+  CREATE TABLE IF NOT EXISTS arc_bonus (
+      id         SERIAL PRIMARY KEY,
+      user_id    INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      season     INT NOT NULL,
+      points     INT NOT NULL,
+      reason     VARCHAR(120) NOT NULL DEFAULT '',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE INDEX IF NOT EXISTS arc_bonus_user ON arc_bonus (user_id, season);
   INSERT INTO categories (name, icon)
     SELECT * FROM (VALUES ('Health','🧘'), ('Productivity','🎯'), ('Learning','📚'), ('Finance','💰'), ('Social','🤝'), ('Routine','⏰')) AS d(name, icon)
     WHERE NOT EXISTS (SELECT 1 FROM categories);
@@ -290,7 +299,7 @@ const UPGRADES = `
 function upToDate(): Promise<void> {
   globalForDb.habitflowMigrated ??= (async () => {
     // the newest addition: a column, so the check looks for that column
-    const check = await pool().query("SELECT to_regclass('public.products') IS NOT NULL AS ok");
+    const check = await pool().query("SELECT to_regclass('public.arc_bonus') IS NOT NULL AS ok");
     if (!check.rows[0].ok) await pool().query(UPGRADES);
   })().catch((err) => {
     globalForDb.habitflowMigrated = undefined; // try again on the next request

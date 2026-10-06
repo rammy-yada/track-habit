@@ -7,6 +7,9 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { btnSmall, card, eyebrow } from "@/components/ui/styles";
 import { removeArcMember } from "@/lib/actions/admin";
+import { giveBonus } from "@/lib/actions/arc-admin";
+import { Modal } from "@/components/ui/Modal";
+import { btnGhost, btnPrimary, input, label } from "@/components/ui/styles";
 import type { getAdminArc } from "@/lib/admin-data";
 import { whenOnline } from "@/lib/offline";
 import type { Pack } from "@/lib/arc-packs";
@@ -25,6 +28,8 @@ type Props = { data: Data; joined: Record<number, string>; images: { before: str
 export function AdminArc({ data, joined, images, adminName, intro, surprises, packs, badges }: Props) {
   const { season, members } = data;
   const [removing, setRemoving] = useState<Member | null>(null);
+  const [rewarding, setRewarding] = useState<Member | null>(null);
+  const [bonus, setBonus] = useState({ points: "50", reason: "" });
   const [error, setError] = useState<string | null>(null);
   const [busy, startTransition] = useTransition();
   const close = useCallback(() => setRemoving(null), []);
@@ -96,6 +101,9 @@ export function AdminArc({ data, joined, images, adminName, intro, surprises, pa
                   <span className="relative text-sm font-bold tabular-nums">
                     {m.points.toLocaleString("en-US")} <span className="text-[11px] font-medium text-muted">pts</span>
                   </span>
+                  <button type="button" className={`${btnSmall} relative`} disabled={busy} onClick={() => (setBonus({ points: "50", reason: "" }), setRewarding(m))}>
+                    ± Points
+                  </button>
                   <button type="button" className={`${btnSmall} relative hover:!border-bad hover:!text-bad`} disabled={busy} onClick={() => setRemoving(m)}>
                     Remove
                   </button>
@@ -106,6 +114,48 @@ export function AdminArc({ data, joined, images, adminName, intro, surprises, pa
         )}
       </div>
 
+      <Modal open={rewarding !== null} onClose={() => setRewarding(null)} title="Bonus points" width="max-w-sm">
+        {rewarding && (
+          <form
+            className="space-y-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              setError(null);
+              startTransition(async () => {
+                const result = await whenOnline(() => giveBonus(rewarding.id, Number(bonus.points), bonus.reason));
+                if (result.ok) setRewarding(null);
+                else setError(result.error);
+              });
+            }}
+          >
+            <p className="text-sm text-muted">
+              For <span className="font-semibold text-ink">{rewarding.full_name}</span>
+              {rewarding.bonus !== 0 && ` (bonus so far: ${rewarding.bonus > 0 ? "+" : ""}${rewarding.bonus})`}. A negative number takes points away.
+            </p>
+            {error && (
+              <p role="alert" className="rounded-xl bg-bad-soft px-3.5 py-2.5 text-[13px] font-medium text-bad">
+                {error}
+              </p>
+            )}
+            <label className="block">
+              <span className={label}>Points</span>
+              <input className={input} type="number" name="bonus_points" min={-1000} max={1000} value={bonus.points} onChange={(e) => setBonus({ ...bonus, points: e.target.value })} required data-autofocus />
+            </label>
+            <label className="block">
+              <span className={label}>What for</span>
+              <input className={input} name="bonus_reason" value={bonus.reason} maxLength={120} placeholder="e.g. Won the weekend challenge" onChange={(e) => setBonus({ ...bonus, reason: e.target.value })} required />
+            </label>
+            <div className="flex justify-end gap-2">
+              <button type="button" className={btnGhost} onClick={() => setRewarding(null)}>
+                Cancel
+              </button>
+              <button type="submit" className={btnPrimary} disabled={busy}>
+                Save
+              </button>
+            </div>
+          </form>
+        )}
+      </Modal>
       <ConfirmDialog
         open={removing !== null}
         title="Remove from the leaderboard?"

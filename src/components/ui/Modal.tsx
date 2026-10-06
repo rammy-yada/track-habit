@@ -6,10 +6,16 @@ import { AnimatePresence, motion } from "motion/react";
 
 export function Modal({ open, onClose, title, children, width = "max-w-md" }: { open: boolean; onClose: () => void; title: string; children: React.ReactNode; width?: string }) {
   const panel = useRef<HTMLDivElement>(null);
+  // The latest onClose is kept in a ref so the effect below runs only when
+  // the sheet opens or closes. (If it re-ran whenever a caller passed a new
+  // function — which happens on every keystroke in a form — the focus would
+  // jump back to the first field while someone was typing in another.)
+  const close = useRef(onClose);
+  close.current = onClose;
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close.current();
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     window.addEventListener("keydown", onKey);
@@ -20,7 +26,7 @@ export function Modal({ open, onClose, title, children, width = "max-w-md" }: { 
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", onKey);
     };
-  }, [open, onClose]);
+  }, [open]);
 
   // Rendered into <body> so no animated ancestor can trap the fixed overlay.
   if (typeof document === "undefined") return null;
