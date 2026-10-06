@@ -43,6 +43,7 @@ export async function awardAutoBonuses(user: User): Promise<number> {
     await sendPush(user.id, {
       title: ne ? `🎁 +${earned} बोनस अङ्क!` : `🎁 +${earned} bonus points!`,
       body: ne ? `${reasons.join(", ")} — बधाई छ! यी अङ्क Winter Arc को लिडरबोर्डमा जोडिए।` : `${reasons.join(" and ")} — well earned. They've been added to your Winter Arc score. Keep it going! 🔥`,
+      icon: "/icons/n-gift.png",
       url: "/arc#leaderboard",
       tag: "bonus",
     }).catch(() => 0);

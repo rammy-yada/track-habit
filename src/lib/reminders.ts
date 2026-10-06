@@ -179,14 +179,14 @@ export async function runReminders({ origin, now = new Date(), dry = false }: { 
         const late = clock.minutes - (h * 60 + m);
         if (late < 0 || late >= HABIT_WINDOW) continue;
         if (!(await claim(person.id, `h${habit.id}`, today))) continue;
-        if (!dry) delivered += await sendPush(person.id, { title: ne ? `⏰ ${habit.icon} ${decodeEntities(habit.name)}` : `⏰ Time for: ${habit.icon} ${decodeEntities(habit.name)}`, body: ne ? `${name}, समय भयो! अहिले गर्नुहोस्, अनि टिक लगाएर स्ट्रिक जोगाउनुहोस्। 🔥` : `${name}, this is the moment you set aside for it. Do it now, then tick it off and keep your streak alive. 🔥`, url: "/dashboard", tag: `habit-${habit.id}`, badge: await habitsLeft() });
+        if (!dry) delivered += await sendPush(person.id, { icon: "/icons/n-clock.png", title: ne ? `${habit.icon} ${decodeEntities(habit.name)} — समय भयो` : `${habit.icon} ${decodeEntities(habit.name)} — it's time`, body: ne ? `${name}, समय भयो! अहिले गर्नुहोस्, अनि टिक लगाएर स्ट्रिक जोगाउनुहोस्। 🔥` : `${name}, this is the moment you set aside for it. Do it now, then tick it off and keep your streak alive. 🔥`, url: "/dashboard", tag: `habit-${habit.id}`, badge: await habitsLeft() });
         sent.habitReminders++;
       }
     }
 
     // ── morning quote ──
     if (push && !quiet && person.notify_motivation > 0 && clock.hour >= QUOTE_HOUR && clock.hour < QUOTE_UNTIL && (await claim(person.id, "push_quote", today))) {
-      if (!dry) delivered += await sendPush(person.id, { title: ne ? `☀️ शुभ प्रभात, ${name}!` : `☀️ Good morning, ${name}!`, body: quoteFor(lang, today, custom.quotes), url: "/dashboard", tag: "quote", badge: await habitsLeft() });
+      if (!dry) delivered += await sendPush(person.id, { icon: "/icons/n-sun.png", title: ne ? `शुभ प्रभात, ${name}! ☀️` : `Rise and shine, ${name}! ☀️`, body: quoteFor(lang, today, custom.quotes), url: "/dashboard", tag: "quote", badge: await habitsLeft() });
       sent.quotes++;
     }
 
@@ -200,7 +200,8 @@ export async function runReminders({ origin, now = new Date(), dry = false }: { 
         if (left <= 0 || !(await claim(person.id, `nudge${i}`, today))) continue;
         if (!dry)
           delivered += await sendPush(person.id, {
-            title: ne ? `🎯 ${name}, आजका ${left} बानी बाँकी` : `🎯 ${name}, ${left} habit${left === 1 ? "" : "s"} still to go`,
+            icon: "/icons/n-target.png",
+            title: ne ? `${name}, आजका ${left} बानी बाँकी 🎯` : `${name}, ${left} to go — you've got this 🎯`,
             body: nudgeFor(lang, `${today}:${i}:${person.id}`, custom.nudges),
             url: "/dashboard",
             tag: "nudge",
@@ -217,7 +218,7 @@ export async function runReminders({ origin, now = new Date(), dry = false }: { 
         if (clock.minutes < due || clock.minutes >= due + CARE_CATCH_UP) continue;
         if (!(await claim(person.id, `care_${care.key}`, today))) continue;
         const lines = care.lines[lang];
-        if (!dry) delivered += await sendPush(person.id, { title: care.title[lang], body: lines[randomMinute(`${today}:${care.key}:${person.id}`, 0, lines.length)], url: "/dashboard", tag: `care-${care.key}` });
+        if (!dry) delivered += await sendPush(person.id, { icon: care.icon, title: care.title[lang], body: lines[randomMinute(`${today}:${care.key}:${person.id}`, 0, lines.length)], url: "/dashboard", tag: `care-${care.key}` });
         sent.care++;
       }
     }
@@ -251,7 +252,8 @@ export async function runReminders({ origin, now = new Date(), dry = false }: { 
     if (push && (await claim(person.id, "push_arc", today))) {
       if (!dry)
         delivered += await sendPush(person.id, {
-          title: ne ? `❄️ Winter Arc · दिन ${season.day}` : `❄️ Winter Arc · Day ${season.day} of ${season.totalDays}`,
+          icon: "/icons/arc-192.png",
+          title: ne ? `Winter Arc · दिन ${season.day} ❄️` : `Winter Arc · Day ${season.day} of ${season.totalDays} ❄️`,
           body: ne ? `${name}, आजका ${left} बानी बाँकी छन्। मध्यरात अघि पूरा गर्नुभयो भने मात्र आजको अङ्क जोडिन्छ। अझै समय छ! 💪` : `${name}, ${left} habit${left === 1 ? " is" : "s are"} still open today. Finish before midnight to bank today's points and hold your place on the leaderboard. You've got this! 💪`,
           url: "/dashboard",
           tag: "arc-evening",

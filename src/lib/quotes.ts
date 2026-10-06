@@ -4,22 +4,22 @@ import type { Lang } from "./mail";
 // to be read in two seconds on a lock screen.
 const QUOTES: Record<Lang, string[]> = {
   en: [
-    "Nobody is coming to do it for you. Good news: that means every bit of it is yours. Open your list and take the first one. 💪",
-    "You don't need a good day, you need a done day. Tick one habit before you do anything else. ✅",
-    "Small today, unrecognisable by January. The work you do this morning is the person you meet then. ❄️",
-    "The cold doesn't care how you feel, and neither does your list. Go anyway — you'll feel better the moment you start. 🧊",
-    "Discipline is just remembering what you want most. You wrote it down for a reason. Go and get it. 🎯",
-    "One tick, then the next. That really is the whole secret. Start with the easiest one right now. ⚡",
-    "The version of you in January is being built this morning. Give them something solid to stand on. 🏗️",
-    "Motivation got you started; routine is what brings you home. Same list, same you, one more day. 🔁",
-    "Tired is a feeling. Done is a fact. Choose the one you'll still be proud of tonight. 🌙",
-    "Do it quietly and let the results be loud. Nobody needs to know yet. Just open the app and begin. 🤫",
-    "Miss once and it's a mistake. Miss twice and it's a habit. Today is the day you don't miss. 🔥",
-    "Winter is when the strong ones are made. While others wait for January, you're already on your way. 🏔️",
-    "Five minutes of doing beats an hour of planning. Pick one habit and give it five minutes now. ⏱️",
-    "You are one habit away from a different year. It might be the one waiting on your list today. 🌱",
-    "Show up badly rather than not at all. A rough tick still counts, and it keeps the streak alive. 👊",
-    "Earn your evening. Finish the list first, then rest like someone who deserves it. 🛋️",
+    "A year from now you'll wish you had started today. So start. One habit, right now, before the day talks you out of it. 🌅",
+    "You are not behind. You are exactly one decision away from being someone who shows up. Make it this morning. 💪",
+    "Champions aren't made on the big days. They're made on ordinary mornings like this one, when nobody is watching. 🏆",
+    "The person you want to become is built from what you do in the next ten minutes. Go and lay one brick. 🧱",
+    "Comfort will always be there tomorrow. This morning won't. Spend it on the version of you that you'd be proud of. 🔥",
+    "Every tick is a vote for who you are becoming. Cast the first one before breakfast. ✅",
+    "Hard now, easy later. Easy now, hard later. You already know which one you want — open your list. ⚡",
+    "You've survived every bad day so far and you kept your word on many of them. Today is one more you can win. 🌟",
+    "Nobody ever regretted the workout, the page, the early start. They only regret the day they skipped. Don't skip. 🚀",
+    "Winter doesn't build weak people. It builds the ones who keep going when it's cold, dark and quiet. That's you. ❄️",
+    "Your future self is standing at the finish line, asking only one thing of you today: don't quit. 🎯",
+    "Motivation is a spark. Discipline is the fire. You don't need to feel like it — you only need to begin. 🔥",
+    "Small steps look like nothing for weeks, and then one day they look like a different life. Take today's step. 🌱",
+    "You promised yourself this. Not anyone else — yourself. Keep that promise and watch what it does to your confidence. 🤝",
+    "The streak you're building is proof. Proof that you can be trusted by the one person who matters most: you. ⛓️",
+    "Do it tired. Do it unsure. Do it badly if you must. Just don't let today be the day you didn't. 👊",
   ],
   ne: [
     "तपाईंको सट्टा अरू कसैले गरिदिँदैन। राम्रो कुरा: यो सबै तपाईंकै हो। सूची खोलेर पहिलो काम सुरु गर्नुहोस्। 💪",
@@ -50,16 +50,16 @@ export function quoteFor(lang: Lang, date: string, custom: string[] = []): strin
 // Sent at midday / late afternoon to people who still have habits open.
 const NUDGES: Record<Lang, string[]> = {
   en: [
-    "Half the day is gone, but the other half is still yours. Open your list and knock one out now. ⏳",
-    "Future you is watching. Give them something to say thank you for tonight. 🙌",
-    "Ten minutes now beats an hour of guilt later. Pick the smallest habit and start there. ⚡",
-    "You already decided this morning. Now it's only about following through. One tick, go. ✅",
-    "The list isn't going to tick itself. But it only takes a tap once the work is done. 📋",
-    "One habit. Right now. Then see how you feel — it's usually better than you expect. 💪",
-    "It never gets easier to start later. The best moment left today is this one. 🚀",
-    "Tonight you'll either be glad you did, or wish you had. You still get to choose. 🌙",
-    "Momentum is one small tick away. Start with the easy one and let it carry you. 🔥",
-    "Don't break the chain today. Your streak is counting on the next few minutes. ⛓️",
+    "The day is slipping by, but it isn't gone. Ten focused minutes now and tonight you'll feel like a winner. ⏳",
+    "This is the moment that separates people who wish from people who do. Open your list and take one. 🎯",
+    "You've come too far to hand today back. One habit — just one — and the momentum is yours again. 🔥",
+    "Tonight, when your head hits the pillow, you'll either be proud or making excuses. You still get to choose. 🌙",
+    "Your streak is alive and it's counting on you. Give it the next few minutes; it has given you so much already. ⛓️",
+    "Don't wait to feel ready. Ready is a feeling that shows up after you start. Start. 🚀",
+    "Someone on the leaderboard is ticking theirs right now. Don't let them have the day for free. 📈",
+    "The hardest part is the first thirty seconds. After that it's just doing. Go and get the first thirty seconds. ⚡",
+    "You don't have to finish everything. You have to start one thing. The rest tends to follow. 💪",
+    "Remember why you began. That reason hasn't changed — only the time left today has. Use it. ❤️",
   ],
   ne: [
     "आधा दिन गइसक्यो, बाँकी आधा अझै तपाईंकै हो। सूची खोलेर एउटा अहिले नै पूरा गर्नुहोस्। ⏳",
@@ -125,10 +125,10 @@ export const BUILT_IN = { quotes: QUOTES.en, nudges: NUDGES.en, comeback: COMEBA
 // waking up, drinking water, one good thing to do, going to sleep. Each has a
 // part of the day it falls in (minutes from midnight); the exact minute is
 // different for every person and every day.
-type Care = { key: string; from: number; to: number; title: Record<Lang, string>; lines: Record<Lang, string[]> };
+type Care = { key: string; /** the picture shown beside the message */ icon: string; from: number; to: number; title: Record<Lang, string>; lines: Record<Lang, string[]> };
 export const CARE: Care[] = [
   {
-    key: "wake", from: 6 * 60, to: 7 * 60 + 30,
+    key: "wake", icon: "/icons/n-sun.png", from: 6 * 60, to: 7 * 60 + 30,
     title: { en: "Good morning ☀️", ne: "शुभ प्रभात ☀️" },
     lines: {
       en: ["Up you get! The day is yours before anyone else wants a piece of it. A glass of water, then your first habit. 🌅", "Feet on the floor — that's the hardest part done. Everything after this is easier. 🚀", "A brand new day and a clean list. Open it up and see what today's you can do. ✨", "Rise first, then decide how you feel. It's always better once you're moving. 💪"],
@@ -136,7 +136,7 @@ export const CARE: Care[] = [
     },
   },
   {
-    key: "water1", from: 10 * 60, to: 12 * 60,
+    key: "water1", icon: "/icons/n-water.png", from: 10 * 60, to: 12 * 60,
     title: { en: "Water break 💧", ne: "पानी पिउने बेला 💧" },
     lines: {
       en: ["A glass of water, right now. Your head, your skin and your energy will all thank you. 🥤", "Pause for a moment and drink some water before you start the next thing. It takes ten seconds. 🚰", "Feeling thirsty already means you waited too long. Have a full glass now and keep the bottle close. 💦"],
@@ -144,7 +144,7 @@ export const CARE: Care[] = [
     },
   },
   {
-    key: "good", from: 12 * 60 + 30, to: 14 * 60 + 30,
+    key: "good", icon: "/icons/n-heart.png", from: 12 * 60 + 30, to: 14 * 60 + 30,
     title: { en: "One good thing today ✨", ne: "आज एउटा राम्रो काम ✨" },
     lines: {
       en: ["Message someone you haven't spoken to in a while. Two lines is enough to make their day. 💬", "Say thank you to one person today, and really mean it. It costs nothing and people remember it. 🙏", "Tidy one small corner — just one. A clear space makes for a clearer head. 🧹", "Step outside for five minutes and look at the sky. No phone, just air and daylight. 🌤️", "Help someone today without being asked. Small things count: a door, a bag, a kind word. 🤝", "Give one honest compliment today. Tell someone exactly what they did well. 🌟", "Put your phone down for one whole meal today. Taste the food and talk to whoever is there. 🍽️", "Write down one thing that went well today. One line is enough, and it adds up over a winter. 📝", "Call home today. Five minutes will mean more to them than you think. 📞", "Stretch for two minutes, right where you are. Neck, shoulders, back — you'll feel the difference. 🧘"],
@@ -152,7 +152,7 @@ export const CARE: Care[] = [
     },
   },
   {
-    key: "water2", from: 14 * 60 + 30, to: 16 * 60 + 30,
+    key: "water2", icon: "/icons/n-water.png", from: 14 * 60 + 30, to: 16 * 60 + 30,
     title: { en: "Water again 💧", ne: "फेरि पानी 💧" },
     lines: {
       en: ["Afternoon slump? Drink water first, then decide how tired you really are. It works more often than coffee. ⚡", "Time for another glass. Most people are behind on water by now — catch up while it's easy. 🥤", "Refill the bottle now. Future you is going to be thirsty and grateful. 🚰"],
@@ -160,7 +160,7 @@ export const CARE: Care[] = [
     },
   },
   {
-    key: "sleep", from: 21 * 60 + 30, to: 22 * 60 + 15,
+    key: "sleep", icon: "/icons/n-moon.png", from: 21 * 60 + 30, to: 22 * 60 + 15,
     title: { en: "Time to wind down 🌙", ne: "सुत्ने बेला भयो 🌙" },
     lines: {
       en: ["Tomorrow is built tonight. Put the phone down, dim the lights and give yourself a proper night's sleep. 😴", "Screens off, lights low. You've done enough for today — rest is part of the work. 🛌", "The best thing you can do for tomorrow's habits is to sleep now. Morning-you is counting on it. 🌙", "Time for bed. Tomorrow starts tonight, and you'll thank yourself at 6 AM. ⭐"],
