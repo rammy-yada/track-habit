@@ -50,7 +50,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <SaveCredential name={user.full_name} username={user.username} />
       {/* Suspense: the guide reads the URL's query string */}
       <Suspense>
-        <WelcomeGuide firstName={user.full_name.split(" ")[0]} timezone={user.timezone} />
+        <WelcomeGuide firstName={user.full_name.split(" ")[0]} pushKey={pushPublicKey()} arc={arc} />
       </Suspense>
     </div>
   );

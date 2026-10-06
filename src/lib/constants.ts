@@ -1,4 +1,5 @@
 export const APP_NAME = "HabitFlow";
+export const APP_VERSION = "1.0.3";
 
 export const TIMEZONES: { value: string; label: string }[] = [
   { value: "UTC", label: "UTC" },

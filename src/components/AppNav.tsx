@@ -6,7 +6,6 @@ import { useState, useTransition } from "react";
 import { ConfirmDialog } from "./ui/ConfirmDialog";
 import { motion } from "motion/react";
 import { Logo } from "./Logo";
-import { ThemeToggle } from "./ThemeToggle";
 import { UserAvatar, type AvatarInfo } from "./ui/UserAvatar";
 import { logoutAction } from "@/lib/actions/auth";
 import { clearOfflineData } from "@/lib/offline";
@@ -23,6 +22,7 @@ type NavLink = { href: string; label: string; short: string; icon: string; deskt
 const ICONS: Record<string, React.ReactNode> = {
   dashboard: <path d="M4 13h6V4H4v9zm0 7h6v-5H4v5zm10 0h6v-9h-6v9zm0-16v5h6V4h-6z" />,
   analytics: <path d="M4 20V10m6 10V4m6 16v-7m4 7H2" />,
+  popular: <path d="M12 3c1 3.5 4.5 5 4.5 9.2A4.5 4.5 0 0 1 12 17a4.5 4.5 0 0 1-4.5-4.8c0-1.7.8-2.9 1.800-3.900.3 1.4 1 2.200 2 2.700C11 8.500 10.800 5.500 12 3zM6 21h12" />,
   monthly: <path d="M4 6h16v14H4zM4 10h16M9 3v4m6-4v4" />,
   profile: <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-7 9a7 7 0 0 1 14 0" />,
   arc: <path d="M12 2v20M3.3 7l17.4 10M20.7 7L3.3 17M9.5 3.5L12 6l2.5-2.5M9.5 20.5L12 18l2.5 2.5" />,
@@ -30,6 +30,7 @@ const ICONS: Record<string, React.ReactNode> = {
   users: <path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-7 10a7 7 0 0 1 14 0m1-10a3.5 3.5 0 1 0-1.5-6.7M18 14.5a6 6 0 0 1 4 6.5" />,
   tags: <path d="M3 12V4h8l10 10-8 8L3 12zm4.5-4.5h.01" />,
   shield: <path d="M12 3l8 3v6c0 4.5-3.2 7.9-8 9-4.8-1.1-8-4.5-8-9V6l8-3zm-3 9l2 2 4-4" />,
+  shop: <path d="M5 8h14l-1 12H6L5 8zm4 0V6a3 3 0 0 1 6 0v2" />,
   bell: <path d="M6 9a6 6 0 1 1 12 0c0 5 2 6 2 6H4s2-1 2-6zm4 9a2 2 0 0 0 4 0" />,
   blog: <path d="M5 4h11l3 3v13H5zM9 9h6M9 13h6M9 17h4" />,
   inbox: <path d="M3 13l3-8h12l3 8v6H3zM3 13h5l1.5 3h5L16 13h5" />,
@@ -41,7 +42,8 @@ const MEMBER: NavLink[] = [
   { href: "/dashboard", label: "Dashboard", short: "Today", icon: "dashboard" },
   { href: "/analytics", label: "Analytics", short: "Stats", icon: "analytics" },
   { href: "/arc", label: "Winter Arc", short: "Arc", icon: "arc" },
-  { href: "/monthly", label: "Monthly View", short: "Month", icon: "monthly" },
+  { href: "/popular", label: "Popular", short: "Popular", icon: "popular" },
+  { href: "/monthly", label: "Monthly View", short: "Month", icon: "monthly", desktopOnly: true }, // on phones it is opened from Today
   { href: "/profile", label: "Profile", short: "Profile", icon: "profile" },
   { href: "/support", label: "Support Us", short: "Support", icon: "donate", desktopOnly: true }, // on phones it lives in Profile
 ];
@@ -53,6 +55,7 @@ const ADMIN: NavLink[] = [
   { href: "/sigmadev/arc", label: "Winter Arc", short: "Arc", icon: "arc" },
   // on phones these two are reached from the Overview screen: five tabs is all a phone's bar holds
   { href: "/sigmadev/blog", label: "Blog", short: "Blog", icon: "blog", desktopOnly: true },
+  { href: "/sigmadev/products", label: "Sellers", short: "Sellers", icon: "shop", desktopOnly: true },
   { href: "/sigmadev/inbox", label: "Inbox", short: "Inbox", icon: "inbox", desktopOnly: true },
   { href: "/sigmadev/notifications", label: "Notifications", short: "Notify", icon: "bell", desktopOnly: true },
   { href: "/sigmadev/account", label: "My Account", short: "Account", icon: "profile" },
@@ -112,7 +115,6 @@ export function Sidebar({ user, arc }: { user: NavUser; arc?: ArcState }) {
             <span className="block truncate text-[13px] font-semibold">{user.name}</span>
             <span className="block text-[11px] capitalize text-muted">{admin ? "Administrator" : "Member"}</span>
           </span>
-          <ThemeToggle className="h-8 w-8 rounded-lg" />
         </div>
         <LogoutButton className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold text-muted transition-colors hover:bg-bad-soft hover:text-bad" />
       </div>
@@ -156,6 +158,7 @@ export function MobileBars({ user, arc }: { user: NavUser; arc?: ArcState }) {
   const tabs = (admin ? ADMIN : MEMBER).filter((link) => !link.desktopOnly);
   // Profile is a screen of its own on a phone, like an app's settings: no
   // title bar and no tab bar, just a way back.
+  if (pathname === "/popular") return null; // a full-screen section with its own back button
   if (pathname === "/profile" || pathname === "/sigmadev/account")
     return (
       <div className="sticky top-0 z-30 flex items-center px-3 pb-1 pt-[calc(10px+env(safe-area-inset-top))] md:hidden">
@@ -173,8 +176,7 @@ export function MobileBars({ user, arc }: { user: NavUser; arc?: ArcState }) {
           <Logo href={admin ? "/sigmadev" : "/dashboard"} />
           {admin && <AdminBadge />}
         </span>
-        {/* just the theme switch up here: logging out and the guide live in Profile, where a thumb doesn't hit them by accident */}
-        <ThemeToggle className="h-10 w-10" />
+        {/* nothing else up here: theme, guide and logging out all live in Profile */}
       </header>
       <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-30 grid border-t border-line bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
         {tabs.map((link) => {

@@ -25,6 +25,7 @@ export function AdminOverview({ data, joined, status }: { data: Data; joined: Re
     { label: "New messages", value: stats.newInquiries, note: "Open the inbox →", href: "/sigmadev/inbox" },
     { label: "Blog posts", value: stats.posts, note: "Write or edit →", href: "/sigmadev/blog" },
     { label: "With notifications on", value: stats.devices, note: "Wording and icons →", href: "/sigmadev/notifications" },
+    { label: "Products", value: stats.products, note: "Sellers →", href: "/sigmadev/products" },
     { label: "Administrators", value: stats.admins, note: "Manage →", href: "/sigmadev/admins" },
   ];
   // the last 7 of the 14 days fit a phone; the chart shows all 14 on wider screens

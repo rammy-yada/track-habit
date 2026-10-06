@@ -1,174 +1,216 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
+import { NotificationToggle } from "@/components/NotificationToggle";
+import { Burst } from "@/components/dashboard/effects";
 import { Modal } from "@/components/ui/Modal";
 import { btnGhost, btnPrimary } from "@/components/ui/styles";
+import { addWorkoutHabit } from "@/lib/actions/arc";
 import { detectDevice, guideSeen, markGuideSeen, onOpenGuide, promptInstall, useCanInstall, type Device } from "@/lib/pwa";
-import { AddArt, InstallArt, NavArt, TickArt, WelcomeArt } from "./illustrations";
+import { WORKOUTS } from "@/lib/workouts";
 
-type Props = { firstName: string; timezone: string };
+type Props = { firstName: string; pushKey: string | null; arc: { live: boolean; member: boolean } };
+
+// offered as first habits: small, daily, hard to argue with
+const STARTERS = ["water-3l", "steps-10k", "sleep-11", "wake-early", "cold-shower"].map((id) => WORKOUTS.find((w) => w.id === id)!).filter(Boolean);
 
 /**
- * First-run walkthrough. Opens by itself the first time someone reaches the
- * app (and right after sign-up); the "Guide" button in the nav reopens it.
- * The wording and pictures switch between phone and desktop, and the last
- * step explains installing HabitFlow as an app on *this* device.
+ * The first-run guide. Instead of explaining the app, it has the person use
+ * it: tick a practice habit, add real first habits with a tap, switch
+ * reminders on, and (in season) step into the Winter Arc. Four short steps;
+ * each can be skipped. It opens by itself the first time, and again from
+ * Profile → Welcome guide.
  */
-export function WelcomeGuide({ firstName, timezone }: Props) {
+export function WelcomeGuide({ firstName, pushKey, arc }: Props) {
   const [open, setOpen] = useState(false);
   const [index, setIndex] = useState(0);
-  const [direction, setDirection] = useState(1);
-  const [phone, setPhone] = useState(false);
   const [device, setDevice] = useState<Device>({ platform: "desktop", installed: false, secure: true });
   const canInstall = useCanInstall();
   const pathname = usePathname();
   const router = useRouter();
   const justSignedUp = useSearchParams().get("welcome") === "1";
 
+  // step 1: the practice habit
+  const [ticked, setTicked] = useState(false);
+  const [burst, setBurst] = useState(0);
+  // step 2: which starter habits have been added (for real)
+  const [added, setAdded] = useState<Set<string>>(() => new Set());
+  const [adding, setAdding] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
+
   useEffect(() => {
-    const query = window.matchMedia("(max-width: 767px)"); // same breakpoint the bottom tab bar uses
-    const sync = () => setPhone(query.matches);
-    sync();
     setDevice(detectDevice());
-    query.addEventListener("change", sync);
-    const stop = onOpenGuide(() => {
+    return onOpenGuide(() => {
       setIndex(0);
-      setDirection(1);
+      setTicked(false);
       setOpen(true);
     });
-    return () => {
-      query.removeEventListener("change", sync);
-      stop();
-    };
   }, []);
 
   useEffect(() => {
-    if (pathname.startsWith("/arc/start")) return; // mid-way through joining the arc: don't interrupt
+    if (pathname.startsWith("/arc")) return; // in the Winter Arc (or joining it): don't interrupt
     if (justSignedUp || !guideSeen()) setOpen(true);
   }, [justSignedUp, pathname]);
 
   const close = useCallback(() => {
     markGuideSeen();
     setOpen(false);
-    // drop ?welcome=1 so a refresh doesn't reopen the guide
+    // drop ?welcome=1 so a refresh doesn't reopen the guide; refresh so habits added here show up
     if (justSignedUp) router.replace(pathname, { scroll: false });
+    router.refresh();
   }, [justSignedUp, pathname, router]);
 
-  const tap = phone ? "Tap" : "Click";
-  const tabs = phone ? ["Today", "Stats", "Arc", "Month", "Profile"] : ["Dashboard", "Analytics", "Winter Arc", "Monthly View", "Profile"];
+  function tick() {
+    const next = !ticked;
+    setTicked(next);
+    if (next) {
+      setBurst(Date.now());
+      navigator.vibrate?.(30);
+    }
+  }
+
+  function add(id: string) {
+    if (added.has(id) || adding) return;
+    setAdding(id);
+    startTransition(async () => {
+      // "already in your habits" is as good as added
+      await addWorkoutHabit(id).catch(() => null);
+      setAdded((current) => new Set(current).add(id));
+      setAdding(null);
+    });
+  }
 
   const steps = [
     {
+      key: "try",
       title: `Welcome, ${firstName}`,
-      art: <WelcomeArt />,
+      lead: "This is all HabitFlow asks of you each day. Try it:",
+      done: ticked,
       body: (
-        <p>
-          HabitFlow keeps one short list: the habits you want to do today. Tick them off and it keeps the streaks, charts and monthly grid for you. This guide takes about half a minute{phone ? " — swipe, or tap Next." : "."}
-        </p>
+        <div>
+          <button type="button" onClick={tick} aria-pressed={ticked} className={`relative flex w-full items-center gap-3.5 overflow-hidden rounded-2xl border p-4 text-left transition-colors ${ticked ? "border-brand bg-brand-soft" : "border-line bg-card"}`} data-guide-tick>
+            <span className={`relative grid h-9 w-9 shrink-0 place-items-center rounded-xl border-2 text-lg font-bold transition-colors ${ticked ? "border-brand bg-brand-solid text-on-brand" : "border-line text-transparent"}`}>
+              ✓{burst > 0 && ticked && <Burst key={burst} color="var(--brand)" />}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className={`block text-[15px] font-semibold ${ticked ? "line-through opacity-70" : ""}`}>💧 Drink a glass of water</span>
+              <span className="block text-xs text-muted">Practice habit · Daily</span>
+            </span>
+            <span className="text-right text-xs font-semibold text-muted">
+              <motion.span key={String(ticked)} initial={{ scale: 1.5 }} animate={{ scale: 1 }} className="block text-lg font-bold text-ink">
+                {ticked ? 1 : 0} 🔥
+              </motion.span>
+              day streak
+            </span>
+          </button>
+          <p className="mt-3 min-h-[2.5rem] text-sm leading-relaxed text-muted">{ticked ? "That's it. Tick a habit each day and the streak grows; miss a day and it starts again. Tap once more to undo." : "Tap the box when it's done."}</p>
+        </div>
       ),
     },
     {
-      title: "Add your first habit",
-      art: <AddArt />,
+      key: "pick",
+      title: "Pick your first habits",
+      lead: "Tap any you'd like to do every day. They go straight onto your list, and you can change them later.",
+      done: added.size > 0,
       body: (
-        <p>
-          {tap} <b className="text-ink">+ Add Habit</b> at the top of {phone ? "the Today screen" : "the Dashboard"}. Give it a name, an icon and a colour — everything else is optional. Start with one or two; you can have up to 50.
-        </p>
+        <ul className="space-y-2">
+          {STARTERS.map((habit) => {
+            const on = added.has(habit.id);
+            return (
+              <li key={habit.id}>
+                <motion.button type="button" whileTap={{ scale: 0.97 }} onClick={() => add(habit.id)} disabled={on || adding !== null} aria-pressed={on} className={`flex min-h-[52px] w-full items-center gap-3 rounded-xl border px-3.5 py-2.5 text-left transition-colors ${on ? "border-brand bg-brand-soft" : "border-line bg-card"}`} data-guide-habit={habit.id}>
+                  <span className="text-xl" aria-hidden>
+                    {habit.icon}
+                  </span>
+                  <span className="flex-1 text-sm font-semibold">{habit.name}</span>
+                  <span className={`rounded-full px-3 py-1 text-xs font-bold ${on ? "bg-brand-solid text-on-brand" : "border border-line text-muted"}`}>{adding === habit.id ? "Adding…" : on ? "Added ✓" : "+ Add"}</span>
+                </motion.button>
+              </li>
+            );
+          })}
+        </ul>
       ),
     },
     {
-      title: "Tick it off each day",
-      art: <TickArt />,
+      key: "remind",
+      title: "Let it remind you",
+      lead: "People who get a nudge at the right moment keep going. Switch reminders on, and put HabitFlow on your home screen so it opens like an app.",
+      done: false,
       body: (
-        <p>
-          {tap} the square beside a habit when it&apos;s done, and {tap.toLowerCase()} again to undo. Days in a row build a streak. The list resets at midnight in your timezone (<b className="text-ink">{timezone}</b> — change it in Profile). The pencil button adds a note and mood for the day.
-        </p>
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-line bg-card p-4">
+            <NotificationToggle publicKey={pushKey} />
+          </div>
+          <div className="rounded-2xl border border-line bg-card p-4 text-sm leading-relaxed text-muted">
+            <InstallStep device={device} canInstall={canInstall} />
+          </div>
+        </div>
       ),
     },
     {
-      title: "Find your way around",
-      art: <NavArt phone={phone} tabs={tabs} />,
-      body: phone ? (
-        <p>
-          The bar at the bottom of the screen switches between <b className="text-ink">{tabs.join(", ")}</b>. In Month, swipe the grid sideways to see every day, and tap any past day to fix a tick you missed. <b className="text-ink">Arc</b> is the Winter Arc challenge: a leaderboard and workout ideas.
-        </p>
-      ) : (
-        <p>
-          The sidebar switches between <b className="text-ink">{tabs.join(", ")}</b>. Analytics shows your weekly pattern; Monthly View is a full grid where you can click any past day to fix a tick you missed. The round button by your name switches between light, dark and the Winter Arc theme. <b className="text-ink">Winter Arc</b> is the seasonal challenge, with a leaderboard and workout ideas.
-        </p>
+      key: "go",
+      title: arc.live && !arc.member ? "One more thing: the Winter Arc" : "You're ready",
+      lead: arc.live && !arc.member ? "A 123-day challenge is running right now. Pick a pack of habits, earn points every day, and see where you stand on the leaderboard." : "Your list is waiting. Come back each day, tick what you did, and watch the streak grow.",
+      done: true,
+      body: (
+        <div className="rounded-2xl bg-ink p-6 text-center text-bg">
+          <p className="text-5xl" aria-hidden>
+            {arc.live && !arc.member ? "❄" : "🚀"}
+          </p>
+          <p className="mt-3 font-display text-xl font-bold">{added.size > 0 ? `${added.size} habit${added.size === 1 ? "" : "s"} on your list` : "Add a habit any time with + Add Habit"}</p>
+          {arc.live && !arc.member && (
+            <button
+              type="button"
+              onClick={() => {
+                close();
+                router.push("/arc/start");
+              }}
+              className="mt-4 w-full rounded-xl bg-bg px-4 py-3 text-sm font-bold text-ink"
+            >
+              Join the Winter Arc →
+            </button>
+          )}
+        </div>
       ),
-    },
-    {
-      title: device.installed ? "You're in the app" : phone ? "Put HabitFlow on your home screen" : "Install HabitFlow as an app",
-      art: <InstallArt />,
-      body: <InstallStep device={device} canInstall={canInstall} />,
     },
   ];
 
-  const last = index === steps.length - 1;
-  const go = (to: number) => {
-    if (to < 0 || to >= steps.length) return;
-    setDirection(to > index ? 1 : -1);
-    setIndex(to);
-  };
   const step = steps[index];
+  const last = index === steps.length - 1;
 
   return (
     <Modal open={open} onClose={close} title={step.title}>
-      <div className="overflow-hidden">
-        <AnimatePresence mode="wait" initial={false} custom={direction}>
-          <motion.div
-            key={index}
-            custom={direction}
-            variants={{
-              enter: (dir: number) => ({ x: dir * 60, opacity: 0 }),
-              center: { x: 0, opacity: 1 },
-              exit: (dir: number) => ({ x: dir * -60, opacity: 0 }),
-            }}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={{ duration: 0.22, ease: [0.2, 0.7, 0.2, 1] }}
-            // on a phone the steps can be swiped like cards
-            drag="x"
-            dragConstraints={{ left: 0, right: 0 }}
-            dragElastic={0.25}
-            onDragEnd={(_, info) => {
-              if (info.offset.x < -60) go(index + 1);
-              else if (info.offset.x > 60) go(index - 1);
-            }}
-            className="touch-pan-y"
-          >
-            <div className="mb-5 h-40 rounded-2xl bg-raised p-4">{step.art}</div>
-            <div className="min-h-[8.5rem] text-sm leading-relaxed text-muted">{step.body}</div>
-          </motion.div>
-        </AnimatePresence>
+      {/* how far along: one segment per step */}
+      <div className="mb-4 flex gap-1.5" aria-label={`Step ${index + 1} of ${steps.length}`}>
+        {steps.map((s, i) => (
+          <span key={s.key} className="h-1 flex-1 overflow-hidden rounded-full bg-line">
+            <motion.span className="block h-full bg-brand-solid" initial={false} animate={{ width: i <= index ? "100%" : "0%" }} transition={{ duration: 0.3 }} />
+          </span>
+        ))}
       </div>
 
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div key={step.key} initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.2 }} data-guide-step={step.key}>
+          <p className="mb-4 text-sm leading-relaxed text-muted">{step.lead}</p>
+          <div className="min-h-[15rem]">{step.body}</div>
+        </motion.div>
+      </AnimatePresence>
+
       <div className="mt-5 flex items-center justify-between gap-3">
-        <div className="flex gap-1.5" role="tablist" aria-label="Guide steps">
-          {steps.map((s, i) => (
-            <button key={i} type="button" role="tab" aria-selected={i === index} aria-label={`Step ${i + 1}: ${s.title}`} onClick={() => go(i)} className="grid h-6 place-items-center">
-              <motion.span className="block h-1.5 rounded-full" animate={{ width: i === index ? 22 : 6, backgroundColor: i === index ? "var(--brand)" : "var(--line)" }} transition={{ type: "spring", stiffness: 400, damping: 30 }} />
-            </button>
-          ))}
-        </div>
-        <div className="flex gap-2">
-          {index > 0 ? (
-            <button type="button" className={btnGhost} onClick={() => go(index - 1)}>
-              Back
-            </button>
-          ) : (
-            <button type="button" className={`${btnGhost} border-transparent text-muted`} onClick={close}>
-              Skip
-            </button>
-          )}
-          <motion.button type="button" className={btnPrimary} whileTap={{ scale: 0.95 }} onClick={() => (last ? close() : go(index + 1))} data-autofocus>
-            {last ? "Get started" : "Next"}
-          </motion.button>
-        </div>
+        {index > 0 ? (
+          <button type="button" className={btnGhost} onClick={() => setIndex(index - 1)}>
+            Back
+          </button>
+        ) : (
+          <button type="button" className={`${btnGhost} border-transparent text-muted`} onClick={close}>
+            Skip guide
+          </button>
+        )}
+        <motion.button type="button" className={`${btnPrimary} min-w-[8rem]`} whileTap={{ scale: 0.95 }} onClick={() => (last ? close() : setIndex(index + 1))} data-guide-next>
+          {last ? "Start" : step.done ? "Next" : "Skip this"}
+        </motion.button>
       </div>
     </Modal>
   );

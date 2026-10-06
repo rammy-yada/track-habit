@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { btnPrimary } from "@/components/ui/styles";
 import { ArcGoals } from "@/components/arc/ArcGoals";
 import { ArcHub } from "@/components/arc/ArcHub";
 import { ArcIntro } from "@/components/arc/ArcIntro";
@@ -41,13 +43,23 @@ export default async function ArcPage() {
       {/* the opening scene plays every time the Winter Arc is opened (Skip ends it) */}
       <ArcIntro firstName={user.full_name.split(" ")[0]} images={images} totalDays={season.totalDays} config={intro} always />
       <ArcHub
-        member={member}
         status={season.live ? `Day ${season.day} of ${season.totalDays} · ${season.range}` : `Starts in ${season.startsIn} days · ${season.range}`}
-        goals={
-          <div className="space-y-5">
-            <ArcGoals member={member} goals={goals.map((g) => ({ id: g.id, text: g.text, done: g.done === 1 }))} endsOn={formatDate(season.end, { month: "long", day: "numeric" })} />
-            {panel && <ArcPackPanel panel={panel} />}
-          </div>
+        goals={<ArcGoals member={member} goals={goals.map((g) => ({ id: g.id, text: g.text, done: g.done === 1 }))} endsOn={formatDate(season.end, { month: "long", day: "numeric" })} />}
+        pack={
+          panel ? (
+            <ArcPackPanel panel={panel} />
+          ) : (
+            <div className="rounded-2xl border border-line bg-card p-7 text-center">
+              <p className="text-4xl" aria-hidden>
+                📦
+              </p>
+              <h2 className="mt-3 font-display text-xl font-bold tracking-tight">Pick a pack to begin</h2>
+              <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted">Join the Winter Arc and choose a ready-made set of habits. They are added to your checklist, and finishing them each day earns points, badges and a surprise.</p>
+              <Link href="/arc/start" className={`${btnPrimary} mt-5`}>
+                Join the Winter Arc
+              </Link>
+            </div>
+          )
         }
         tips={
           <div className="space-y-8">

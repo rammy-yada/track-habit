@@ -32,7 +32,8 @@ export async function getAdminOverview() {
               (SELECT COUNT(*) FROM users WHERE avatar_version > 0) AS "withPhoto",
               (SELECT COUNT(*) FROM inquiries WHERE status = 'new') AS "newInquiries",
               (SELECT COUNT(*) FROM blog_posts WHERE published = 1) AS posts,
-              (SELECT COUNT(DISTINCT user_id) FROM push_subscriptions) AS devices`,
+              (SELECT COUNT(DISTINCT user_id) FROM push_subscriptions) AS devices,
+              (SELECT COUNT(*) FROM products) AS products`,
       [season.year],
     ),
     query<{ day: string; n: number }>("SELECT log_date::text AS day, COUNT(*) AS n FROM habit_logs WHERE completed_count > 0 AND log_date > CURRENT_DATE - 14 GROUP BY log_date"),
@@ -43,10 +44,10 @@ export async function getAdminOverview() {
     ),
   ]);
   const n = (key: string) => Number(counts?.[key] ?? 0);
-  const [totalUsers, activeUsers, newThisWeek, admins, totalHabits, checkinsToday, arcMembers, withPhoto, newInquiries, posts, devices] = ["totalUsers", "activeUsers", "newThisWeek", "admins", "totalHabits", "checkinsToday", "arcMembers", "withPhoto", "newInquiries", "posts", "devices"].map(n);
+  const [totalUsers, activeUsers, newThisWeek, admins, totalHabits, checkinsToday, arcMembers, withPhoto, newInquiries, posts, devices, products] = ["totalUsers", "activeUsers", "newThisWeek", "admins", "totalHabits", "checkinsToday", "arcMembers", "withPhoto", "newInquiries", "posts", "devices", "products"].map(n);
 
   return {
-    stats: { totalUsers, activeUsers, disabledUsers: totalUsers - activeUsers, newThisWeek, admins, totalHabits, checkinsToday, arcMembers, withPhoto, newInquiries, posts, devices },
+    stats: { totalUsers, activeUsers, disabledUsers: totalUsers - activeUsers, newThisWeek, admins, totalHabits, checkinsToday, arcMembers, withPhoto, newInquiries, posts, devices, products },
     arcLive: season.live,
     activity: lastDays(activity, today, 14),
     signups: lastDays(signups, today, 14),

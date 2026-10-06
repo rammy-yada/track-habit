@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { btnPrimary } from "@/components/ui/styles";
 import { APP_NAME, CREATOR } from "@/lib/constants";
 
@@ -50,7 +49,6 @@ export function PublicPage({ children, width = "max-w-3xl" }: { children: React.
               {link.label}
             </Link>
           ))}
-          <ThemeToggle />
           <Link href="/register" className={btnPrimary}>
             Get Started
           </Link>

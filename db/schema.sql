@@ -396,3 +396,19 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS gender VARCHAR(12);
 
 -- notify_care: 1 = daily care reminders (wake up, drink water, a good thing to do, sleep).
 ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_care SMALLINT NOT NULL DEFAULT 1;
+
+-- ── Products ─────────────────────────────────────────────────
+-- Things for sale, added by an admin and shown in the Popular section. The
+-- site takes no payments: `url` is where the Buy button sends the person.
+CREATE TABLE IF NOT EXISTS products (
+    id            SERIAL PRIMARY KEY,
+    name          VARCHAR(80)  NOT NULL,
+    price         VARCHAR(40)  NOT NULL DEFAULT '',
+    description   VARCHAR(600) NOT NULL DEFAULT '',
+    url           VARCHAR(300) NOT NULL,
+    is_active     SMALLINT     NOT NULL DEFAULT 1,
+    image_version INT          NOT NULL DEFAULT 0,
+    category      VARCHAR(40)  NOT NULL DEFAULT '',
+    clicks        INT          NOT NULL DEFAULT 0,
+    created_at    TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
+);

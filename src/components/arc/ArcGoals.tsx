@@ -46,7 +46,7 @@ export function ArcGoals({ goals, endsOn, member }: { goals: Goal[]; endsOn: str
 
   if (!member)
     return (
-      <div className={`${card} p-7 text-center`}>
+      <div className="py-4 text-center">
         <p className="text-4xl" aria-hidden>
           🎯
         </p>
@@ -59,11 +59,11 @@ export function ArcGoals({ goals, endsOn, member }: { goals: Goal[]; endsOn: str
     );
 
   return (
-    <section className={`${card} p-5`} aria-label="My goals" data-arc-goals>
+    <section aria-label="My goals" data-arc-goals>
       <div className="flex items-end justify-between gap-3">
         <div>
           <p className={eyebrow}>By {endsOn}</p>
-          <h2 className="font-display text-lg font-bold tracking-tight">My goals</h2>
+          <h2 className="sr-only">My goals</h2>
         </div>
         {list.length > 0 && (
           <span className="text-sm font-bold tabular-nums">

@@ -17,8 +17,8 @@ export type Lang = "ne" | "en";
 
 /** Nepali for people in Nepal, English elsewhere — unless they chose one in Profile. */
 export function emailLang(user: { email_lang?: string | null; timezone?: string | null }): Lang {
-  if (user.email_lang === "ne" || user.email_lang === "en") return user.email_lang;
-  return /^Asia\/Kat(h)?mandu$/.test(user.timezone ?? "") ? "ne" : "en";
+  // English unless the person has chosen another language in Profile
+  return user.email_lang === "ne" ? "ne" : "en";
 }
 
 export async function sendMail(message: { to: string; subject: string; html: string; text: string; unsubscribeUrl?: string }): Promise<boolean> {

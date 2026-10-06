@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { CompleteProfile } from "@/components/CompleteProfile";
 import { Logo } from "@/components/Logo";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { currentUser, profileComplete } from "@/lib/auth";
 import { countries, guessCountry } from "@/lib/people";
 
@@ -19,7 +18,6 @@ export default async function WelcomePage() {
     <div className="flex min-h-dvh flex-col">
       <header className="flex items-center justify-between px-5 py-4 sm:px-10">
         <Logo href="/welcome" />
-        <ThemeToggle />
       </header>
       <main className="mx-auto w-full max-w-lg flex-1 px-5 pb-16 pt-4">
         <CompleteProfile

@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { SITE_URL } from "@/lib/site";
 import Link from "next/link";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { Knight, Snow } from "@/components/arc/ArcScreen";
 import { Reveal } from "@/components/ui/Reveal";
 import { ARC_HABITS_PER_DAY, ARC_POINTS_PER_HABIT, arcSeason, isArcMember } from "@/lib/arc";
@@ -68,7 +67,6 @@ export default async function WinterArcPage() {
           HabitFlow
         </Link>
         <div className="flex items-center gap-3">
-          <ThemeToggle />
           {!user && (
             <Link href="/login?join=arc" className="rounded-xl px-3 py-2 text-sm font-semibold text-white/80 hover:text-white">
               Sign in

@@ -356,3 +356,81 @@ html[data-keyboard] [data-sheet] {
 @media (prefers-reduced-motion: reduce) {
   .arc-turn, .arc-breathe { animation: none !important; }
 }
+
+/* ── The Winter Arc opening scene (src/components/arc/ArcIntro.tsx) ──────────
+   Driven by one attribute, data-beat = before | ignite | title. Everything
+   here animates transform and opacity only, so it runs on the compositor and
+   stays smooth on a phone. */
+.arc-intro { animation: ai-in 0.35s ease-out both; }
+.arc-intro[data-closing] { opacity: 0; transition: opacity 0.36s ease-in; }
+@keyframes ai-in { from { opacity: 0; } }
+
+/* the whole stage is thrown about once, at the change */
+.arc-intro[data-beat="ignite"] .ai-stage { animation: ai-shake 0.6s ease-out both; }
+@keyframes ai-shake {
+  0% { transform: translate3d(0, 0, 0); }
+  12% { transform: translate3d(calc(var(--amp) * -1), calc(var(--amp) * 0.6), 0); }
+  26% { transform: translate3d(calc(var(--amp) * 0.85), calc(var(--amp) * -0.5), 0); }
+  42% { transform: translate3d(calc(var(--amp) * -0.6), calc(var(--amp) * 0.35), 0); }
+  60% { transform: translate3d(calc(var(--amp) * 0.4), calc(var(--amp) * -0.2), 0); }
+  80% { transform: translate3d(calc(var(--amp) * -0.2), 0, 0); }
+  100% { transform: translate3d(0, 0, 0); }
+}
+.ai-flash { opacity: 0; }
+.arc-intro[data-beat="ignite"] .ai-flash { animation: ai-flash 0.6s ease-out both; }
+@keyframes ai-flash { from { opacity: 0.95; } to { opacity: 0; } }
+
+/* the light behind the figure */
+.ai-glow {
+  background: radial-gradient(circle, rgb(255 255 255 / 0.34), transparent 62%);
+  transform: translate3d(-50%, -50%, 0) scale(0.35);
+  opacity: 0;
+  transition: transform 1.1s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.7s ease-out;
+  will-change: transform, opacity;
+}
+.arc-intro:not([data-beat="before"]) .ai-glow { transform: translate3d(-50%, -50%, 0) scale(1); opacity: 1; }
+
+/* two rings burst outward */
+.ai-ring { transform: translate3d(-50%, -50%, 0) scale(0.2); opacity: 0; }
+.arc-intro[data-beat="ignite"] .ai-ring { animation: ai-ring 1.1s ease-out both; }
+.arc-intro[data-beat="ignite"] .ai-ring-2 { animation-delay: 0.16s; animation-duration: 1.3s; }
+@keyframes ai-ring {
+  from { transform: translate3d(-50%, -50%, 0) scale(0.2); opacity: 0.9; }
+  to { transform: translate3d(-50%, -50%, 0) scale(5); opacity: 0; }
+}
+
+/* streaks of speed rise once the change has happened */
+.ai-streak { opacity: 0; transform: translate3d(0, 100%, 0); }
+.arc-intro:not([data-beat="before"]) .ai-streak { animation: ai-streak var(--t, 1s) linear var(--d, 0s) infinite; }
+@keyframes ai-streak {
+  0% { transform: translate3d(0, 100%, 0); opacity: 0; }
+  30% { opacity: 0.45; }
+  100% { transform: translate3d(0, -110vh, 0); opacity: 0; }
+}
+
+/* the two figures cross over */
+.ai-figure { transition: transform 0.7s cubic-bezier(0.2, 1.3, 0.3, 1), opacity 0.45s ease-out; will-change: transform, opacity; }
+.ai-figure-after { opacity: 0; transform: translate3d(0, 26px, 0) scale(0.82); }
+.arc-intro:not([data-beat="before"]) .ai-figure-before { opacity: 0; transform: scale(0.92); }
+.arc-intro:not([data-beat="before"]) .ai-figure-after { opacity: 1; transform: none; transition-delay: 0.1s; }
+.arc-intro[data-beat="title"] .ai-figure-after { transform: translate3d(0, 5vh, 0) scale(0.9); transition: transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1); }
+
+/* the lines swap in place */
+.ai-line { position: absolute; inset-inline: 1.5rem; top: 0; opacity: 0; transform: translate3d(0, 12px, 0); transition: opacity 0.35s ease-out, transform 0.35s ease-out; }
+.arc-intro[data-beat="before"] .ai-line-before,
+.arc-intro[data-beat="ignite"] .ai-line-ignite,
+.arc-intro[data-beat="title"] .ai-line-title { opacity: 1; transform: none; transition-delay: 0.18s; }
+.ai-word { transform: translate3d(0, 105%, 0); transition: transform 0.65s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.arc-intro[data-beat="title"] .ai-word { transform: none; transition-delay: 0.25s; }
+.arc-intro[data-beat="title"] span + span .ai-word { transition-delay: 0.4s; }
+
+/* the bars: nearly empty, then full */
+.ai-bar { transform: scaleX(var(--low)); transition: transform 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) var(--d, 0s); }
+.arc-intro:not([data-beat="before"]) .ai-bar { transform: scaleX(1); }
+.ai-stats, .ai-start, .ai-hint { transition: opacity 0.4s ease-out, transform 0.4s ease-out; }
+.ai-start { opacity: 0; transform: translate3d(0, 14px, 0); pointer-events: none; }
+.arc-intro[data-beat="title"] .ai-stats { opacity: 0; transform: translate3d(0, 10px, 0); }
+.arc-intro[data-beat="title"] .ai-start { opacity: 1; transform: none; pointer-events: auto; transition-delay: 0.7s; }
+.arc-intro[data-beat="title"] .ai-hint { opacity: 0; }
+.arc-intro[data-beat="title"] .ai-button { animation: ai-pulse 1.3s ease-in-out 1.4s infinite; }
+@keyframes ai-pulse { 50% { opacity: 0.6; } }

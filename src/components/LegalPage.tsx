@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { CONTACT_EMAIL, CREATOR } from "@/lib/constants";
 
 /** Shared frame for the Privacy Policy and Terms pages. */
@@ -9,7 +8,6 @@ export function LegalPage({ title, updated, children }: { title: string; updated
     <div className="min-h-dvh">
       <header className="flex items-center justify-between border-b border-line px-5 py-4 sm:px-10">
         <Logo />
-        <ThemeToggle />
       </header>
       <main className="mx-auto max-w-2xl px-5 py-10 sm:py-14">
         <h1 className="font-display text-4xl font-extrabold tracking-tight">{title}</h1>

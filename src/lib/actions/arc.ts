@@ -10,7 +10,7 @@ import { ageOn, countryName, flag, genderLabel } from "../people";
 import { decodeEntities } from "../text";
 import { formatTimestamp, todayIn } from "../dates";
 import { toId } from "../validation";
-import { workoutById } from "../workouts";
+import { workoutById, WORKOUTS } from "../workouts";
 
 type Result = { ok: true } | { ok: false; error: string };
 
@@ -240,4 +240,23 @@ export async function viewArcProfile(userIdInput: number): Promise<{ ok: true; p
       badges: badges.map(({ name: badgeName, icon, description }) => ({ name: badgeName, icon, description })),
     },
   };
+}
+
+// ── Popular ──────────────────────────────────────────────────────────────────
+
+/** Adds a habit from the Popular list. Only names from the built-in list or an admin's pack are accepted. */
+export async function addPopularHabit(nameInput: string): Promise<Result> {
+  const user = await requireUser();
+  const name = String(nameInput ?? "").trim().slice(0, 100);
+  const workout = WORKOUTS.find((w) => w.name.toLowerCase() === name.toLowerCase());
+  const template = workout ? null : await queryOne<{ name: string; icon: string }>("SELECT t.name, t.icon FROM arc_pack_habits t JOIN arc_packs p ON p.id = t.pack_id AND p.is_active = 1 WHERE LOWER(t.name) = LOWER(?) LIMIT 1", [name]);
+  const source = workout ? { name: workout.name, icon: workout.icon, color: workout.color, description: workout.steps.join(" · ") } : template ? { name: template.name, icon: template.icon, color: "#2563eb", description: "" } : null;
+  if (!source) return { ok: false, error: "That habit isn't available." };
+  if (await queryOne("SELECT id FROM habits WHERE user_id = ? AND is_active = 1 AND LOWER(name) = LOWER(?)", [user.id, source.name])) return { ok: true }; // already theirs
+  const count = await queryOne<{ n: number | string }>("SELECT COUNT(*) AS n FROM habits WHERE user_id = ? AND is_active = 1", [user.id]);
+  if (Number(count?.n ?? 0) >= 50) return { ok: false, error: "Maximum 50 habits allowed." };
+  const category = (await queryOne("SELECT id FROM categories WHERE name = 'Health'")) ? "Health" : "General";
+  await execute("INSERT INTO habits (user_id, name, description, category, icon, color, frequency, target_count) VALUES (?, ?, ?, ?, ?, ?, 'daily', 1)", [user.id, source.name, source.description, category, source.icon, source.color]);
+  revalidatePath("/", "layout");
+  return { ok: true };
 }

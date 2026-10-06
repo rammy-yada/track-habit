@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "../auth";
 import { parseTags, slugify } from "../blog-format";
-import { execute, isDuplicateError } from "../db";
+import { execute, isDuplicateError, queryOne } from "../db";
 import { saveMessages } from "../messages";
 import { setStorageLimit } from "../storage";
 import { clean } from "../text";
@@ -101,6 +101,48 @@ export async function setStorageLimitAction(gbInput: number): Promise<Result> {
   const gb = Number(gbInput);
   if (!(gb >= 0.01 && gb <= 1024)) return { ok: false, error: "Enter the size of your database plan in GB (for example 1 or 8)." };
   await setStorageLimit(Math.round(gb * 100) / 100);
+  refresh();
+  return { ok: true };
+}
+
+// ── Products (Admin → Sellers) ───────────────────────────────────────────────
+
+type ProductInput = { name: string; price: string; description: string; url: string; category: string; active: boolean };
+
+export async function saveProduct(idInput: number | null, input: ProductInput): Promise<Result> {
+  await requireAdmin();
+  const name = clean(input?.name, 80);
+  const price = clean(input?.price, 40);
+  const description = clean(input?.description, 600);
+  const category = clean(input?.category, 40);
+  let url = clean(input?.url, 300);
+  if (url && !/^https?:\/\//i.test(url)) url = `https://${url}`;
+  if (name.length < 2) return { ok: false, error: "Give the product a name." };
+  // the Buy button sends people here: it must be a real web address, never javascript: or the like
+  if (!/^https:\/\/[^\s/]+\.[^\s]+$/i.test(url)) return { ok: false, error: "Add the link where people buy it (an https:// address)." };
+  const active = input?.active === false ? 0 : 1;
+  let savedId: number;
+  if (idInput === null) {
+    const count = await queryOne<{ n: number | string }>("SELECT COUNT(*) AS n FROM products");
+    if (Number(count?.n ?? 0) >= 200) return { ok: false, error: "200 products is the most there can be." };
+    savedId = (await execute<{ id: number }>("INSERT INTO products (name, price, description, url, category, is_active) VALUES (?, ?, ?, ?, ?, ?) RETURNING id", [name, price, description, url, category, active])).rows[0].id;
+  } else {
+    const id = toId(idInput);
+    if (!id) return INVALID;
+    const changed = await execute("UPDATE products SET name = ?, price = ?, description = ?, url = ?, category = ?, is_active = ? WHERE id = ?", [name, price, description, url, category, active, id]);
+    if (!changed.rowCount) return { ok: false, error: "Product not found." };
+    savedId = id;
+  }
+  refresh();
+  return { ok: true, id: savedId };
+}
+
+export async function deleteProduct(idInput: number): Promise<Result> {
+  await requireAdmin();
+  const id = toId(idInput);
+  if (!id) return INVALID;
+  await execute("DELETE FROM products WHERE id = ?", [id]);
+  await execute("DELETE FROM site_images WHERE slot = ?", [`product-${id}`]);
   refresh();
   return { ok: true };
 }

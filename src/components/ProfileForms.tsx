@@ -19,8 +19,9 @@ import { SubmitButton } from "@/components/ui/SubmitButton";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { btnDanger, btnGhost, btnSmall, card, input, label } from "@/components/ui/styles";
 import { changePasswordAction, deleteAccountAction, updateProfileAction } from "@/lib/actions/profile";
+import { ThemePicker } from "@/components/ThemePicker";
 import { TimezoneOptions } from "@/components/TimezoneOptions";
-import { AVATAR_COLORS, CREATOR } from "@/lib/constants";
+import { APP_VERSION, AVATAR_COLORS, CREATOR } from "@/lib/constants";
 import { clearOfflineData } from "@/lib/offline";
 import { ageOn, countryName, flag, genderLabel } from "@/lib/people";
 import { openGuide } from "@/lib/pwa";
@@ -193,11 +194,10 @@ export function ProfileForms({ user, stats, badges, badgeCount }: Props) {
             <fieldset className="space-y-3 border-t border-line pt-5">
               <legend className="sr-only">Email</legend>
               <label className="block">
-                <span className={label}>Email language</span>
+                <span className={label}>Language for notifications and emails</span>
                 <select name="email_lang" className={input} defaultValue={user.emailLang}>
-                  <option value="">Automatic (नेपाली in Nepal, English elsewhere)</option>
-                  <option value="ne">नेपाली</option>
-                  <option value="en">English</option>
+                  <option value="">English</option>
+                  <option value="ne">नेपाली (Nepali)</option>
                 </select>
               </label>
               {user.admin ? (
@@ -268,6 +268,9 @@ export function ProfileForms({ user, stats, badges, badgeCount }: Props) {
             </div>
           </Row>
         )}
+        <Row id="theme" icon="🎨" title="Appearance" note="Light, dark or the Winter Arc look" open={open} toggle={toggle}>
+          <ThemePicker />
+        </Row>
         <Row id="install" icon="📲" title="Install and offline" note="Put HabitFlow on this device, update, sync" open={open} toggle={toggle}>
           <div className="space-y-4">
             <p className="text-[13px] leading-relaxed text-muted">{user.admin ? "Install HabitFlow on this device for one-tap access to the admin area." : "Install HabitFlow on your phone. It works offline: ticks made without a connection are kept on the device and synced when you're back online."}</p>
@@ -311,7 +314,7 @@ export function ProfileForms({ user, stats, badges, badgeCount }: Props) {
       <section className={`${card} overflow-hidden`} aria-label="Log out">
         <LogoutButton className="flex w-full items-center justify-center gap-2.5 px-5 py-4 text-sm font-bold text-bad hover:bg-bad-soft" />
       </section>
-      <p className="pb-2 text-center text-[11px] text-muted">HabitFlow · made by {CREATOR.handle}</p>
+      <p className="pb-2 text-center text-[11px] text-muted">HabitFlow v{APP_VERSION} · made by {CREATOR.handle}</p>
 
       <Modal open={confirmingDelete} onClose={() => setConfirmingDelete(false)} title="Delete your account?" width="max-w-sm">
         <p className="text-sm leading-relaxed text-muted">This permanently deletes your habits, check-ins, notes, photo and leaderboard entry. It cannot be undone.</p>
