@@ -46,7 +46,7 @@ export async function isArcMember(user: User): Promise<boolean> {
 // A tick only scores if it was made on (or within a day of) the day it is
 // for — filling in old days from the monthly grid fixes your record but
 // doesn't move you up the leaderboard.
-const DAILY_POINTS = `
+export const DAILY_POINTS = `
   SELECT user_id, log_date, LEAST(COUNT(*), ${ARC_HABITS_PER_DAY}) * ${ARC_POINTS_PER_HABIT} + CASE WHEN COUNT(*) >= ${ARC_HABITS_PER_DAY} THEN ${ARC_FULL_DAY_BONUS} ELSE 0 END AS pts
   FROM habit_logs
   WHERE completed_count > 0 AND log_date BETWEEN ? AND ?

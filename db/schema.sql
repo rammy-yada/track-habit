@@ -425,3 +425,16 @@ CREATE TABLE IF NOT EXISTS arc_bonus (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS arc_bonus_user ON arc_bonus (user_id, season);
+
+-- arc_bonus.auto_key: set on bonuses the site awards by itself (a 7-day streak,
+-- a perfect-day milestone), so each is given once. NULL for admin-given ones.
+-- arc_ranks: each member's place the last time it was looked at, so a change
+-- (up, down, onto the board) can be noticed and announced.
+ALTER TABLE arc_bonus ADD COLUMN IF NOT EXISTS auto_key VARCHAR(40);
+CREATE UNIQUE INDEX IF NOT EXISTS arc_bonus_auto ON arc_bonus (user_id, season, auto_key);
+CREATE TABLE IF NOT EXISTS arc_ranks (
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    season  INT NOT NULL,
+    rank    INT NOT NULL,
+    PRIMARY KEY (user_id, season)
+);

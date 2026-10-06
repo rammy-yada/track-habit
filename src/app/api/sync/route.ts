@@ -1,4 +1,6 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { after, NextResponse, type NextRequest } from "next/server";
+import { awardAutoBonuses } from "@/lib/arc-bonus";
+import { notifyRankChanges } from "@/lib/arc-ranks";
 import { revalidatePath } from "next/cache";
 import { currentUser, profileComplete } from "@/lib/auth";
 import { setHabitDone } from "@/lib/habit-log";
@@ -38,6 +40,14 @@ export async function POST(request: NextRequest) {
     const result = await setHabitDone(user, op?.habitId, op?.done === true, op?.date);
     results.push({ key: `${op?.habitId}:${op?.date}`, ...result });
   }
-  if (results.some((r) => r.ok)) revalidatePath("/", "layout");
+  if (results.some((r) => r.ok)) {
+    revalidatePath("/", "layout");
+    // Once the answer has gone out: any bonus these ticks have earned, then a
+    // look at the leaderboard — a tick here can move other people's places too.
+    after(async () => {
+      await awardAutoBonuses(user).catch(() => 0);
+      await notifyRankChanges(user.id).catch(() => 0);
+    });
+  }
   return NextResponse.json({ results }, { headers: { "Cache-Control": "no-store" } });
 }

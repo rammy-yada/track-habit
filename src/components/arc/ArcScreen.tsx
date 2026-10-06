@@ -230,6 +230,8 @@ export function ArcScreen({ arc, compact = false }: { arc: Arc; /** a short bann
                   <ul className="space-y-1.5 px-4 pb-3 text-xs leading-relaxed text-white/60">
                     <li>• 10 points for each habit you tick, up to 5 habits a day.</li>
                     <li>• +10 bonus for a full day of five: 60 points is the most a day can earn.</li>
+                    <li>• +25 for every 7 scoring days in a row (day 7, 14, 21…).</li>
+                    <li>• +20 for each perfect-day milestone: 1, 3, 7, 14, 21, 30, 50, 75, 100 and 123 days with your whole pack done.</li>
                     <li>• Bonus points can also be awarded by the organisers, for events and prizes.</li>
                     <li>• Only ticks made on the day count. Filling in old days fixes your record, not your score.</li>
                     <li>• Ticks made offline count once they sync, if that happens within a day.</li>

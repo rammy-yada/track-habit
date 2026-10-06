@@ -3,6 +3,7 @@ import { arcSeason } from "@/lib/arc";
 import { addDays, diffDays } from "@/lib/dates";
 import { execute, query } from "@/lib/db";
 import { getMessages, iconVersions } from "@/lib/messages";
+import { notifyRankChanges } from "@/lib/arc-ranks";
 import { formatBytes, getStorage } from "@/lib/storage";
 import { storageEmail } from "@/lib/mail";
 import { arcReminderEmail, comebackEmail, emailLang, mailEnabled, sendMail, unsubscribeUrl } from "@/lib/mail";
@@ -278,7 +279,10 @@ export async function runReminders({ origin, now = new Date(), dry = false }: { 
     }
   }
 
-  return { people: people.length, ...sent, delivered, dry, ...(storage ? { storage } : {}), ...(pushIssue ? { pushProblem: pushIssue } : {}), ...(lastPushError && delivered === 0 ? { lastPushError } : {}), ...(failed.length ? { failed } : {}) };
+  // places on the leaderboard can also change without anyone ticking (bonus points from an admin)
+  const rankNews = dry ? 0 : await notifyRankChanges().catch(() => 0);
+
+  return { people: people.length, ...sent, rankNews, delivered, dry, ...(storage ? { storage } : {}), ...(pushIssue ? { pushProblem: pushIssue } : {}), ...(lastPushError && delivered === 0 ? { lastPushError } : {}), ...(failed.length ? { failed } : {}) };
 }
 
 /**
