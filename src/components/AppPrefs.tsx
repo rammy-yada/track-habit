@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { updateAppPrefs } from "@/lib/actions/profile";
 import { whenOnline } from "@/lib/offline";
 
-export type Prefs = { motivation: number; comeback: boolean; appIcon: "auto" | "classic" | "arc" };
+export type Prefs = { motivation: number; comeback: boolean; care: boolean; appIcon: "auto" | "classic" | "arc" };
 
 const MOTIVATION = [
   { value: 0, label: "Off", note: "No motivation messages. Reminders you set on a habit still arrive." },
@@ -91,6 +91,8 @@ export function AppPrefs({ prefs, arcMember }: { prefs: Prefs; arcMember: boolea
         </div>
         <p className="mt-1.5 text-xs text-muted">{MOTIVATION[value.motivation]?.note}</p>
       </fieldset>
+
+      <Toggle on={value.care} onClick={() => save({ ...value, care: !value.care })} title="Daily care reminders" note="Wake up, drink water (twice), one good thing to do today, and time to sleep. Each arrives at a slightly different time every day." />
 
       <Toggle on={value.comeback} onClick={() => save({ ...value, comeback: !value.comeback })} title="Nudge me if I stop" note="A message after 2, 4, 7, 14 and 30 days away, then nothing. After a week away the daily messages stop too." />
 

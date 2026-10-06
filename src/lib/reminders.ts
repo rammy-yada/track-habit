@@ -7,7 +7,7 @@ import { formatBytes, getStorage } from "@/lib/storage";
 import { storageEmail } from "@/lib/mail";
 import { arcReminderEmail, comebackEmail, emailLang, mailEnabled, sendMail, unsubscribeUrl } from "@/lib/mail";
 import { lastPushError, pushProblem, sendPush } from "@/lib/push";
-import { COMEBACK_DAYS, comebackFor, nudgeFor, QUIET_AFTER_DAYS, quoteFor } from "@/lib/quotes";
+import { CARE, CARE_CATCH_UP, COMEBACK_DAYS, comebackFor, nudgeFor, QUIET_AFTER_DAYS, quoteFor } from "@/lib/quotes";
 import { decodeEntities } from "@/lib/text";
 
 const QUOTE_HOUR = 8; //    morning quote, in each person's own timezone
@@ -45,6 +45,7 @@ type Person = {
   email_reminders: number;
   notify_motivation: number;
   notify_comeback: number;
+  notify_care: number;
   joined: string;
   last_done: string | null;
   member: boolean;
@@ -88,7 +89,7 @@ export async function runReminders({ origin, now = new Date(), dry = false }: { 
   // Every member, with what is needed to decide: are they in the arc, do they
   // have a device to notify, and when did they last tick anything.
   const people = await query<Person>(
-    `SELECT u.id, u.email, u.full_name, u.timezone, u.email_lang, u.email_reminders, u.notify_motivation, u.notify_comeback,
+    `SELECT u.id, u.email, u.full_name, u.timezone, u.email_lang, u.email_reminders, u.notify_motivation, u.notify_comeback, u.notify_care,
             u.created_at::date::text AS joined,
             (SELECT MAX(l.log_date)::text FROM habit_logs l WHERE l.user_id = u.id AND l.completed_count > 0) AS last_done,
             (m.user_id IS NOT NULL) AS member,
@@ -120,7 +121,7 @@ export async function runReminders({ origin, now = new Date(), dry = false }: { 
     }
   }
 
-  const sent = { habitReminders: 0, quotes: 0, nudges: 0, eveningNotifications: 0, eveningEmails: 0, comebackNotifications: 0, comebackEmails: 0 };
+  const sent = { habitReminders: 0, quotes: 0, nudges: 0, care: 0, eveningNotifications: 0, eveningEmails: 0, comebackNotifications: 0, comebackEmails: 0 };
   let emails = 0;
   let delivered = 0; // how many devices actually accepted a notification
   // Claim first, send second: if the row already exists this was already sent today.
@@ -205,6 +206,18 @@ export async function runReminders({ origin, now = new Date(), dry = false }: { 
             badge: left,
           });
         sent.nudges++;
+      }
+    }
+
+    // ── daily care: wake up, water, one good thing, sleep — each at a different minute every day ──
+    if (push && !quiet && person.notify_care === 1) {
+      for (const care of CARE) {
+        const due = randomMinute(`${person.id}:${today}:${care.key}`, care.from, care.to);
+        if (clock.minutes < due || clock.minutes >= due + CARE_CATCH_UP) continue;
+        if (!(await claim(person.id, `care_${care.key}`, today))) continue;
+        const lines = care.lines[lang];
+        if (!dry) delivered += await sendPush(person.id, { title: care.title[lang], body: lines[randomMinute(`${today}:${care.key}:${person.id}`, 0, lines.length)], url: "/dashboard", tag: `care-${care.key}` });
+        sent.care++;
       }
     }
 

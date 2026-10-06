@@ -269,6 +269,7 @@ const UPGRADES = `
       PRIMARY KEY (user_id, badge_id)
   );
   ALTER TABLE users ADD COLUMN IF NOT EXISTS gender VARCHAR(12);
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_care SMALLINT NOT NULL DEFAULT 1;
   INSERT INTO categories (name, icon)
     SELECT * FROM (VALUES ('Health','🧘'), ('Productivity','🎯'), ('Learning','📚'), ('Finance','💰'), ('Social','🤝'), ('Routine','⏰')) AS d(name, icon)
     WHERE NOT EXISTS (SELECT 1 FROM categories);
@@ -277,7 +278,7 @@ const UPGRADES = `
 function upToDate(): Promise<void> {
   globalForDb.habitflowMigrated ??= (async () => {
     // the newest addition: a column, so the check looks for that column
-    const check = await pool().query("SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'gender') AS ok");
+    const check = await pool().query("SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'notify_care') AS ok");
     if (!check.rows[0].ok) await pool().query(UPGRADES);
   })().catch((err) => {
     globalForDb.habitflowMigrated = undefined; // try again on the next request

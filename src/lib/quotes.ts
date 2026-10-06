@@ -125,3 +125,54 @@ export function comebackFor(lang: Lang, daysAway: number, everStarted: boolean, 
 
 /** The built-in English messages, offered in the admin screen as a starting point. */
 export const BUILT_IN = { quotes: QUOTES.en, nudges: NUDGES.en, comeback: COMEBACK.en };
+
+// ── Daily care reminders ─────────────────────────────────────────────────────
+// Small, friendly reminders through the day that aren't about any one habit:
+// waking up, drinking water, one good thing to do, going to sleep. Each has a
+// part of the day it falls in (minutes from midnight); the exact minute is
+// different for every person and every day.
+type Care = { key: string; from: number; to: number; title: Record<Lang, string>; lines: Record<Lang, string[]> };
+export const CARE: Care[] = [
+  {
+    key: "wake", from: 6 * 60, to: 7 * 60 + 30,
+    title: { en: "Good morning ☀️", ne: "शुभ प्रभात ☀️" },
+    lines: {
+      en: ["Up you get. The day is yours before anyone else wants it.", "Feet on the floor. That's the hardest part done.", "A new day, a clean list. Open your eyes to it.", "Rise first, then decide how you feel."],
+      ne: ["उठ्ने बेला भयो। आजको दिन तपाईंकै हो।", "खुट्टा भुइँमा राख्नुहोस्। सबैभन्दा गाह्रो काम सकियो।", "नयाँ दिन, नयाँ सुरुवात।"],
+    },
+  },
+  {
+    key: "water1", from: 10 * 60, to: 12 * 60,
+    title: { en: "Water break 💧", ne: "पानी पिउने बेला 💧" },
+    lines: {
+      en: ["A glass of water, right now. Your head will thank you.", "Drink some water before you do the next thing.", "Thirsty already means you waited too long. Have a glass."],
+      ne: ["अहिले नै एक गिलास पानी पिउनुहोस्।", "अर्को काम सुरु गर्नुअघि पानी पिउनुहोस्।"],
+    },
+  },
+  {
+    key: "good", from: 12 * 60 + 30, to: 14 * 60 + 30,
+    title: { en: "One good thing today ✨", ne: "आज एउटा राम्रो काम ✨" },
+    lines: {
+      en: ["Message someone you haven't spoken to in a while.", "Say thank you to one person, and mean it.", "Tidy one small corner. Just one.", "Step outside for five minutes and look at the sky.", "Help someone today without being asked.", "Give one honest compliment.", "Put your phone down through one whole meal.", "Write down one thing that went well today.", "Call home.", "Stretch for two minutes. Right where you are."],
+      ne: ["धेरै भएको कुरा नगरेको कसैलाई सन्देश पठाउनुहोस्।", "आज कसैलाई मनैदेखि धन्यवाद भन्नुहोस्।", "पाँच मिनेट बाहिर निस्केर आकाश हेर्नुहोस्।", "नभनीकनै कसैलाई सहयोग गर्नुहोस्।", "घरमा फोन गर्नुहोस्।", "आज राम्रो भएको एउटा कुरा लेख्नुहोस्।"],
+    },
+  },
+  {
+    key: "water2", from: 14 * 60 + 30, to: 16 * 60 + 30,
+    title: { en: "Water again 💧", ne: "फेरि पानी 💧" },
+    lines: {
+      en: ["Afternoon slump? Water first, then decide.", "Another glass. You're probably behind for the day.", "Refill the bottle. Future you is thirsty."],
+      ne: ["दिउँसो अल्छी लाग्यो? पहिले पानी पिउनुहोस्।", "अर्को गिलास पानी पिउनुहोस्।"],
+    },
+  },
+  {
+    key: "sleep", from: 21 * 60 + 30, to: 22 * 60 + 15,
+    title: { en: "Time to wind down 🌙", ne: "सुत्ने बेला भयो 🌙" },
+    lines: {
+      en: ["Tomorrow is built tonight. Put the phone down and sleep.", "Screens off. Lights low. You've done enough for today.", "The best thing you can do for tomorrow's habits is sleep now.", "Bed. Tomorrow's you is counting on it."],
+      ne: ["भोलिको दिन आजको निद्राले बनाउँछ। फोन राखेर सुत्नुहोस्।", "आजलाई पुग्यो। अब आराम गर्नुहोस्।", "भोलिका बानीका लागि सबैभन्दा राम्रो काम: अहिले सुत्नु।"],
+    },
+  },
+];
+/** How long after its time a care reminder is still worth sending (minutes). */
+export const CARE_CATCH_UP = 150;

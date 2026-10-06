@@ -27,6 +27,8 @@ export type User = {
   notify_motivation: number;
   /** 1: nudge me when I've been away a few days. */
   notify_comeback: number;
+  /** 1: daily care reminders (wake up, water, a good thing to do, sleep). */
+  notify_care: number;
   app_icon: "auto" | "classic" | "arc";
   gender: string | null;
   /** YYYY-MM-DD */

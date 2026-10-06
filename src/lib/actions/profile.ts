@@ -90,12 +90,12 @@ export async function deleteAccountAction(_prev: ProfileState, formData: FormDat
 }
 
 /** Profile → App: how often motivation arrives, the "come back" nudges, and which app icon to use. */
-export async function updateAppPrefs(input: { motivation: number; comeback: boolean; appIcon: string }): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function updateAppPrefs(input: { motivation: number; comeback: boolean; care: boolean; appIcon: string }): Promise<{ ok: true } | { ok: false; error: string }> {
   const user = await requireUser();
   const motivation = Number.isInteger(input?.motivation) && input.motivation >= 0 && input.motivation <= 3 ? input.motivation : null;
   const appIcon = ["auto", "classic", "arc"].includes(input?.appIcon) ? input.appIcon : null;
-  if (motivation === null || appIcon === null || typeof input?.comeback !== "boolean") return { ok: false, error: "Invalid request." };
-  await execute("UPDATE users SET notify_motivation = ?, notify_comeback = ?, app_icon = ? WHERE id = ?", [motivation, input.comeback ? 1 : 0, appIcon, user.id]);
+  if (motivation === null || appIcon === null || typeof input?.comeback !== "boolean" || typeof input?.care !== "boolean") return { ok: false, error: "Invalid request." };
+  await execute("UPDATE users SET notify_motivation = ?, notify_comeback = ?, notify_care = ?, app_icon = ? WHERE id = ?", [motivation, input.comeback ? 1 : 0, input.care ? 1 : 0, appIcon, user.id]);
   revalidatePath("/", "layout");
   return { ok: true };
 }

@@ -43,7 +43,7 @@ export default async function ProfilePage() {
           emailLang: user.email_lang ?? "",
           reminders: user.email_reminders !== 0,
           pushKey: pushPublicKey(),
-          prefs: { motivation: user.notify_motivation, comeback: user.notify_comeback === 1, appIcon: user.app_icon },
+          prefs: { motivation: user.notify_motivation, comeback: user.notify_comeback === 1, care: user.notify_care === 1, appIcon: user.app_icon },
           arcMember,
           details: { gender: user.gender ?? "", birthDate: user.birth_date ?? "", country: user.country ?? "", showAge: user.show_age === 1, showGender: user.show_gender === 1, showCountry: user.show_country === 1, countries: countries() },
           admin: false,

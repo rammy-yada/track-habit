@@ -393,3 +393,6 @@ CREATE TABLE IF NOT EXISTS user_badges (
     PRIMARY KEY (user_id, badge_id)
 );
 ALTER TABLE users ADD COLUMN IF NOT EXISTS gender VARCHAR(12);
+
+-- notify_care: 1 = daily care reminders (wake up, drink water, a good thing to do, sleep).
+ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_care SMALLINT NOT NULL DEFAULT 1;
