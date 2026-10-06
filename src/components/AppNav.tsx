@@ -154,6 +154,18 @@ export function MobileBars({ user, arc }: { user: NavUser; arc?: ArcState }) {
   const pathname = usePathname();
   const admin = user.role === "admin";
   const tabs = (admin ? ADMIN : MEMBER).filter((link) => !link.desktopOnly);
+  // Profile is a screen of its own on a phone, like an app's settings: no
+  // title bar and no tab bar, just a way back.
+  if (pathname === "/profile" || pathname === "/sigmadev/account")
+    return (
+      <div className="sticky top-0 z-30 flex items-center px-3 pb-1 pt-[calc(10px+env(safe-area-inset-top))] md:hidden">
+        <Link href={admin ? "/sigmadev" : "/dashboard"} prefetch={false} aria-label="Back" className="grid h-10 w-10 place-items-center rounded-full border border-line bg-card text-ink shadow-sm" data-back>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M15 6l-6 6 6 6" />
+          </svg>
+        </Link>
+      </div>
+    );
   return (
     <>
       <header className="sticky top-0 z-30 flex h-[61px] items-center justify-between border-b border-line bg-card/85 px-4 backdrop-blur md:hidden">

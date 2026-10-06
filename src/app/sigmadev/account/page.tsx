@@ -10,7 +10,11 @@ export default async function AdminAccountPage() {
   const admin = await requireAdmin();
   return (
     <>
-      <PageHeader title="My Account" />
+      {/* a computer keeps the title bar; a phone shows only the back button (see MobileBars) */}
+      <div className="hidden md:block">
+        <PageHeader title="My Account" />
+      </div>
+      <h1 className="sr-only md:hidden">My Account</h1>
       <ProfileForms
         stats={{ habits: 0, checkins: 0 }}
         user={{

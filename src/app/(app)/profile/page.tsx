@@ -20,7 +20,11 @@ export default async function ProfilePage() {
   const badges = arcMember ? await badgesFor(user.id, await arcNumbers(user.id, todayIn(user.timezone))) : [];
   return (
     <>
-      <PageHeader title="Profile" />
+      {/* a computer keeps the title bar; a phone shows only the back button (see MobileBars) */}
+      <div className="hidden md:block">
+        <PageHeader title="Profile" />
+      </div>
+      <h1 className="sr-only md:hidden">Profile</h1>
       {/* Only the fields the form needs cross to the browser — never the password hash. */}
       <ProfileForms
         stats={stats}

@@ -49,16 +49,16 @@ export function ArcHub({ status, member, goals, tips, quote, leaderboard }: Prop
 
   return (
     <div className="fixed inset-0 z-40 flex flex-col bg-bg" data-arc-hub>
-      <header className="flex items-center gap-3 border-b border-line bg-card px-3 pb-3 pt-[calc(12px+env(safe-area-inset-top))] sm:px-6">
-        <Link href="/dashboard" aria-label="Back to Today" className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-line text-lg text-muted hover:border-brand hover:text-brand">
-          ←
+      {/* no title bar: a way back, and a way to play the intro again */}
+      <header className="flex items-center justify-between px-3 pb-1 pt-[calc(10px+env(safe-area-inset-top))] sm:px-6">
+        <Link href="/dashboard" aria-label="Back to Today" className="grid h-10 w-10 place-items-center rounded-full border border-line bg-card text-ink shadow-sm">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M15 6l-6 6 6 6" />
+          </svg>
         </Link>
-        <div className="min-w-0 flex-1">
-          <h1 className="truncate font-display text-lg font-bold leading-tight tracking-tight">❄ Winter Arc</h1>
-          <p className="truncate text-xs font-medium text-muted">{status}</p>
-        </div>
-        <motion.button type="button" onClick={replayArcIntro} whileTap={{ scale: 0.95 }} className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-line bg-card px-3.5 py-2 text-[13px] font-semibold hover:border-brand hover:text-brand" data-story-button>
-          <span aria-hidden>▶</span> Intro
+        <h1 className="sr-only">Winter Arc — {status}</h1>
+        <motion.button type="button" onClick={replayArcIntro} whileTap={{ scale: 0.95 }} aria-label="Play the intro again" className="grid h-10 w-10 place-items-center rounded-full border border-line bg-card text-sm text-ink shadow-sm" data-story-button>
+          <span aria-hidden>▶</span>
         </motion.button>
       </header>
 
