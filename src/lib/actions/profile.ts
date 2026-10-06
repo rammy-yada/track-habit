@@ -57,6 +57,7 @@ export async function changePasswordAction(_prev: ProfileState, formData: FormDa
   // this one carries on with the new fingerprint.
   const session = await getSession();
   session.pw = passwordStamp(hash);
+  session.at = Date.now();
   await session.save();
   return { message: "Password changed. Other devices have been signed out." };
 }

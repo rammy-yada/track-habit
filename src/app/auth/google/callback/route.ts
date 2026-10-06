@@ -87,6 +87,7 @@ export async function GET(request: NextRequest) {
 
   session.userId = user.id;
   session.pw = passwordStamp(user.password);
+  session.at = Date.now();
   session.pendingReg = undefined;
   session.devOtp = undefined;
   await session.save();

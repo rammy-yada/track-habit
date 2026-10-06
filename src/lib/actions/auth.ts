@@ -48,6 +48,7 @@ export async function loginAction(_prev: FormState, formData: FormData): Promise
   const session = await getSession();
   session.userId = user.id;
   session.pw = passwordStamp(user.password);
+  session.at = Date.now();
   session.pendingReg = undefined;
   session.devOtp = undefined;
   session.joinArc = undefined;
@@ -129,6 +130,7 @@ export async function verifyOtpAction(_prev: FormState, formData: FormData): Pro
   const joining = session.joinArc === true;
   session.userId = userId;
   session.pw = passwordStamp(reg.passwordHash);
+  session.at = Date.now();
   session.pendingReg = undefined;
   session.devOtp = undefined;
   session.joinArc = undefined;

@@ -4,7 +4,7 @@ import { cache } from "react";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { queryOne } from "./db";
-import { getSession } from "./session";
+import { ADMIN_SESSION_MS, getSession, MEMBER_SESSION_MS } from "./session";
 import { decodeEntities } from "./text";
 
 export type User = {
@@ -63,6 +63,11 @@ export const currentUser = cache(async (): Promise<User | null> => {
   if (!session.userId) return null;
   const user = await queryOne<User>("SELECT * FROM users WHERE id = ? AND is_active = 1", [session.userId]);
   if (!user || session.pw !== passwordStamp(user.password)) return null;
+  // Too old? The limit is checked here, against the time sealed inside the
+  // cookie, so it can't be stretched from the browser. An administrator's
+  // sign-in without a time on it (made before this rule) doesn't count.
+  const age = Date.now() - (session.at ?? (user.role === "admin" ? 0 : Date.now()));
+  if (age > (user.role === "admin" ? ADMIN_SESSION_MS : MEMBER_SESSION_MS)) return null;
   return { ...user, full_name: decodeEntities(user.full_name), timezone: user.timezone || "UTC" };
 });
 

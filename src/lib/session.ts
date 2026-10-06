@@ -5,6 +5,8 @@ import { getIronSession, type IronSession } from "iron-session";
 // What PHP kept in $_SESSION now lives in one encrypted, tamper-proof cookie.
 export type SessionData = {
   userId?: number;
+  /** When this sign-in happened or was last renewed (milliseconds). */
+  at?: number;
   /** Fingerprint of the password this sign-in was made with (see passwordStamp in auth.ts). */
   pw?: string;
   /** A registration waiting on its verification code. */
@@ -25,7 +27,18 @@ export type SessionData = {
   joinArc?: boolean;
 };
 
-export const SESSION_LIFETIME = 60 * 60 * 24; // 24 hours
+// How long a sign-in lasts.
+//
+// A member stays signed in for 90 days, and every day the app is used that
+// period starts again (see /api/version) — so someone who uses the app is
+// never signed out, the way a phone app behaves.
+//
+// An administrator is signed out 8 hours after signing in, with no renewal:
+// an admin session left open on a shared or lost device must not stay usable.
+export const SESSION_LIFETIME = 60 * 60 * 24 * 90;
+export const MEMBER_SESSION_MS = SESSION_LIFETIME * 1000;
+export const ADMIN_SESSION_MS = 8 * 60 * 60 * 1000;
+export const RENEW_AFTER_MS = 24 * 60 * 60 * 1000;
 
 function sessionPassword(): string {
   const secret = process.env.SESSION_SECRET;

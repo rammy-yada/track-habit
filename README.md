@@ -533,7 +533,7 @@ described in the Privacy Policy.
 |---|---|
 | SQL injection | Every query is parameterised; values never go into SQL text |
 | Passwords | `bcryptjs`, cost 12; 8–72 characters |
-| Sessions | One encrypted, tamper-proof cookie; `HttpOnly`, `SameSite=Lax`, 24 h |
+| Sessions | One encrypted, tamper-proof cookie; `HttpOnly`, `SameSite=Lax`. Members: 90 days, renewed daily while the app is used. Administrators: 8 hours, never renewed |
 | Signing out other devices | The cookie carries a fingerprint of the password hash. Change or reset the password (yourself, by email link, or by an admin) and every other device is signed out |
 | Password guessing | 8 wrong passwords per account, or 40 from one address, in 15 minutes pauses sign-in (`src/lib/throttle.ts`, table `rate_limits`). The "current password" boxes in Profile allow 5 |
 | Email flooding | At most 4 verification codes per address per 30 minutes; reset links: one per account per 2 minutes, 6 requests per address per hour |
