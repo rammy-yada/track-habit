@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "motion/react";
-import { replayArcStory } from "./ArcStory";
+import { replayArcIntro } from "./ArcIntro";
 
 const TABS = [
   { id: "goals", label: "Goals", icon: <path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zm0-4a5 5 0 1 0 0-10 5 5 0 0 0 0 10zm0-4a1 1 0 1 0 0-2 1 1 0 0 0 0 2z" /> },
@@ -26,7 +26,7 @@ type Props = {
 /**
  * The Winter Arc as a place of its own: it covers the whole screen — the
  * app's menu and tab bar are out of the way — with its own bar across the top
- * and four sections. The story plays over it each time it is opened.
+ * and four sections. The opening scene plays over it each time it is opened.
  */
 export function ArcHub({ status, member, goals, tips, quote, leaderboard }: Props) {
   const [tab, setTab] = useState<Tab>(member ? "goals" : "leaderboard");
@@ -57,8 +57,8 @@ export function ArcHub({ status, member, goals, tips, quote, leaderboard }: Prop
           <h1 className="truncate font-display text-lg font-bold leading-tight tracking-tight">❄ Winter Arc</h1>
           <p className="truncate text-xs font-medium text-muted">{status}</p>
         </div>
-        <motion.button type="button" onClick={replayArcStory} whileTap={{ scale: 0.95 }} className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-line bg-card px-3.5 py-2 text-[13px] font-semibold hover:border-brand hover:text-brand" data-story-button>
-          <span aria-hidden>▶</span> Story
+        <motion.button type="button" onClick={replayArcIntro} whileTap={{ scale: 0.95 }} className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-line bg-card px-3.5 py-2 text-[13px] font-semibold hover:border-brand hover:text-brand" data-story-button>
+          <span aria-hidden>▶</span> Intro
         </motion.button>
       </header>
 

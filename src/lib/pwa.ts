@@ -94,7 +94,11 @@ export type PushState = "unsupported" | "needs-install" | "blocked" | "off" | "o
 
 async function registration(): Promise<ServiceWorkerRegistration | null> {
   if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) return null;
-  return (await navigator.serviceWorker.getRegistration()) ?? null;
+  // The worker is registered as the app starts; on a phone that can take a few
+  // seconds. Wait for it (briefly) rather than concluding there isn't one.
+  const ready = navigator.serviceWorker.ready.catch(() => null);
+  const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 6000));
+  return (await navigator.serviceWorker.getRegistration()) ?? (await Promise.race([ready, timeout]));
 }
 
 export async function pushState(): Promise<PushState> {
@@ -111,9 +115,13 @@ const toBytes = (base64url: string) => Uint8Array.from(atob(base64url.replace(/-
 
 /** Asks permission, registers this device with the push service and tells the server. */
 export async function enablePush(publicKey: string): Promise<PushState> {
+  if (!("Notification" in window)) return "unsupported";
+  // Asked first, before anything is awaited: an iPhone only shows its
+  // "Allow notifications?" question if it comes directly from the tap.
+  const permission = await Notification.requestPermission();
+  if (permission !== "granted") return permission === "denied" ? "blocked" : "off";
   const reg = await registration();
   if (!reg) return "unsupported";
-  if ((await Notification.requestPermission()) !== "granted") return Notification.permission === "denied" ? "blocked" : "off";
   const subscription = (await reg.pushManager.getSubscription()) ?? (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: toBytes(publicKey) }));
   const saved = await fetch("/api/push", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(subscription.toJSON()) });
   if (!saved.ok) {

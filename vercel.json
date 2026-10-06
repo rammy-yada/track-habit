@@ -1,4 +1,56 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "regions": ["sin1"]
+  "regions": [
+    "sin1"
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/reminders?h=0",
+      "schedule": "20 0 * * *"
+    },
+    {
+      "path": "/api/cron/reminders?h=2",
+      "schedule": "20 2 * * *"
+    },
+    {
+      "path": "/api/cron/reminders?h=4",
+      "schedule": "20 4 * * *"
+    },
+    {
+      "path": "/api/cron/reminders?h=6",
+      "schedule": "20 6 * * *"
+    },
+    {
+      "path": "/api/cron/reminders?h=8",
+      "schedule": "20 8 * * *"
+    },
+    {
+      "path": "/api/cron/reminders?h=10",
+      "schedule": "20 10 * * *"
+    },
+    {
+      "path": "/api/cron/reminders?h=12",
+      "schedule": "20 12 * * *"
+    },
+    {
+      "path": "/api/cron/reminders?h=14",
+      "schedule": "20 14 * * *"
+    },
+    {
+      "path": "/api/cron/reminders?h=16",
+      "schedule": "20 16 * * *"
+    },
+    {
+      "path": "/api/cron/reminders?h=18",
+      "schedule": "20 18 * * *"
+    },
+    {
+      "path": "/api/cron/reminders?h=20",
+      "schedule": "20 20 * * *"
+    },
+    {
+      "path": "/api/cron/reminders?h=22",
+      "schedule": "20 22 * * *"
+    }
+  ]
 }

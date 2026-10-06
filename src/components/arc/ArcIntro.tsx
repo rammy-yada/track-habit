@@ -38,6 +38,8 @@ type Props = {
   onDone?: () => void;
   /** false: never start by itself, only when asked to (the join flow starts it at the right moment). */
   auto?: boolean;
+  /** Play on every visit, not just the first. */
+  always?: boolean;
   /** Shake, sound and wording, as set in Admin → Winter Arc. */
   config?: IntroConfig & { soundUrl?: string | null };
 };
@@ -52,7 +54,7 @@ const shakeFrames = (amount: number) => ({ x: [0, -amount, amount * 0.85, -amoun
  * Tap Skip (or press Escape) to end it. People who ask their device for
  * reduced motion never see it.
  */
-export function ArcIntro({ firstName, images, totalDays = 123, onDone, auto = true, config = DEFAULT_INTRO }: Props) {
+export function ArcIntro({ firstName, images, totalDays = 123, onDone, auto = true, always = false, config = DEFAULT_INTRO }: Props) {
   const [playing, setPlaying] = useState(false);
   const [beat, setBeat] = useState<Beat>("before");
   const [muted, setMuted] = useState(false);
@@ -108,12 +110,12 @@ export function ArcIntro({ firstName, images, totalDays = 123, onDone, auto = tr
       seen = localStorage.getItem(SEEN_KEY) === "1";
     } catch {}
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (auto && !seen && !reduced) start();
+    if (auto && (always || !seen) && !reduced) start();
     // asked to play, but this person prefers no motion: skip straight to the end
     const onReplay = () => (reduced ? finish() : start());
     window.addEventListener(REPLAY_EVENT, onReplay);
     return () => window.removeEventListener(REPLAY_EVENT, onReplay);
-  }, [auto, finish]);
+  }, [auto, always, finish]);
 
   useEffect(() => {
     if (!playing) return;

@@ -333,3 +333,26 @@ html[data-keyboard] [data-notify-prompt] {
 html[data-keyboard] [data-sheet] {
   padding-bottom: var(--keyboard, 0px);
 }
+
+/* On an iPhone, tapping a field whose text is smaller than 16px makes Safari
+   zoom the whole page in (and it doesn't zoom back out). So on touch screens
+   every field is 16px — which is also easier to read while typing. */
+@media (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+/* the Winter Arc button in the phone's tab bar: the snowflake turns slowly,
+   and a soft ring breathes around it (opacity only, so it costs nothing) */
+@keyframes arc-turn {
+  to { transform: rotate(360deg); }
+}
+@keyframes arc-breathe {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 0.9; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .arc-turn, .arc-breathe { animation: none !important; }
+}

@@ -172,13 +172,17 @@ export function MobileBars({ user, arc }: { user: NavUser; arc?: ArcState }) {
           if (link.icon === "arc" && !admin)
             return (
               <Link key={link.href} href={link.href} prefetch={false} aria-current={active ? "page" : undefined} aria-label={arc?.live ? "Winter Arc (live now)" : "Winter Arc"} className="relative flex min-h-[58px] min-w-0 flex-col items-center justify-end gap-1 pb-[7px] text-[10.5px] font-bold text-ink" data-arc-tab>
-                <span className="absolute -top-5 grid h-[52px] w-[52px] place-items-center rounded-full border-4 border-card bg-ink text-bg shadow-[0_8px_22px_-6px_rgb(0_0_0/0.55)]">
-                  <motion.span aria-hidden className="absolute inset-0 rounded-full border-2 border-brand" animate={{ scale: [1, 1.28], opacity: [0.8, 0] }} transition={{ duration: 1.9, repeat: Infinity, ease: "easeOut" }} />
-                  <motion.span animate={{ rotate: active ? 60 : 0, scale: active ? 1.1 : 1 }} transition={{ type: "spring", stiffness: 260, damping: 16 }}>
-                    <Icon name="arc" />
-                  </motion.span>
-                  {arc?.live && <span aria-hidden className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-card bg-brand-solid" />}
-                </span>
+                <motion.span whileTap={{ scale: 0.9 }} className="absolute -top-[22px] grid h-14 w-14 place-items-center rounded-full bg-card shadow-[0_-3px_10px_-4px_rgb(0_0_0/0.35)]">
+                  {/* a soft ring that breathes while the season is on; a plain one otherwise */}
+                  <span aria-hidden className={`absolute inset-[3px] rounded-full border-2 border-brand ${arc?.live && !active ? "arc-breathe [animation:arc-breathe_2.8s_ease-in-out_infinite]" : active ? "opacity-100" : "opacity-30"}`} />
+                  <span className={`grid h-[42px] w-[42px] place-items-center rounded-full transition-colors ${active ? "bg-brand-solid text-on-brand" : "bg-ink text-bg"}`}>
+                    <span className="arc-turn grid place-items-center [animation:arc-turn_14s_linear_infinite]">
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        {ICONS.arc}
+                      </svg>
+                    </span>
+                  </span>
+                </motion.span>
                 <span className={`max-w-full truncate px-0.5 ${active ? "text-brand" : ""}`}>{link.short}</span>
               </Link>
             );
