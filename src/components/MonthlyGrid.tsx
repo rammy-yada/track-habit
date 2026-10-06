@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
 import { PageHeader } from "@/components/PageHeader";
@@ -77,6 +77,7 @@ export function MonthlyGrid({ data }: { data: Data }) {
       </PageHeader>
 
       <div className="px-4 py-6 md:px-8 md:py-7">
+        <YearHeat heat={data.heat} />
         <div className="mb-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-medium text-muted">
           <span className="flex items-center gap-2">
             <span className="grid h-5 w-5 place-items-center rounded-md bg-good-soft text-[11px] font-bold text-good">✓</span> Completed
@@ -215,5 +216,60 @@ function NavArrow({ href, label, d }: { href: string | null; label: string; d: s
     <Link href={href} aria-label={label} scroll={false} className={`${base} text-ink transition-colors hover:border-brand hover:text-brand`}>
       {icon}
     </Link>
+  );
+}
+
+// The shade for each level: nothing, then the theme's colour from faint to
+// full. (In the Winter Arc look that is dark grey to white.)
+const SHADE = ["var(--raised)", "color-mix(in srgb, var(--brand-solid) 28%, var(--card))", "color-mix(in srgb, var(--brand-solid) 52%, var(--card))", "color-mix(in srgb, var(--brand-solid) 76%, var(--card))", "var(--brand-solid)"];
+
+/**
+ * A year at a glance, the way GitHub shows contributions: one small square
+ * per day, a column per week, shaded by how much of the day's habits got
+ * done. It scrolls sideways on a phone and starts at the most recent week.
+ */
+function YearHeat({ heat }: { heat: Data["heat"] }) {
+  const scroller = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (scroller.current) scroller.current.scrollLeft = scroller.current.scrollWidth; // newest weeks are on the right
+  }, []);
+  return (
+    <section className={`${card} mb-6 p-4 sm:p-5`} aria-label="Your year" data-year-heat>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h2 className="text-sm font-bold">
+          {heat.total.toLocaleString("en-US")} check-in{heat.total === 1 ? "" : "s"} in the last year
+        </h2>
+        <p className="text-xs font-medium text-muted">
+          {heat.activeDays} active day{heat.activeDays === 1 ? "" : "s"} · longest run {heat.longest} day{heat.longest === 1 ? "" : "s"}
+        </p>
+      </div>
+      <div ref={scroller} className="no-scrollbar mt-4 overflow-x-auto pb-1">
+        <div className="inline-flex gap-[3px]" role="img" aria-label={`${heat.total} check-ins over ${heat.activeDays} days in the last year`}>
+          {/* weekday names down the side */}
+          <div className="sticky left-0 z-10 mr-1 flex flex-col gap-[3px] bg-card pr-1 pt-[18px] text-[9px] font-medium leading-[11px] text-muted">
+            {["", "Mon", "", "Wed", "", "Fri", ""].map((name, i) => (
+              <span key={i} className="h-[11px]">
+                {name}
+              </span>
+            ))}
+          </div>
+          {heat.weeks.map((week, w) => (
+            <div key={week[0].date} className="flex flex-col gap-[3px]">
+              <span className="h-[15px] whitespace-nowrap text-[9px] font-medium text-muted">{heat.months[w]}</span>
+              {week.map((day) => (
+                <span key={day.date} title={day.future ? undefined : `${day.date}: ${day.count} done`} className={`h-[11px] w-[11px] rounded-[3px] ${day.future ? "opacity-0" : ""}`} style={{ background: SHADE[day.level] }} data-level={day.level} />
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="mt-3 flex items-center justify-end gap-1.5 text-[10px] font-medium text-muted">
+        Less
+        {SHADE.map((shade, i) => (
+          <span key={i} className="h-[11px] w-[11px] rounded-[3px]" style={{ background: shade }} />
+        ))}
+        More
+      </div>
+    </section>
   );
 }

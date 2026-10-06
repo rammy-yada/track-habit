@@ -77,8 +77,8 @@ function layout({ heading, lines, button, footer }: { heading: string; lines: st
   const origin = button ? new URL(button.url).origin : "https://habitflow.hellnah.dev";
   const html = `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"></head>
 <body style="margin:0;padding:0;background:#ffffff;font-family:${font};color:#111111;-webkit-text-size-adjust:100%">
-<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:collapse;background:#ffffff">
-<tr><td style="background:#0b1020;background-image:linear-gradient(135deg,#0b1020 0%,#16224a 60%,#2563eb 140%);padding:28px 24px 30px">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;min-width:100%;border-collapse:collapse;background:#ffffff">
+<tr><td style="background:#0b1020;background-image:linear-gradient(135deg,#0b1020 0%,#16224a 60%,#2563eb 140%);padding:26px 18px 28px">
   <table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr>
     <td style="width:38px;height:38px;border-radius:11px;background:#2563eb;text-align:center;vertical-align:middle;font-size:20px;line-height:38px;color:#ffffff;font-weight:800">&#10003;</td>
     <td style="padding-left:12px;font-size:19px;font-weight:800;letter-spacing:0.5px;color:#ffffff">HabitFlow</td>
@@ -88,14 +88,14 @@ function layout({ heading, lines, button, footer }: { heading: string; lines: st
     ${[1, 1, 1, 0, 1, 1, 1].map((on) => `<td style="width:26px;height:6px;border-radius:3px;background:${on ? "#60a5fa" : "#334155"};font-size:0;line-height:0">&nbsp;</td><td style="width:5px;font-size:0;line-height:0">&nbsp;</td>`).join("")}
   </tr></table>
 </td></tr>
-<tr><td style="padding:28px 24px 8px">
+<tr><td style="padding:24px 18px 6px">
 ${lines.map((line) => `<p style="margin:0 0 16px;font-size:16px;line-height:1.65;color:#1f2937">${line}</p>`).join("\n")}
 ${button ? `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:10px 0 22px"><tr><td align="center" style="background:#2563eb;border-radius:14px"><a href="${esc(button.url)}" style="display:block;padding:17px 20px;font-size:16px;font-weight:800;color:#ffffff;text-decoration:none;font-family:${font}">${esc(button.label)} &rarr;</a></td></tr></table>` : ""}
 </td></tr>
-<tr><td style="padding:0 24px 26px">
+<tr><td style="padding:0 18px 24px">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr><td style="background:#eff6ff;border-left:4px solid #2563eb;border-radius:0 12px 12px 0;padding:14px 16px;font-size:14px;line-height:1.55;color:#1e3a8a"><b>Small steps, every day.</b> One tick today is worth more than a perfect plan for tomorrow.</td></tr></table>
 </td></tr>
-<tr><td style="background:#0b1020;padding:22px 24px 26px">
+<tr><td style="background:#0b1020;padding:20px 18px 24px">
 ${footer.map((line) => `<p style="margin:0 0 10px;font-size:12.5px;line-height:1.6;color:#94a3b8">${line.replace(/color:#888/g, "color:#cbd5e1")}</p>`).join("\n")}
   <p style="margin:12px 0 0;font-size:12.5px;line-height:1.6;color:#64748b"><a href="${esc(origin)}" style="color:#93c5fd;text-decoration:none;font-weight:700">HabitFlow</a> &middot; Free habit tracker &middot; <a href="${esc(origin)}/privacy" style="color:#94a3b8">Privacy</a></p>
 </td></tr>

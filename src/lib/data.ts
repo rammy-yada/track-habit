@@ -263,13 +263,37 @@ export async function getMonthly(user: User, yearParam?: string, monthParam?: st
   const start = `${year}-${pad(month)}-01`;
   const end = `${year}-${pad(month)}-${pad(days)}`;
 
-  const [habits, logs] = await Promise.all([
+  // the year of activity shown above the grid starts on the Sunday 52 weeks back
+  const weekday = new Date(`${today}T00:00:00Z`).getUTCDay(); // 0 = Sunday
+  const heatStart = addDays(today, -(52 * 7 + weekday));
+
+  const [habits, logs, perDay] = await Promise.all([
     activeHabits(user.id),
     query<{ habit_id: number; log_date: string }>(
       "SELECT habit_id, log_date FROM habit_logs WHERE user_id = ? AND log_date BETWEEN ? AND ? AND completed_count > 0",
       [user.id, start, end],
     ),
+    query<{ log_date: string; n: number | string }>("SELECT log_date, COUNT(*) AS n FROM habit_logs WHERE user_id = ? AND completed_count > 0 AND log_date BETWEEN ? AND ? GROUP BY log_date", [user.id, heatStart, today]),
   ]);
+
+  // Each day gets a level from 0 (nothing) to 4 (all, or nearly all, of the
+  // habits), which the page shows as a deeper or lighter shade.
+  const countByDay = new Map(perDay.map((d) => [d.log_date, Number(d.n)]));
+  const outOf = Math.max(1, habits.length);
+  const level = (count: number) => (count === 0 ? 0 : Math.min(4, Math.ceil((count / outOf) * 4)));
+  const weeks = Array.from({ length: 53 }, (_, w) =>
+    Array.from({ length: 7 }, (_, d) => {
+      const date = addDays(heatStart, w * 7 + d);
+      const count = countByDay.get(date) ?? 0;
+      return { date, count, level: level(count), future: date > today };
+    }),
+  );
+  let longest = 0;
+  let run = 0;
+  for (const day of weeks.flat()) {
+    run = day.count > 0 ? run + 1 : 0;
+    longest = Math.max(longest, run);
+  }
 
   const prev = month === 1 ? { y: year - 1, m: 12 } : { y: year, m: month - 1 };
   const next = month === 12 ? { y: year + 1, m: 1 } : { y: year, m: month + 1 };
@@ -286,6 +310,14 @@ export async function getMonthly(user: User, yearParam?: string, monthParam?: st
     }),
     habits: habits.map((h) => ({ id: h.id, name: h.name, icon: h.icon, color: h.color })),
     done: logs.map((l) => `${l.habit_id}:${l.log_date}`),
+    heat: {
+      weeks,
+      // a label above the first week of each month
+      months: weeks.map((week, i) => (i === 0 || week[0].date.slice(5, 7) !== weeks[i - 1][0].date.slice(5, 7) ? formatDate(week[0].date, { month: "short" }) : "")),
+      total: perDay.reduce((sum, d) => sum + Number(d.n), 0),
+      activeDays: perDay.length,
+      longest,
+    },
     prevHref: canGoPrev ? `/monthly?y=${prev.y}&m=${prev.m}` : null,
     nextHref: canGoNext ? `/monthly?y=${next.y}&m=${next.m}` : null,
   };

@@ -81,14 +81,19 @@ export function AppStatus({ userId }: { userId: number }) {
     return () => clearTimeout(timer);
   }, [notice]);
 
-  async function applyUpdate() {
-    setWorking(true);
-    const result = await restartApp({ update: true });
-    if (!result.ok) {
-      setNotice(result.error);
-      setWorking(false);
-    }
-  }
+  // A new version is never announced with a pop-up. It is applied quietly at
+  // a moment that interrupts nothing: when the app goes to the background,
+  // and only if every change has been synced. (Profile → Install and offline
+  // still has the button, for anyone who wants it straight away.)
+  const pending = queue.pending;
+  useEffect(() => {
+    if (!update) return;
+    const quietly = () => {
+      if (document.visibilityState === "hidden" && pending === 0 && navigator.onLine) void restartApp({ update: true });
+    };
+    document.addEventListener("visibilitychange", quietly);
+    return () => document.removeEventListener("visibilitychange", quietly);
+  }, [update, pending]);
 
   const waiting = queue.pending;
   // "offline" also covers: the device has a network but the server can't be reached
@@ -110,21 +115,6 @@ export function AppStatus({ userId }: { userId: number }) {
           <motion.p key="notice" role="status" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="pointer-events-auto max-w-md rounded-xl bg-ink px-4 py-2.5 text-center text-[13px] font-medium text-bg shadow-xl">
             {notice ?? queue.lastError}
           </motion.p>
-        )}
-        {update && (
-          <motion.div key="update" initial={{ opacity: 0, y: 24, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 16 }} transition={{ type: "spring", stiffness: 380, damping: 28 }} className="pointer-events-auto flex max-w-md items-center gap-3 rounded-2xl border border-line bg-card py-2 pl-4 pr-2 shadow-xl">
-            <span className="relative flex h-2.5 w-2.5 shrink-0">
-              <span className="ripple absolute inset-0 rounded-full bg-brand" />
-              <span className="relative h-2.5 w-2.5 rounded-full bg-brand" />
-            </span>
-            <span className="text-[13px] font-medium">
-              A new version is ready.
-              {waiting > 0 && <span className="text-muted"> Your {waiting} unsynced change{waiting === 1 ? "" : "s"} will be sent first.</span>}
-            </span>
-            <button type="button" onClick={applyUpdate} disabled={working} className="shrink-0 rounded-xl bg-brand-solid px-3.5 py-2 text-[13px] font-semibold text-on-brand hover:bg-brand-solid-hover disabled:opacity-60">
-              {working ? (waiting ? "Syncing…" : "Updating…") : "Update & restart"}
-            </button>
-          </motion.div>
         )}
         {pill && (
           <motion.div key={pill.text} initial={{ opacity: 0, y: 16, scale: 0.94 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.96 }} className={`flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-semibold shadow-lg ${pill.tone}`}>
