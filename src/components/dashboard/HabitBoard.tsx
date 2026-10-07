@@ -17,8 +17,6 @@ import { resolveDone, setDone, settle, useOfflineQueue, whenOnline } from "@/lib
 import type { Mood } from "@/lib/constants";
 import type { getDashboard, HabitView } from "@/lib/data";
 import { badgeEnabled } from "@/components/AppPrefs";
-import { MILESTONES } from "@/lib/arc-config";
-import { ArcSurprise, surpriseSeen } from "./ArcSurprise";
 import { Confetti, Flame } from "./effects";
 import { HabitRow } from "./HabitRow";
 import { Modal } from "@/components/ui/Modal";
@@ -38,7 +36,12 @@ export function HabitBoard({ data }: { data: Awaited<ReturnType<typeof getDashbo
   // shown at once; what you see is the server's data with the queue on top.
   const queue = useOfflineQueue();
   const [optimistic, apply] = useOptimistic(data.habits, reduce);
-  const habits = optimistic.map((h) => ({ ...h, doneToday: resolveDone(queue, h.id, data.today, h.doneToday) }));
+  const everything = optimistic.map((h) => ({ ...h, doneToday: resolveDone(queue, h.id, data.today, h.doneToday) }));
+  // Winter Arc habits live on the Winter Arc screen, not here: Today shows a
+  // banner that leads there, and lists only the person's own habits.
+  const arcHabits = everything.filter((h) => h.arc);
+  const arcDone = arcHabits.filter((h) => h.doneToday).length;
+  const habits = everything.filter((h) => !h.arc);
   useEffect(() => {
     for (const h of data.habits) settle(h.id, data.today, h.doneToday);
   }, [data.habits, data.today, queue]);
@@ -61,24 +64,15 @@ export function HabitBoard({ data }: { data: Awaited<ReturnType<typeof getDashbo
   const allDone = total > 0 && doneCount === total;
   const visible = habits.filter((h) => filter === "all" || (filter === "done") === h.doneToday);
 
-  // Winter Arc members: the pack's habits get a section of their own, and
-  // finishing all of them opens the day's surprise.
-  const arcHabits = habits.filter((h) => h.arc);
-  const arcDone = arcHabits.filter((h) => h.doneToday).length;
-  const arcAllDone = data.arc !== null && arcHabits.length > 0 && arcDone === arcHabits.length;
-  const perfectDays = (data.arc?.perfectBefore ?? 0) + (arcAllDone ? 1 : 0);
-  const nextBadge = MILESTONES.find((m) => m.days > perfectDays);
-  const [surprise, setSurprise] = useState(false);
-  const closeSurprise = useCallback(() => setSurprise(false), []);
   const todayDay = Number(data.today.slice(8));
 
   // The number on the app's icon: habits still open today (none when done).
   useEffect(() => {
     const nav = navigator as Navigator & { setAppBadge?: (n: number) => Promise<void>; clearAppBadge?: () => Promise<void> };
     if (!nav.setAppBadge) return;
-    const left = total - doneCount;
+    const left = total - doneCount + arcHabits.length - arcDone; // Winter Arc habits count too
     void (left > 0 && badgeEnabled() ? nav.setAppBadge(left) : nav.clearAppBadge?.())?.catch(() => {});
-  }, [total, doneCount]);
+  }, [total, doneCount, arcHabits.length, arcDone]);
 
   // Celebrate only when *you* just finished the last habit — not on page load.
   const interacted = useRef(false);
@@ -87,17 +81,6 @@ export function HabitBoard({ data }: { data: Awaited<ReturnType<typeof getDashbo
     if (allDone && !wasAllDone.current && interacted.current) setCelebrating(true);
     wasAllDone.current = allDone;
   }, [allDone]);
-  // The gift pops up by itself once a day, at the moment the last arc habit is
-  // ticked. After that it can be reopened from the section's header.
-  const wasArcDone = useRef(arcAllDone);
-  useEffect(() => {
-    if (arcAllDone && !wasArcDone.current && interacted.current && !surpriseSeen(data.today)) {
-      const timer = setTimeout(() => setSurprise(true), 900); // let the tick animation land first
-      wasArcDone.current = arcAllDone;
-      return () => clearTimeout(timer);
-    }
-    wasArcDone.current = arcAllDone;
-  }, [arcAllDone, data.today]);
   useEffect(() => {
     if (!celebrating) return;
     const timer = setTimeout(() => setCelebrating(false), 3400);
@@ -149,7 +132,7 @@ export function HabitBoard({ data }: { data: Awaited<ReturnType<typeof getDashbo
       setToast(result.ok ? done : result.error);
     });
   }
-  const grouped = habits.some((h) => h.arc || h.packId !== null);
+  const grouped = habits.some((h) => h.packId !== null);
 
   const row = (habit: HabitView) => (
     <HabitRow key={habit.id} habit={habit} burstKey={bursts[habit.id] ?? null} onToggle={() => toggle(habit)} onNote={() => setNoteFor(habit)} onEdit={() => setEditing(habit)} onDelete={() => setDeleting(habit)} onMenu={() => setMenuFor(habit)} />
@@ -187,6 +170,31 @@ export function HabitBoard({ data }: { data: Awaited<ReturnType<typeof getDashbo
                 <span className="block text-[13px] opacity-80">Pick a pack, show up every day, climb the leaderboard.</span>
               </span>
               <span className="relative shrink-0 rounded-xl bg-bg px-3.5 py-2 text-sm font-bold text-ink">Join →</span>
+            </Link>
+          </motion.div>
+        )}
+
+        {/* ── Winter Arc members: their pack is ticked off on the Winter Arc screen ── */}
+        {data.arc && arcHabits.length > 0 && (
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+            <Link href="/arc" className="relative block overflow-hidden rounded-2xl bg-ink px-5 py-4 text-bg" data-arc-banner>
+              <span aria-hidden className="shine absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-white/15 to-transparent" />
+              <span className="relative flex items-center gap-4">
+                <motion.span className="text-3xl" aria-hidden animate={{ rotate: [0, 60] }} transition={{ duration: 6, repeat: Infinity, ease: "linear" }}>
+                  ❄
+                </motion.span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[11px] font-semibold uppercase tracking-[0.18em] opacity-70">
+                    {data.arc.day > 0 ? `Winter Arc · Day ${data.arc.day}/${data.arc.totalDays}` : "Winter Arc · starting soon"}
+                  </span>
+                  <span className="block truncate font-display text-lg font-bold leading-tight">{data.arc.pack ?? "Your pack"}</span>
+                  <span className="block text-[13px] opacity-80">{arcDone === arcHabits.length ? (data.arc.day > 0 ? "All done today — open your surprise 🎁" : "All done today 🎉") : `${arcDone} of ${arcHabits.length} done today · tick them inside the Arc`}</span>
+                </span>
+                <span className="shrink-0 rounded-xl bg-bg px-3.5 py-2 text-sm font-bold text-ink">Go to Arc →</span>
+              </span>
+              <span className="relative mt-3 block h-1.5 overflow-hidden rounded-full bg-bg/20">
+                <motion.span className="block h-full rounded-full bg-bg" initial={false} animate={{ width: `${(arcDone / arcHabits.length) * 100}%` }} transition={{ type: "spring", stiffness: 200, damping: 26 }} />
+              </span>
             </Link>
           </motion.div>
         )}
@@ -275,51 +283,6 @@ export function HabitBoard({ data }: { data: Awaited<ReturnType<typeof getDashbo
 
           <SupportNudge show={allDone} today={data.today} />
 
-          {/* ── Winter Arc members: the pack, in its own section ── */}
-          {data.arc && arcHabits.length > 0 && (
-            <div className="mb-6 rounded-3xl border border-line bg-raised/50 p-3 sm:p-4" data-section="arc">
-              <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 px-1">
-                <div className="min-w-0 flex-1">
-                  <p className={eyebrow}>
-                    ❄️ Winter Arc · Day {data.arc.day}/{data.arc.totalDays}
-                  </p>
-                  <h3 className="truncate font-display text-base font-bold tracking-tight">{data.arc.pack ?? "Your pack"}</h3>
-                </div>
-                <div className="text-right text-xs font-medium text-muted">
-                  <div>
-                    <span className="text-sm font-bold tabular-nums text-ink">
-                      {arcDone}/{arcHabits.length}
-                    </span>{" "}
-                    today
-                  </div>
-                  <div>
-                    {perfectDays} perfect {perfectDays === 1 ? "day" : "days"}
-                    {nextBadge && ` · badge at ${nextBadge.days}`}
-                  </div>
-                </div>
-              </div>
-              <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-line">
-                <motion.div className="h-full rounded-full bg-brand-solid" initial={false} animate={{ width: `${(arcDone / arcHabits.length) * 100}%` }} transition={{ type: "spring", stiffness: 200, damping: 26 }} />
-              </div>
-              <AnimatePresence>
-                {arcAllDone && (
-                  <motion.button type="button" onClick={() => setSurprise(true)} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="mb-3 flex w-full items-center gap-3 overflow-hidden rounded-2xl bg-brand-solid px-4 py-3 text-left text-sm font-semibold text-on-brand" data-open-surprise>
-                    <motion.span className="text-xl" aria-hidden animate={{ rotate: [0, -12, 12, -6, 6, 0] }} transition={{ duration: 1, repeat: Infinity, repeatDelay: 1.6 }}>
-                      🎁
-                    </motion.span>
-                    <span className="flex-1">Pack complete — open today&apos;s surprise</span>
-                    <span aria-hidden>→</span>
-                  </motion.button>
-                )}
-              </AnimatePresence>
-              <ul className="space-y-2.5">
-                <AnimatePresence mode="popLayout" initial={false}>
-                  {visible.filter((h) => h.arc).map(row)}
-                </AnimatePresence>
-              </ul>
-              {visible.every((h) => !h.arc) && <p className="px-1 py-2 text-center text-xs text-muted">{filter === "done" ? "None of the pack ticked yet today." : "The whole pack is done."}</p>}
-            </div>
-          )}
           {/* ── packs the member has added: a section each ── */}
           {myPacks.map((pack) => {
             const mine = habits.filter((h) => h.packId === pack.id);
@@ -356,14 +319,14 @@ export function HabitBoard({ data }: { data: Awaited<ReturnType<typeof getDashbo
               </div>
             );
           })}
-          {grouped && habits.some((h) => !h.arc && h.packId === null) && <h3 className="mb-3 px-1 font-display text-base font-bold tracking-tight">My other habits</h3>}
+          {grouped && habits.some((h) => h.packId === null) && <h3 className="mb-3 px-1 font-display text-base font-bold tracking-tight">My other habits</h3>}
 
           {total === 0 ? (
             <EmptyState onAdd={() => setAdding(true)} />
           ) : (
             <ul className="space-y-2.5">
               <AnimatePresence mode="popLayout" initial={false}>
-                {visible.filter((h) => !h.arc && h.packId === null).map(row)}
+                {visible.filter((h) => h.packId === null).map(row)}
                 {visible.length === 0 && !grouped && (
                   <motion.li key="none" layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="rounded-2xl border border-dashed border-line px-4 py-8 text-center text-sm text-muted">
                     {filter === "done" ? "Nothing ticked off yet today." : "Nothing pending — you're all caught up."}
@@ -494,7 +457,6 @@ export function HabitBoard({ data }: { data: Awaited<ReturnType<typeof getDashbo
         onClose={closeDelete}
       />
 
-      {data.arc && <ArcSurprise open={surprise} onClose={closeSurprise} today={data.today} perfectDays={perfectDays} surprises={data.arc.surprises} />}
       <ConfirmDialog
         open={leavingPack !== null}
         title="Remove this pack?"

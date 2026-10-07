@@ -104,7 +104,8 @@ export async function getDashboard(user: User) {
   const noteByHabit = new Map(todayNotes.map((n) => [n.habit_id, n]));
   const monthPrefix = today.slice(0, 8);
   const season = arcSeason(today);
-  const arcHabits = season.live ? habits.filter((h) => h.arc_season === season.year) : [];
+  // (also before the season opens: someone who joined early already has their pack)
+  const arcHabits = habits.filter((h) => h.arc_season === season.year);
 
   const views: HabitView[] = habits.map((h) => {
     const dates = doneDates.get(h.id) ?? new Set<string>();

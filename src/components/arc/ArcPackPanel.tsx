@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
-import Link from "next/link";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { motion } from "motion/react";
+import { ArcSurprise, surpriseSeen } from "@/components/dashboard/ArcSurprise";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { btnSmall, card, eyebrow } from "@/components/ui/styles";
 import { choosePack } from "@/lib/actions/arc";
@@ -31,6 +31,22 @@ export function ArcPackPanel({ panel }: { panel: Panel }) {
   const [pending, startTransition] = useTransition();
   const done = habits.filter((h) => h.doneToday).length;
   const next = MILESTONES.find((m) => m.days > perfectDays);
+
+  // The day's gift: it pops up by itself once, at the moment the last habit
+  // is ticked here, and can be reopened from the line under the list.
+  const allDone = panel.live && habits.length > 0 && done === habits.length;
+  const [surprise, setSurprise] = useState(false);
+  const closeSurprise = useCallback(() => setSurprise(false), []);
+  const ticked = useRef(false);
+  const wasAllDone = useRef(allDone);
+  useEffect(() => {
+    if (allDone && !wasAllDone.current && ticked.current && !surpriseSeen(panel.today)) {
+      const timer = setTimeout(() => setSurprise(true), 900); // let the tick land first
+      wasAllDone.current = allDone;
+      return () => clearTimeout(timer);
+    }
+    wasAllDone.current = allDone;
+  }, [allDone, panel.today]);
 
   function choose(id: number) {
     setError(null);
@@ -76,7 +92,10 @@ export function ArcPackPanel({ panel }: { panel: Panel }) {
           <ul className="mt-3 space-y-2">
             {habits.map((h) => (
               <li key={h.id}>
-                <motion.button type="button" role="checkbox" aria-checked={h.doneToday} whileTap={{ scale: 0.98 }} onClick={() => setDone(h.id, panel.today, !h.doneToday)} className={`flex min-h-[54px] w-full items-center gap-3 rounded-xl border px-3.5 py-2.5 text-left transition-colors ${h.doneToday ? "border-transparent bg-good-soft" : "border-line bg-card"}`} data-pack-habit={h.name}>
+                <motion.button type="button" role="checkbox" aria-checked={h.doneToday} whileTap={{ scale: 0.98 }} onClick={() => {
+                  ticked.current = true;
+                  setDone(h.id, panel.today, !h.doneToday);
+                }} className={`flex min-h-[54px] w-full items-center gap-3 rounded-xl border px-3.5 py-2.5 text-left transition-colors ${h.doneToday ? "border-transparent bg-good-soft" : "border-line bg-card"}`} data-pack-habit={h.name}>
                   <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg border-2 text-sm font-bold transition-colors ${h.doneToday ? "border-good bg-good text-white" : "border-line text-transparent"}`}>✓</span>
                   <span aria-hidden className="text-lg">
                     {h.icon}
@@ -91,9 +110,11 @@ export function ArcPackPanel({ panel }: { panel: Panel }) {
             {done === habits.length && habits.length > 0 ? (
               <>
                 All done for today. 🎉{" "}
-                <Link href="/dashboard" className="font-semibold text-brand hover:underline">
-                  Open today&apos;s surprise
-                </Link>
+                {panel.live && (
+                  <button type="button" onClick={() => setSurprise(true)} className="font-semibold text-brand hover:underline">
+                    Open today&apos;s surprise
+                  </button>
+                )}
               </>
             ) : (
               "Tap a habit when it's done. It works offline too, and counts once it syncs."
@@ -161,6 +182,7 @@ export function ArcPackPanel({ panel }: { panel: Panel }) {
         onConfirm={() => swapTo && choose(swapTo.id)}
         onClose={() => setSwapTo(null)}
       />
+      <ArcSurprise open={surprise} onClose={closeSurprise} today={panel.today} perfectDays={panel.perfectBefore + (allDone ? 1 : 0)} surprises={panel.surprises} />
     </section>
   );
 }

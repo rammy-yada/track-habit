@@ -1,6 +1,7 @@
 import "server-only";
 import { arcSeason } from "./arc";
 import type { User } from "./auth";
+import { getArcSettings } from "./arc-settings";
 import { addDays, todayIn } from "./dates";
 import { execute, query, queryOne } from "./db";
 import { decodeEntities } from "./text";
@@ -127,10 +128,11 @@ export function countPerfectDays(habits: { id: number; created: string }[], done
 export async function getArcPanel(user: User) {
   const today = todayIn(user.timezone);
   const season = arcSeason(today);
-  const [pack, habits, packs] = await Promise.all([
+  const [pack, habits, packs, settings] = await Promise.all([
     getMemberPack(user.id, season.year),
     query<{ id: number; name: string; icon: string; created: string }>("SELECT id, name, icon, created_at::date::text AS created FROM habits WHERE user_id = ? AND is_active = 1 AND arc_season = ? ORDER BY id", [user.id, season.year]),
     getPacks({ activeOnly: true, kind: "arc" }),
+    getArcSettings(),
   ]);
   const logs = habits.length ? await query<{ habit_id: number; log_date: string }>("SELECT habit_id, log_date FROM habit_logs WHERE user_id = ? AND completed_count > 0 AND log_date BETWEEN ? AND ?", [user.id, season.start, today]) : [];
   const done = new Map<number, Set<string>>();
@@ -144,5 +146,9 @@ export async function getArcPanel(user: User) {
     packs: packs.map(({ id, name, icon, tagline, habits: list }) => ({ id, name, icon, tagline, habits: list.map((h) => `${h.icon} ${h.name}`) })),
     habits: habits.map((h) => ({ id: h.id, name: decodeEntities(h.name), icon: h.icon, doneToday: done.get(h.id)?.has(today) ?? false })),
     perfectDays: season.live ? countPerfectDays(habits, done, season.start, today) : 0,
+    /** The same count without today, which is still live on the device. */
+    perfectBefore: season.live ? countPerfectDays(habits, done, season.start, addDays(today, -1)) : 0,
+    live: season.live,
+    surprises: settings.surprises,
   };
 }
