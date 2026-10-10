@@ -8,6 +8,7 @@ import { PasswordField } from "@/components/ui/PasswordField";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { input, label } from "@/components/ui/styles";
 import { registerAction } from "@/lib/actions/auth";
+import { checkEmail } from "@/lib/email-check";
 import { TimezoneOptions } from "@/components/TimezoneOptions";
 import { rememberTyped } from "@/lib/credentials";
 import { LegalNote } from "@/components/LegalPage";
@@ -28,6 +29,15 @@ const STRENGTH_COLOR = ["var(--bad)", "var(--warn)", "var(--warn)", "var(--good)
 
 export function RegisterForm({ google, join = false }: { google: boolean; join?: boolean }) {
   const [state, action, pending] = useActionState(registerAction, null);
+  const [email, setEmail] = useState("");
+  // what was typed comes back when the server refuses the form
+  useEffect(() => {
+    if (state?.fields?.email) setEmail(state.fields.email);
+  }, [state]);
+  const looksWhole = /@[^\s@]+\.[a-z]{2,}$/i.test(email.trim()); // don't complain while it is still being typed
+  const checked = looksWhole ? checkEmail(email) : null;
+  const emailProblem = checked && !checked.ok ? checked.problem : null;
+  const emailSuggestion = checked?.ok ? checked.suggestion : undefined;
   const [password, setPassword] = useState("");
   const [timezone, setTimezone] = useState("UTC");
   const score = strength(password);
@@ -79,7 +89,20 @@ export function RegisterForm({ google, join = false }: { google: boolean; join?:
         </div>
         <label className="block">
           <span className={label}>Email</span>
-          <input type="email" name="email" className={input} placeholder="you@example.com" defaultValue={state?.fields?.email} required maxLength={100} />
+          <input type="email" name="email" className={`${input} ${emailProblem ? "border-bad" : ""}`} placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} aria-invalid={emailProblem ? true : undefined} required maxLength={100} />
+          {/* said as it is typed: a throwaway inbox, a made-up address, or a slip like "gmial.com" */}
+          <span aria-live="polite" data-email-hint className={`mt-1 block min-h-[1rem] text-xs font-medium ${emailProblem ? "text-bad" : "text-warn"}`}>
+            {emailProblem}
+            {emailSuggestion && (
+              <>
+                Did you mean{" "}
+                <button type="button" className="font-bold underline" onClick={() => setEmail(emailSuggestion)}>
+                  {emailSuggestion}
+                </button>
+                ?
+              </>
+            )}
+          </span>
         </label>
         <div>
           <PasswordField name="password" label="Password" placeholder="At least 8 characters" minLength={8} autoComplete="new-password" onChange={setPassword} />

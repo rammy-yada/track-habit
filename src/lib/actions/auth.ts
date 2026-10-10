@@ -10,6 +10,8 @@ import { headers } from "next/headers";
 import { after } from "next/server";
 import { passwordStamp } from "../auth";
 import { clientIp, forget, limited, record } from "../throttle";
+import { checkEmail } from "../email-check";
+import { domainTakesMail } from "../email-domain";
 import { emailLang, googleAccountEmail, mailEnabled, resetEmail, sendMail, verificationEmail } from "../mail";
 import { generateOTP, verifyOTP } from "../otp";
 import { clean } from "../text";
@@ -70,12 +72,14 @@ export async function registerAction(_prev: FormState, formData: FormData): Prom
   const errors: string[] = [];
   if (fullName.length < 2) errors.push("Full name must be at least 2 characters.");
   if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) errors.push("Username: 3-20 chars, letters/numbers/underscore only.");
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push("Please enter a valid email address.");
+  const emailCheck = checkEmail(email);
+  if (!emailCheck.ok) errors.push(emailCheck.problem);
   const weak = passwordProblem(password);
   if (weak) errors.push(weak);
   if (password !== confirm) errors.push("Passwords do not match.");
   if (!isValidTimezone(timezone)) errors.push("Unknown timezone.");
   if (errors.length) return { error: errors.join(" "), fields };
+  if (!(await domainTakesMail(email))) return { error: "That email address can't receive mail. Check it for typos.", fields };
   if (await tooManyCodes(email)) return { error: "Too many verification codes requested. Please wait a while and try again.", fields };
 
   const taken = await queryOne("SELECT id FROM users WHERE LOWER(email) = LOWER(?) OR LOWER(username) = LOWER(?)", [email, username]);
