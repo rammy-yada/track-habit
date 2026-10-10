@@ -49,7 +49,7 @@ export function ResetForm({ token }: { token: string }) {
       <form action={action} className="space-y-4">
         <input type="hidden" name="token" value={token} />
         <PasswordField name="password" label="New password" placeholder="At least 8 characters" minLength={8} autoComplete="new-password" />
-        <PasswordField name="confirm_password" label="Confirm new password" placeholder="Repeat it" autoComplete="new-password" />
+        <PasswordField name="confirm_password" match="password" label="Confirm new password" placeholder="Repeat it" autoComplete="new-password" />
         <SubmitButton pending={pending} pendingLabel="Saving…">
           Save new password
         </SubmitButton>

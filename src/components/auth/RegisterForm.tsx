@@ -90,7 +90,7 @@ export function RegisterForm({ google, join = false }: { google: boolean; join?:
             <span className="w-16 text-right text-[11px] font-medium text-muted">{password ? STRENGTH_LABEL[score] : ""}</span>
           </div>
         </div>
-        <PasswordField name="confirm_password" label="Confirm password" placeholder="Repeat password" autoComplete="new-password" />
+        <PasswordField name="confirm_password" match="password" label="Confirm password" placeholder="Repeat password" autoComplete="new-password" />
         <label className="block">
           <span className={label}>Timezone</span>
           <select name="timezone" className={input} value={timezone} onChange={(e) => setTimezone(e.target.value)}>

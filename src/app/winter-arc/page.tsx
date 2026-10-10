@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { SITE_URL } from "@/lib/site";
 import Link from "next/link";
 import { Knight, Snow } from "@/components/arc/ArcScreen";
+import { SiteFooter } from "@/components/PublicPage";
 import { Reveal } from "@/components/ui/Reveal";
 import { ARC_HABITS_PER_DAY, ARC_POINTS_PER_HABIT, arcSeason, isArcMember } from "@/lib/arc";
 import { currentUser } from "@/lib/auth";
@@ -138,20 +139,11 @@ export default async function WinterArcPage() {
           </section>
         </Reveal>
 
-        <p className="mt-10 text-center text-xs text-white/40">
-          <Link href="/" className="hover:text-white/70">
-            HabitFlow
-          </Link>{" "}
-          ·{" "}
-          <Link href="/privacy" className="hover:text-white/70">
-            Privacy
-          </Link>{" "}
-          ·{" "}
-          <Link href="/terms" className="hover:text-white/70">
-            Terms
-          </Link>
-        </p>
       </main>
+      {/* the same footer as every public page, in its dark colours */}
+      <div data-theme="dark" className="relative z-10">
+        <SiteFooter />
+      </div>
     </div>
     </>
   );

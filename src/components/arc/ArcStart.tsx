@@ -4,7 +4,6 @@ import { useCallback, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { applyThemeSlowly } from "@/components/ArcTheme";
 import { NotificationToggle } from "@/components/NotificationToggle";
 import { btnGhost, btnPrimary, card } from "@/components/ui/styles";
 import { startArc } from "@/lib/actions/arc";
@@ -64,7 +63,6 @@ export function ArcStart({ firstName, season, existing, images, pushKey, packs, 
   }
 
   const onIntroDone = useCallback(() => {
-    applyThemeSlowly("arc");
     router.push("/arc");
   }, [router]);
 

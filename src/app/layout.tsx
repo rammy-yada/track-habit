@@ -53,9 +53,8 @@ export const viewport: Viewport = {
 
 // Runs before first paint so the saved theme never flashes the wrong way.
 // A saved choice wins; otherwise whatever the device prefers. (The Winter Arc
-// look is not a default — it is switched on for accounts that have joined the
-// arc, see ArcTheme.) "arc-auto" remembers that so the right look is there
-// from the first paint on later visits.
+// look is offered to members once, see ArcTheme. "arc-auto" is from when it
+// switched on by itself; it is honoured until ArcTheme turns it into a choice.)
 const themeScript = `try{var t=localStorage.getItem("theme");if(t!=="light"&&t!=="dark"&&t!=="arc")t=localStorage.getItem("arc-auto")==="1"?"arc":matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=t}catch(e){}`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

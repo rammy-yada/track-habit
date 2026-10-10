@@ -246,7 +246,7 @@ export function ProfileForms({ user, stats, badges, badgeCount }: Props) {
           <form action={passwordAction} className="space-y-5" hidden={user.google}>
             <PasswordField name="current_password" label="Current password" placeholder="Your current password" autoComplete="current-password" />
             <PasswordField name="new_password" label="New password" placeholder="At least 8 characters" minLength={8} autoComplete="new-password" />
-            <PasswordField name="confirm_password" label="Confirm new password" placeholder="Repeat new password" autoComplete="new-password" />
+            <PasswordField name="confirm_password" match="new_password" label="Confirm new password" placeholder="Repeat new password" autoComplete="new-password" />
             <SubmitButton pending={passwordPending} pendingLabel="Updating…">
               Update password
             </SubmitButton>
