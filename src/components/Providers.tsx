@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { createContext, useContext, useEffect } from "react";
 import { MotionConfig } from "motion/react";
 import { startPwa } from "@/lib/pwa";
 
@@ -48,9 +48,17 @@ function keepInputsVisible() {
 
 // reducedMotion="user": people who ask their OS for less motion get fades
 // instead of movement, everywhere, without each component having to check.
-export function Providers({ children }: { children: React.ReactNode }) {
+/** The number of the admin-uploaded logo, or 0 for the built-in one (see src/lib/logo.ts). */
+const LogoContext = createContext(0);
+export const useLogoVersion = () => useContext(LogoContext);
+
+export function Providers({ children, logo = 0 }: { children: React.ReactNode; logo?: number }) {
   // Registers the service worker and starts listening for the install prompt.
   useEffect(startPwa, []);
   useEffect(keepInputsVisible, []);
-  return <MotionConfig reducedMotion="user">{children}</MotionConfig>;
+  return (
+    <LogoContext.Provider value={logo}>
+      <MotionConfig reducedMotion="user">{children}</MotionConfig>
+    </LogoContext.Provider>
+  );
 }

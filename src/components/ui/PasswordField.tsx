@@ -67,7 +67,7 @@ export function PasswordField({ name, label, placeholder, autoComplete, minLengt
         </button>
       </span>
       {/* said as it is typed, before anything is sent */}
-      <span aria-live="polite" data-password-hint className={`mt-1 block min-h-[1rem] text-xs font-medium ${problem ? "text-bad" : "text-good"}`}>
+      <span aria-live="polite" data-password-hint className={`block text-xs font-medium empty:hidden ${problem ? "mt-1 text-bad" : "mt-1 text-good"}`}>
         {problem ?? (same ? "✓ Passwords match." : "")}
       </span>
     </label>

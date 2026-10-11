@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
+import { Decor } from "@/components/Decor";
 import { FlowField } from "@/components/FlowField";
 import { Logo } from "@/components/Logo";
 import { MOTTOS } from "@/lib/constants";
+import type { DecorItem } from "@/lib/decor-shared";
 
 /** Left half of the sign-in screens: the flow field with a slowly rotating motto. */
-export function AuthAside() {
+export function AuthAside({ decor = [] }: { decor?: DecorItem[] }) {
   const [index, setIndex] = useState(0);
   useEffect(() => {
     const timer = setInterval(() => setIndex((i) => (i + 1) % MOTTOS.length), 4200);
@@ -17,6 +19,7 @@ export function AuthAside() {
   return (
     <aside className="relative hidden overflow-hidden border-r border-line bg-card lg:flex lg:w-[46%] lg:flex-col lg:justify-between lg:p-12">
       <FlowField className="absolute inset-0" />
+      <Decor items={decor} />
       <div className="relative">
         <Logo size="lg" />
       </div>

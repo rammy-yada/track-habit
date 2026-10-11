@@ -54,7 +54,7 @@ self.addEventListener("push", (event) => {
   const jobs = [
     self.registration.showNotification(message.title || "HabitFlow", {
       body: message.body || "",
-      icon: message.icon || "/icons/icon-192.png",
+      icon: message.icon || "/app-icon/logo?s=192",
       badge: "/icons/badge-96.png", // the small one-colour mark in Android's status bar
       tag: message.tag || "habitflow", // a newer one of the same kind replaces the older
       data: { url: message.url || "/dashboard" },

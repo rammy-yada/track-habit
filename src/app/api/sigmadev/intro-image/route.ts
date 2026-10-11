@@ -8,7 +8,7 @@ import { STORAGE_FULL_MESSAGE, storageFull } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
 
-const SLOTS = new Set(["before", "after", "sound", "icon-arc", "icon-away"]);
+const SLOTS = new Set(["before", "after", "sound", "icon-arc", "icon-away", "icon-logo"]);
 const MAX_UPLOAD = 4 * 1024 * 1024;
 const MAX_SOUND = 2 * 1024 * 1024;
 
@@ -61,7 +61,9 @@ export async function POST(request: NextRequest) {
     // an app or notification icon: a 512px square PNG (served in whatever size is asked for by /app-icon)
     let png: Buffer;
     try {
-      png = await sharp(upload, { limitInputPixels: 50_000_000, failOn: "error" }).rotate().resize(512, 512, { fit: "cover" }).png({ compressionLevel: 9 }).toBuffer();
+      // the site's logo is kept whole on a see-through square; the other icons fill theirs
+      const fit = slot === "icon-logo" ? ({ fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } } as const) : ({ fit: "cover" } as const);
+      png = await sharp(upload, { limitInputPixels: 50_000_000, failOn: "error" }).rotate().resize(512, 512, fit).png({ compressionLevel: 9 }).toBuffer();
     } catch {
       return NextResponse.json({ error: "That file isn't an image we can read. Use a PNG or JPG." }, { status: 400 });
     }

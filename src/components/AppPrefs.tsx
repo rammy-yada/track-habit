@@ -16,7 +16,7 @@ const MOTIVATION = [
 
 const ICONS = [
   { value: "auto", label: "Automatic", note: "Winter Arc icon while you're in the arc", src: null },
-  { value: "classic", label: "HabitFlow", note: "The blue icon, always", src: "/icons/icon-192.png" },
+  { value: "classic", label: "HabitFlow", note: "The HabitFlow icon, always", src: "/app-icon/logo?s=96" },
   { value: "arc", label: "Winter Arc", note: "The Winter Arc icon, always", src: "/app-icon/arc?s=96" },
 ] as const;
 
@@ -70,7 +70,7 @@ export function AppPrefs({ prefs, arcMember }: { prefs: Prefs; arcMember: boolea
   }
 
   const heading = "text-[13px] font-bold text-ink";
-  const autoIcon = arcMember ? "/app-icon/arc?s=96" : "/icons/icon-192.png";
+  const autoIcon = arcMember ? "/app-icon/arc?s=96" : "/app-icon/logo?s=96";
 
   return (
     <div className={`space-y-5 border-t border-line pt-5 ${saving ? "opacity-80" : ""}`} data-app-prefs>

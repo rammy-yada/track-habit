@@ -91,7 +91,7 @@ export function RegisterForm({ google, join = false }: { google: boolean; join?:
           <span className={label}>Email</span>
           <input type="email" name="email" className={`${input} ${emailProblem ? "border-bad" : ""}`} placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} aria-invalid={emailProblem ? true : undefined} required maxLength={100} />
           {/* said as it is typed: a throwaway inbox, a made-up address, or a slip like "gmial.com" */}
-          <span aria-live="polite" data-email-hint className={`mt-1 block min-h-[1rem] text-xs font-medium ${emailProblem ? "text-bad" : "text-warn"}`}>
+          <span aria-live="polite" data-email-hint className={`mt-1 block text-xs font-medium empty:hidden ${emailProblem ? "text-bad" : "text-warn"}`}>
             {emailProblem}
             {emailSuggestion && (
               <>

@@ -2,11 +2,13 @@ import type { Metadata } from "next";
 import { SITE_URL } from "@/lib/site";
 import Link from "next/link";
 import { Knight, Snow } from "@/components/arc/ArcScreen";
+import { Decor } from "@/components/Decor";
 import { SiteFooter } from "@/components/PublicPage";
 import { Reveal } from "@/components/ui/Reveal";
 import { ARC_HABITS_PER_DAY, ARC_POINTS_PER_HABIT, arcSeason, isArcMember } from "@/lib/arc";
 import { currentUser } from "@/lib/auth";
 import { todayIn } from "@/lib/dates";
+import { getDecor } from "@/lib/decor";
 
 const description = "The Winter Arc challenge: Oct 1 to Jan 31. Choose your habits, show up every day, climb the leaderboard, and finish the year stronger than you started it.";
 export const metadata: Metadata = {
@@ -27,6 +29,7 @@ export default async function WinterArcPage() {
   const user = await currentUser();
   const season = arcSeason(todayIn(user?.timezone ?? "UTC"));
   const member = user ? await isArcMember(user) : false;
+  const decor = await getDecor();
 
   const primary = !user
     ? { href: "/register?join=arc", label: "Join — create your account" }
@@ -77,7 +80,8 @@ export default async function WinterArcPage() {
       </header>
 
       {/* ── the poster ── */}
-      <section className="relative mx-auto h-[620px] max-w-3xl overflow-hidden bg-[linear-gradient(180deg,#f4f4f4_0%,#dcdcdc_30%,#9b9b9b_58%,#3a3a3a_80%,#050505_100%)] text-black grayscale sm:rounded-[36px]">
+      <div className="relative mx-auto max-w-3xl">
+      <section className="relative h-[620px] overflow-hidden bg-[linear-gradient(180deg,#f4f4f4_0%,#dcdcdc_30%,#9b9b9b_58%,#3a3a3a_80%,#050505_100%)] text-black grayscale sm:rounded-[36px]">
         <span aria-hidden className="aurora absolute -left-24 top-32 h-48 w-96 rounded-full bg-white/80 blur-[52px]" />
         <span aria-hidden className="aurora absolute -right-28 top-56 h-40 w-80 rounded-full bg-[#5c5c5c]/70 blur-[56px] [animation-delay:-4s]" />
         <Snow />
@@ -90,6 +94,9 @@ export default async function WinterArcPage() {
         <Knight />
         <span aria-hidden className="grain pointer-events-none absolute inset-0 opacity-70" />
       </section>
+        {/* pictures placed from Admin → Design sit over the poster, in their own colours */}
+        <Decor items={decor.arc} className="sm:rounded-[36px]" />
+      </div>
 
       <main className="mx-auto max-w-3xl px-5 pb-20 sm:px-0">
         <section className="mt-10 text-center">

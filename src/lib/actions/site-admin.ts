@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin } from "../auth";
 import { parseTags, slugify } from "../blog-format";
 import { execute, isDuplicateError, queryOne } from "../db";
+import { saveDecorLayout } from "../decor";
+import type { Decor } from "../decor-shared";
 import { saveMessages } from "../messages";
 import { setStorageLimit } from "../storage";
 import { clean } from "../text";
@@ -15,6 +17,18 @@ import { toId } from "../validation";
 type Result = { ok: true; id?: number } | { ok: false; error: string };
 const INVALID = { ok: false, error: "Invalid request." } as const;
 const refresh = () => revalidatePath("/", "layout");
+
+/** Admin → Design: where the pictures on the sign-in panel and the Winter Arc page sit. */
+export async function saveDecor(input: unknown): Promise<{ ok: true; decor: Decor } | { ok: false; error: string }> {
+  await requireAdmin();
+  try {
+    const decor = await saveDecorLayout(input);
+    refresh();
+    return { ok: true, decor };
+  } catch {
+    return { ok: false, error: "The design couldn't be saved. Please try again." };
+  }
+}
 
 type PostInput = { title: string; slug: string; excerpt: string; body: string; published: boolean; seoTitle: string; seoDescription: string; tags: string };
 

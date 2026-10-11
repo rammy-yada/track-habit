@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Geist, Geist_Mono, Italiana } from "next/font/google";
 import { Providers } from "@/components/Providers";
 import { APP_NAME, CREATOR } from "@/lib/constants";
+import { logoVersion } from "@/lib/logo";
 import { headIcons } from "@/lib/manifest";
 import { META_DESCRIPTION, SITE_URL } from "@/lib/site";
 import "./globals.css";
@@ -13,7 +14,7 @@ const bricolage = Bricolage_Grotesque({ subsets: ["latin"], variable: "--font-br
 // thin, tall capitals — the Winter Arc poster lettering
 const italiana = Italiana({ subsets: ["latin"], weight: "400", variable: "--font-italiana", preload: false });
 
-export const metadata: Metadata = {
+const baseMetadata: Metadata = {
   // lets the relative addresses below (canonical links, share images) become full URLs
   metadataBase: new URL(SITE_URL),
   title: { default: `${APP_NAME} — Free Habit Tracker & Winter Arc Challenge`, template: `%s — ${APP_NAME}` },
@@ -22,7 +23,6 @@ export const metadata: Metadata = {
   // the standard icon and install manifest; signed-in pages may swap in the Winter Arc ones
   // (the manifest link is written out in <head> below: it has to send the cookie that says which icon this account uses)
   // plain files, not redirects: search engines show a site's icon next to its results only if they can fetch it directly
-  icons: headIcons("classic"),
   keywords: ["habit tracker", "free habit tracker", "daily habit tracker", "streak tracker", "routine tracker", "offline habit tracker", "habit tracker app", "habit tracker online", "habit tracker for students", "winter arc", "winter arc challenge", "winter arc tracker"],
   authors: [{ name: CREATOR.handle }],
   creator: CREATOR.handle,
@@ -39,6 +39,11 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, title: APP_NAME, statusBarStyle: "default" },
   formatDetection: { telephone: false },
 };
+
+// the icons follow the logo, which an admin can replace (Admin → Design)
+export async function generateMetadata(): Promise<Metadata> {
+  return { ...baseMetadata, icons: headIcons("classic", await logoVersion()) };
+}
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -57,7 +62,7 @@ export const viewport: Viewport = {
 // switched on by itself; it is honoured until ArcTheme turns it into a choice.)
 const themeScript = `try{var t=localStorage.getItem("theme");if(t!=="light"&&t!=="dark"&&t!=="arc")t=localStorage.getItem("arc-auto")==="1"?"arc":matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=t}catch(e){}`;
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning className={`${geist.variable} ${geistMono.variable} ${bricolage.variable} ${italiana.variable}`}>
       <head>
@@ -65,7 +70,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="manifest" href="/manifest.webmanifest" crossOrigin="use-credentials" />
       </head>
       <body>
-        <Providers>{children}</Providers>
+        <Providers logo={await logoVersion()}>{children}</Providers>
       </body>
     </html>
   );

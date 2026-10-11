@@ -49,7 +49,9 @@ function Words({ text, from = 0 }: { text: string; from?: number }) {
   );
 }
 
-export function Landing() {
+/** `arc`: where the Winter Arc season stands today, for the strip across the top. */
+export function Landing({ arc }: { arc: { live: boolean; daysLeft: number; startsIn: number } }) {
+  const countdown = arc.live ? (arc.daysLeft > 0 ? `${arc.daysLeft} ${arc.daysLeft === 1 ? "day" : "days"} left` : "Last day today") : arc.startsIn > 0 ? `Starts in ${arc.startsIn} ${arc.startsIn === 1 ? "day" : "days"}` : "";
   return (
     <div className="relative flex min-h-dvh flex-col overflow-x-clip">
       {/* the Winter Arc gets the very top of the page */}
@@ -58,6 +60,11 @@ export function Landing() {
         <span>
           The Winter Arc: Oct 1 – Jan 31 <span className="hidden sm:inline">· 123 days, a few habits, every day</span>
         </span>
+        {countdown && (
+          <span className="rounded-full border border-white/30 px-2.5 py-0.5 text-[11px] font-bold tabular-nums" data-arc-countdown>
+            {countdown}
+          </span>
+        )}
         <span className="rounded-full bg-white px-2.5 py-0.5 text-[11px] font-bold text-black">Join →</span>
       </Link>
       <header className="relative z-10 flex items-center justify-between px-5 py-5 sm:px-10">

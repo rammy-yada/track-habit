@@ -34,6 +34,7 @@ const ICONS: Record<string, React.ReactNode> = {
   bell: <path d="M6 9a6 6 0 1 1 12 0c0 5 2 6 2 6H4s2-1 2-6zm4 9a2 2 0 0 0 4 0" />,
   blog: <path d="M5 4h11l3 3v13H5zM9 9h6M9 13h6M9 17h4" />,
   inbox: <path d="M3 13l3-8h12l3 8v6H3zM3 13h5l1.5 3h5L16 13h5" />,
+  design: <path d="M4 5h16v14H4zM4 15l4.5-4.5 3.5 3.5 3-3 5 5M15 9.5h.01" />,
 };
 
 // A member and an admin get entirely different menus: an admin account
@@ -56,6 +57,7 @@ const ADMIN: NavLink[] = [
   // on phones these two are reached from the Overview screen: five tabs is all a phone's bar holds
   { href: "/sigmadev/blog", label: "Blog", short: "Blog", icon: "blog", desktopOnly: true },
   { href: "/sigmadev/products", label: "Sellers", short: "Sellers", icon: "shop", desktopOnly: true },
+  { href: "/sigmadev/design", label: "Design", short: "Design", icon: "design", desktopOnly: true },
   { href: "/sigmadev/inbox", label: "Inbox", short: "Inbox", icon: "inbox", desktopOnly: true },
   { href: "/sigmadev/notifications", label: "Notifications", short: "Notify", icon: "bell", desktopOnly: true },
   { href: "/sigmadev/account", label: "My Account", short: "Account", icon: "profile" },

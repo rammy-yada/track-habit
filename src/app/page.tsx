@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 import { Landing } from "@/components/landing/Landing";
 import type { Metadata } from "next";
+import { arcSeason } from "@/lib/arc";
 import { currentUser } from "@/lib/auth";
+import { todayIn } from "@/lib/dates";
 import { APP_NAME, CREATOR } from "@/lib/constants";
 import { FAQ } from "@/lib/faq";
 import { SITE_DESCRIPTION, SITE_URL } from "@/lib/site";
@@ -39,6 +41,8 @@ const structuredData = {
 export default async function HomePage() {
   const user = await currentUser();
   if (user) redirect(user.role === "admin" ? "/sigmadev" : "/dashboard");
+  // the strip at the top counts the Winter Arc down (by the site's home clock: a visitor has no timezone yet)
+  const season = arcSeason(todayIn("Asia/Kathmandu"));
   return (
     <>
       {/* "<" is escaped so nothing in the data could ever close the script tag */}
@@ -46,7 +50,7 @@ export default async function HomePage() {
       {structuredData["@graph"].map((item) => (
         <script key={item["@id"]} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({ "@context": "https://schema.org", ...item }).replace(/</g, "\\u003c") }} />
       ))}
-      <Landing />
+      <Landing arc={{ live: season.live, daysLeft: season.totalDays - season.day, startsIn: season.startsIn }} />
     </>
   );
 }

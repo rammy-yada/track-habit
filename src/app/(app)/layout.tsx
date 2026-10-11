@@ -8,6 +8,7 @@ import { redirect } from "next/navigation";
 import { arcSeason, isArcMember } from "@/lib/arc";
 import { currentUser } from "@/lib/auth";
 import { todayIn } from "@/lib/dates";
+import { logoVersion } from "@/lib/logo";
 import { headIcons, iconFor } from "@/lib/manifest";
 import { IconCookie } from "@/components/IconCookie";
 import { pushPublicKey } from "@/lib/push";
@@ -24,7 +25,7 @@ const arcMember = cache(isArcMember);
 export async function generateMetadata(): Promise<Metadata> {
   const user = await currentUser();
   const icon = user ? iconFor(user.app_icon, await arcMember(user)) : "classic";
-  return { robots: { index: false, follow: false }, icons: headIcons(icon) };
+  return { robots: { index: false, follow: false }, icons: headIcons(icon, await logoVersion()) };
 }
 
 // Everything under (app) requires a signed-in user. The check runs on the
