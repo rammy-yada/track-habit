@@ -220,6 +220,7 @@ export function AdminProducts({ products }: { products: Row[] }) {
               busy={uploading}
               blocked={draft.id === null ? "Save the product first, then add its picture." : null}
               inputData={{ "data-product-input": "" }}
+              crop={{ aspect: 1 }}
               onPick={(file) => void shrinkImage(file, 1400).then((small) => sendImage(draft.id!, { method: "POST", body: small, headers: { "Content-Type": small.type || "application/octet-stream" } }))}
               onRemove={() => sendImage(draft.id!, { method: "DELETE" })}
             />

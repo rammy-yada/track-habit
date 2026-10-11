@@ -104,6 +104,7 @@ export function AdminMessages({ messages, icons, builtIn, problem, devices, peop
                   busy={uploading === icon.slot}
                   blocked={uploading !== null && uploading !== icon.slot ? "One at a time…" : null}
                   inputData={{ "data-icon-input": icon.kind }}
+                  crop={{ aspect: 1 }}
                   onPick={(file) => void sendIcon(icon.slot, { method: "POST", body: file, headers: { "Content-Type": file.type || "application/octet-stream" } })}
                   // "remove" here means going back to the built-in one, and only makes sense once one has been uploaded
                   onRemove={icons[icon.kind] > 0 ? () => sendIcon(icon.slot, { method: "DELETE" }) : undefined}

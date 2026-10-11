@@ -26,6 +26,7 @@ import { clearOfflineData } from "@/lib/offline";
 import { ageOn, countryName, flag, genderLabel } from "@/lib/people";
 import { openGuide } from "@/lib/pwa";
 import { send } from "@/lib/request";
+import { cropPhoto } from "@/lib/crop";
 import { shrinkImage } from "@/lib/shrink";
 
 type Props = {
@@ -84,7 +85,9 @@ export function ProfileForms({ user, stats, badges, badgeCount }: Props) {
     event.target.value = ""; // so picking the same file again still fires
     if (!file) return;
     if (!file.type.startsWith("image/")) return setPhotoError("Please choose an image file.");
-    const blob = await shrinkImage(file, 640);
+    const cropped = await cropPhoto(file, { aspect: 1, title: "Profile photo" });
+    if (!cropped) return;
+    const blob = await shrinkImage(cropped, 640);
     await photoRequest({ method: "POST", body: blob, headers: { "Content-Type": blob.type || "application/octet-stream" } });
   }
 

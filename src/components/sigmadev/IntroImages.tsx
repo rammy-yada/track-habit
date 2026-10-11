@@ -66,6 +66,7 @@ export function IntroImages({ images }: { images: Images }) {
               busy={busy === slot}
               blocked={busy !== null && busy !== slot ? "One at a time…" : null}
               inputData={{ "data-intro-input": slot }}
+              crop={{}}
               onPick={(file) => void upload(slot, { method: "POST", body: file, headers: { "Content-Type": file.type || "application/octet-stream" } })}
               onRemove={() => upload(slot, { method: "DELETE" })}
             />

@@ -11,6 +11,7 @@ import { btnGhost, btnPrimary, btnSmall, card, input, label } from "@/components
 import { deletePost, savePost } from "@/lib/actions/site-admin";
 import { parsePost, plainText, readingMinutes, SEO_DESCRIPTION_MAX, SEO_TITLE_MAX, slugify, wordCount } from "@/lib/blog-format";
 import { whenOnline } from "@/lib/offline";
+import { hasFormatting, htmlToPost } from "@/lib/paste";
 import { send } from "@/lib/request";
 import { shrinkImage } from "@/lib/shrink";
 
@@ -42,6 +43,7 @@ export function PostEditor({ post, siteUrl }: { post: EditablePost; siteUrl: str
   const [saved, setSaved] = useState(post);
   const [slugTouched, setSlugTouched] = useState(post.id !== null);
   const [view, setView] = useState<"write" | "preview">("write");
+  const [preview, setPreview] = useState<"page" | "google">("page");
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -101,6 +103,24 @@ export function PostEditor({ post, siteUrl }: { post: EditablePost; siteUrl: str
       return { text: text.slice(0, start) + inserted + text.slice(end), from: start + 1, to: start + 1 + chosen.length };
     });
   }
+  // Text copied from a web page, Google Docs or Word keeps its headings, bold,
+  // links and lists: they are turned into the editor's own marks. Plain text
+  // is pasted the usual way.
+  function onPaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const html = e.clipboardData.getData("text/html");
+    if (!html || !hasFormatting(html)) return;
+    const converted = htmlToPost(html);
+    if (!converted) return;
+    e.preventDefault();
+    edit((text, start, end) => {
+      // on a line of its own unless it is a few words going into a sentence
+      const blocky = converted.includes("\n") || /^(#{2,3} |- |\d+\. |> )/.test(converted);
+      const before = blocky && start > 0 && !text.slice(0, start).endsWith("\n\n") ? (text.slice(0, start).endsWith("\n") ? "\n" : "\n\n") : "";
+      const after = blocky && end < text.length && !text.slice(end).startsWith("\n") ? "\n\n" : "";
+      const inserted = before + converted + after;
+      return { text: (text.slice(0, start) + inserted + text.slice(end)).slice(0, 40_000), from: start + inserted.length, to: start + inserted.length };
+    });
+  }
   function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (!(e.ctrlKey || e.metaKey)) return;
     const key = { b: "bold", i: "italic", k: "link" }[e.key.toLowerCase()] as "bold" | "italic" | "link" | undefined;
@@ -158,6 +178,37 @@ export function PostEditor({ post, siteUrl }: { post: EditablePost; siteUrl: str
   ];
   const score = checks.filter((c) => c.ok).length;
 
+  // The post as its page will show it: topics, title, summary, cover, then the text.
+  const pageView = (
+    <article>
+      {draft.tags.trim() && <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand">{draft.tags.split(",").map((tag) => tag.trim()).filter(Boolean).slice(0, 8).join(" · ")}</p>}
+      <h1 className="mt-2 font-display text-2xl font-extrabold leading-tight tracking-tight">{draft.title || "Your title"}</h1>
+      {draft.excerpt && <p className="mt-2 text-sm leading-relaxed text-muted">{draft.excerpt}</p>}
+      <p className="mt-2 text-xs text-muted">
+        {readingMinutes(draft.body)} min read · {words} words
+      </p>
+      {/* eslint-disable-next-line @next/next/no-img-element -- the uploaded cover, served by our own route */}
+      {draft.cover && <img src={draft.cover} alt="" className="mt-4 aspect-[1200/630] w-full rounded-xl border border-line object-cover" />}
+      <div className="mt-5">{draft.body.trim() ? <PostBody body={draft.body} /> : <p className="text-sm text-muted">The post appears here as you write.</p>}</div>
+    </article>
+  );
+  // Roughly how the post appears in a Google result: site, address, blue title, grey description.
+  const googleView = (
+    <div className="rounded-xl bg-white p-4 text-left" data-seo-preview data-true-color>
+      <div className="flex items-center gap-2.5">
+        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#f1f3f4] text-[11px] font-bold text-[#5f6368]">H</span>
+        <span className="min-w-0">
+          <span className="block truncate text-[13px] leading-tight text-[#202124]">HabitFlow</span>
+          <span className="block truncate text-[12px] leading-tight text-[#4d5156]">
+            {siteUrl.replace(/^https?:\/\//, "")} › blog › {slug || "…"}
+          </span>
+        </span>
+      </div>
+      <div className="mt-2 line-clamp-2 text-[19px] leading-snug text-[#1a0dab]">{fullTitle}</div>
+      <div className="mt-1 line-clamp-2 text-[13.5px] leading-snug text-[#4d5156]">{seoDescription || "A description appears here."}</div>
+    </div>
+  );
+
   const counter = (length: number, max: number) => <span className={`font-normal tabular-nums ${length > max ? "text-bad" : ""}`}>{` · ${length}/${max}`}</span>;
 
   return (
@@ -207,8 +258,9 @@ export function PostEditor({ post, siteUrl }: { post: EditablePost; siteUrl: str
               <textarea className={`${input} min-h-[70px]`} name="post_excerpt" value={draft.excerpt} maxLength={300} placeholder="One or two sentences that make someone want to read it." onChange={(e) => set("excerpt", e.target.value)} />
             </label>
 
-            <div className={`${card} overflow-hidden`}>
-              <div className="flex flex-wrap items-center gap-1 border-b border-line bg-raised/60 p-2">
+            <div className={card}>
+              {/* stays in reach while a long post is scrolled (below the page's own title bar on a computer) */}
+              <div className="sticky top-0 z-10 flex flex-wrap items-center gap-1 rounded-t-2xl border-b border-line bg-raised p-2 md:top-[83px]" data-post-toolbar>
                 {TOOLS.map((tool) => (
                   <button key={tool.key} type="button" title={tool.title} aria-label={tool.title} onClick={() => apply(tool.key)} disabled={view === "preview"} className={`grid h-9 min-w-9 place-items-center rounded-lg px-2.5 text-xs font-semibold text-muted hover:bg-card hover:text-ink disabled:opacity-40 ${"className" in tool ? tool.className : ""}`}>
                     {tool.label}
@@ -223,32 +275,53 @@ export function PostEditor({ post, siteUrl }: { post: EditablePost; siteUrl: str
                   ))}
                 </div>
               </div>
-              <div className="grid grid-cols-1 xl:grid-cols-2 xl:divide-x xl:divide-line">
+              <div>
                 <textarea
                   ref={area}
                   name="post_body"
                   value={draft.body}
                   onChange={(e) => set("body", e.target.value)}
                   onKeyDown={onKeyDown}
+                  onPaste={onPaste}
                   spellCheck
                   placeholder={"Write here.\n\n## A heading\n\nA paragraph with **bold** and a [link](https://example.com).\n\n- A list item"}
                   aria-label="Post text"
                   className={`min-h-[520px] w-full resize-y bg-card p-4 font-mono text-[14px] leading-relaxed text-ink outline-none placeholder:text-muted/60 ${view === "preview" ? "hidden xl:block" : ""}`}
+                  data-post-text
                 />
-                <div className={`min-h-[520px] min-w-0 overflow-y-auto break-words p-5 ${view === "write" ? "hidden xl:block" : ""}`} aria-label="Preview" data-post-preview>
-                  {draft.body.trim() ? <PostBody body={draft.body} /> : <p className="text-sm text-muted">The preview appears here as you write.</p>}
+                <div className={`min-h-[520px] min-w-0 overflow-y-auto break-words p-5 xl:hidden ${view === "write" ? "hidden" : ""}`} aria-label="Preview">
+                  {pageView}
                 </div>
               </div>
-              <div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-line px-4 py-2 text-xs text-muted">
+              <div className="flex flex-wrap gap-x-4 gap-y-1 rounded-b-2xl border-t border-line px-4 py-2 text-xs text-muted">
                 <span>{words} words</span>
                 <span>{readingMinutes(draft.body)} min read</span>
-                <span className="hidden sm:inline">Ctrl+B bold · Ctrl+I italic · Ctrl+K link · Ctrl+S save</span>
+                <span className="hidden sm:inline">Ctrl+B bold · Ctrl+I italic · Ctrl+K link · Ctrl+S save · formatted text can be pasted in</span>
               </div>
             </div>
           </div>
 
           {/* ── cover, search engines ── */}
           <div className="min-w-0 space-y-4">
+            <section className={`${card} hidden xl:block`} aria-label="Preview" data-post-preview>
+              <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-2.5">
+                <h2 className="text-sm font-bold">Preview</h2>
+                <div className="flex rounded-lg border border-line p-0.5" role="tablist" aria-label="Preview as">
+                  {(
+                    [
+                      ["page", "Page"],
+                      ["google", "Google"],
+                    ] as const
+                  ).map(([key, name]) => (
+                    <button key={key} type="button" role="tab" aria-selected={preview === key} onClick={() => setPreview(key)} className={`rounded-md px-3 py-1.5 text-xs font-semibold ${preview === key ? "bg-brand-solid text-on-brand" : "text-muted hover:text-ink"}`}>
+                      {name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {preview === "page" ? <div className="max-h-[560px] min-w-0 overflow-y-auto break-words p-5">{pageView}</div> : <div className="p-4">{googleView}</div>}
+            </section>
+
             <section className={`${card} p-4`} aria-label="Cover picture">
               <h2 className="text-sm font-bold">Cover picture</h2>
               <div className="mt-3">
@@ -260,6 +333,7 @@ export function PostEditor({ post, siteUrl }: { post: EditablePost; siteUrl: str
                   accept="image/png,image/webp,image/jpeg"
                   busy={uploading}
                   inputData={{ "data-cover-input": "" }}
+                  crop={{ aspect: 1200 / 630 }}
                   // made smaller here first: a phone photo is far bigger than a cover needs, and than one request may carry
                   onPick={(chosen) => void shrinkImage(chosen, 1800).then((small) => sendCover({ method: "POST", body: small, headers: { "Content-Type": small.type || "application/octet-stream" } }))}
                   onRemove={() => sendCover({ method: "DELETE" })}
@@ -271,14 +345,8 @@ export function PostEditor({ post, siteUrl }: { post: EditablePost; siteUrl: str
             <section className={`${card} space-y-3.5 p-4`} aria-label="Search engines">
               <h2 className="text-sm font-bold">Search engines (SEO)</h2>
 
-              {/* roughly how the post appears in a search result */}
-              <div className="rounded-xl border border-line bg-bg p-3.5" data-seo-preview>
-                <div className="truncate text-xs text-muted">
-                  {siteUrl.replace(/^https?:\/\//, "")} › blog › {slug || "…"}
-                </div>
-                <div className="mt-0.5 truncate text-[17px] font-medium text-brand">{fullTitle}</div>
-                <div className="mt-0.5 line-clamp-2 text-[13px] leading-snug text-muted">{seoDescription || "A description appears here."}</div>
-              </div>
+              {/* on a computer this is the "Google" tab of the preview above */}
+              <div className="xl:hidden">{googleView}</div>
 
               <label className="block">
                 <span className={label}>

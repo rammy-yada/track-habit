@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect } from "react";
 import { MotionConfig } from "motion/react";
+import { CropHost } from "@/components/ui/CropDialog";
 import { startPwa } from "@/lib/pwa";
 
 /**
@@ -58,7 +59,10 @@ export function Providers({ children, logo = 0 }: { children: React.ReactNode; l
   useEffect(keepInputsVisible, []);
   return (
     <LogoContext.Provider value={logo}>
-      <MotionConfig reducedMotion="user">{children}</MotionConfig>
+      <MotionConfig reducedMotion="user">
+        {children}
+        <CropHost />
+      </MotionConfig>
     </LogoContext.Provider>
   );
 }

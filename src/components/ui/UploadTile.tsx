@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { cropPhoto } from "@/lib/crop";
 import { btnSmall } from "./styles";
 
 type Props = {
@@ -32,6 +33,8 @@ type Props = {
   kind?: "picture" | "sound";
   /** What the main button says, when "Upload" / "Replace" isn't right. */
   actionLabel?: string;
+  /** Offer to crop the picture first. `aspect` is the width ÷ height of the place it goes; leave it out when any shape is fine. */
+  crop?: { aspect?: number };
 };
 
 /**
@@ -40,7 +43,12 @@ type Props = {
  * dropped on it, with the same Replace / Remove buttons and the same
  * "uploading" state each time.
  */
-export function UploadTile({ src, alt, emptyNote, accept, busy, blocked = null, onPick, onRemove, removeLabel = "Remove", shape = "wide", fit = "cover", dark = false, imgClassName = "", inputData = {}, title, note, preview, kind = "picture", actionLabel }: Props) {
+export function UploadTile({ src, alt, emptyNote, accept, busy, blocked = null, onPick, onRemove, removeLabel = "Remove", shape = "wide", fit = "cover", dark = false, imgClassName = "", inputData = {}, title, note, preview, kind = "picture", actionLabel, crop }: Props) {
+  // every picked file passes through here: cropped first where that is offered
+  const picked = async (file: File) => {
+    const ready = crop && kind === "picture" ? await cropPhoto(file, { aspect: crop.aspect, title: title ?? alt }) : file;
+    if (ready) onPick(ready);
+  };
   const input = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
   const has = src !== null || Boolean(preview);
@@ -65,7 +73,7 @@ export function UploadTile({ src, alt, emptyNote, accept, busy, blocked = null, 
         e.preventDefault();
         setOver(false);
         const file = e.dataTransfer.files?.[0];
-        if (file && !off) onPick(file);
+        if (file && !off) void picked(file);
       }}
       className={`group relative grid place-items-center overflow-hidden rounded-xl border-2 border-dashed transition-colors ${over ? "border-brand bg-brand-soft" : has ? "border-transparent" : "border-line hover:border-brand"} ${dark ? "bg-black" : "bg-raised"} ${row ? "h-[72px] w-[72px] shrink-0" : shape === "tall" ? "h-44 w-full" : "aspect-[1200/630] w-full"} ${off ? "cursor-not-allowed" : "cursor-pointer"}`}
     >
@@ -118,7 +126,7 @@ export function UploadTile({ src, alt, emptyNote, accept, busy, blocked = null, 
         onChange={(e) => {
           const file = e.target.files?.[0];
           e.target.value = "";
-          if (file) onPick(file);
+          if (file) void picked(file);
         }}
       />
     </div>

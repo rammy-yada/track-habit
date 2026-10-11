@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { btnGhost, btnPrimary, btnSmall } from "@/components/ui/styles";
 import { saveDecor } from "@/lib/actions/site-admin";
 import { DECOR_MAX_ITEMS, decorUrl, type Decor, type DecorItem, type DecorScene } from "@/lib/decor-shared";
+import { cropPhoto } from "@/lib/crop";
 import { send } from "@/lib/request";
 import { shrinkImage } from "@/lib/shrink";
 
@@ -62,7 +63,10 @@ export function DecorEditor({ initial, logo }: { initial: Decor; logo: number })
     if (!files) return;
     setNote(null);
     const room = DECOR_MAX_ITEMS - items.length;
-    for (const [n, file] of [...files].slice(0, room).entries()) {
+    for (const [n, chosen] of [...files].slice(0, room).entries()) {
+      // one picture at a time can be cropped first; several at once go straight up
+      const file = files.length === 1 ? await cropPhoto(chosen, { title: "Picture" }) : chosen;
+      if (!file) continue;
       setUploading((u) => u + 1);
       // sent as it is when small enough, so a PNG keeps its see-through background in every browser
       const body = file.size > 3_500_000 ? await shrinkImage(file, 1600) : file;
@@ -306,7 +310,7 @@ function LogoPanel({ logo }: { logo: number }) {
           data-logo-file
           onChange={(e) => {
             const file = e.target.files?.[0];
-            if (file) void change(send("/api/sigmadev/intro-image?slot=icon-logo", { method: "POST", body: file, retry: false }), "Logo changed.");
+            if (file) void cropPhoto(file, { aspect: 1, title: "Logo" }).then((ready) => ready && change(send("/api/sigmadev/intro-image?slot=icon-logo", { method: "POST", body: ready, retry: false }), "Logo changed."));
           }}
         />
       </div>
