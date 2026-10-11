@@ -1,5 +1,6 @@
 "use client";
 
+import { Fragment } from "react";
 import Link from "next/link";
 import { SiteFooter } from "@/components/PublicPage";
 import { FAQ } from "@/lib/faq";
@@ -15,16 +16,34 @@ import { Magnetic } from "./Magnetic";
 
 const ease = [0.2, 0.7, 0.2, 1] as const;
 
+const STEPS = [
+  { title: "Add your habits", body: "Type in what you want to do: read ten pages, drink water, go for a walk, study for an hour. Pick an icon and, if you like, a time to be reminded." },
+  { title: "Tick them off each day", body: "Open the app and tap a habit when it is done. Your checklist starts again at midnight in your own timezone, wherever you live." },
+  { title: "Watch your streak grow", body: "Every day in a row adds to your streak. Charts and a monthly grid show which habits are holding and which need a little more care." },
+];
+
+const BENEFITS = [
+  { title: "Free to use", body: "Every feature is free: habits, streaks, charts, reminders and the Winter Arc. There is no paid plan hiding the useful parts." },
+  { title: "Works offline", body: "No signal on the bus or in class? Tick your habits anyway. They are kept on your phone and sent when you are back online." },
+  { title: "Installs like an app", body: "Add HabitFlow to your home screen on Android, iPhone or a computer. It opens full screen, with its own icon, without an app store." },
+  { title: "Reminders that help", body: "Set a time for any habit and get a notification then. A short line of motivation in the morning is there if you want it, and off if you don't." },
+  { title: "Any country, any timezone", body: "Your day ends at your own midnight, not somebody else's. Use it in English, with reminders in Nepali if you prefer." },
+  { title: "Your data stays yours", body: "Sign in with email or Google. You choose what others can see on the leaderboard, and you can download or delete your data at any time." },
+];
+
 /** Headline words rise out of a mask one after another. */
 function Words({ text, from = 0 }: { text: string; from?: number }) {
   return (
     <>
       {text.split(" ").map((word, i) => (
-        <span key={i} className="inline-block overflow-hidden pb-[0.12em] align-bottom">
-          <motion.span className="mr-[0.22em] inline-block" initial={{ y: "115%", rotate: 6 }} animate={{ y: 0, rotate: 0 }} transition={{ duration: 0.7, delay: 0.15 + (from + i) * 0.08, ease }}>
-            {word}
-          </motion.span>
-        </span>
+        // a real space follows each word, so the heading reads as words to a search engine or screen reader
+        <Fragment key={i}>
+          <span className="inline-block overflow-hidden pb-[0.12em] align-bottom">
+            <motion.span className="inline-block" initial={{ y: "115%", rotate: 6 }} animate={{ y: 0, rotate: 0 }} transition={{ duration: 0.7, delay: 0.15 + (from + i) * 0.08, ease }}>
+              {word}
+            </motion.span>
+          </span>{" "}
+        </Fragment>
       ))}
     </>
   );
@@ -130,7 +149,7 @@ export function Landing() {
               <span className="relative flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
                 <span>
                   <span className="block text-[11px] font-semibold uppercase tracking-[0.3em] text-white/60">Oct 1 – Jan 31</span>
-                  <span className="mt-2 block font-[family-name:var(--font-poster)] text-6xl leading-[0.9] tracking-[-0.03em] sm:text-7xl">WINTER ARC</span>
+                  <h2 className="mt-2 block font-[family-name:var(--font-poster)] text-6xl font-normal leading-[0.9] tracking-[-0.03em] sm:text-7xl">WINTER ARC</h2>
                   <span className="mt-4 block max-w-md text-sm leading-relaxed text-white/65">123 days. A few habits, every day, with everyone on one leaderboard. Finish the year stronger than you started it.</span>
                 </span>
                 <span className="inline-flex shrink-0 items-center gap-2 self-start rounded-xl bg-white px-6 py-3.5 text-sm font-bold uppercase tracking-[0.14em] text-black transition-transform group-hover:translate-x-1 sm:self-auto">
@@ -142,7 +161,11 @@ export function Landing() {
         </section>
 
         <section aria-label="Features" className="relative border-t border-line bg-card/60">
-          <div className="mx-auto grid max-w-6xl gap-4 px-5 py-14 sm:px-10 md:grid-cols-3">
+          <div className="mx-auto max-w-6xl px-5 pt-14 sm:px-10">
+            <h2 className="font-display text-3xl font-bold tracking-tight">A free habit tracker that stays out of your way</h2>
+            <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-muted">Write down the few things you want to do every day, tick them off, and watch the days add up. That is the whole idea. No feed to scroll, and nothing to pay.</p>
+          </div>
+          <div className="mx-auto grid max-w-6xl gap-4 px-5 pb-14 pt-8 sm:px-10 md:grid-cols-3">
             <Feature title="Daily" label="Automatic reset" body="Your checklist starts fresh at midnight in your own timezone." delay={0}>
               <div className="flex gap-1.5">
                 {Array.from({ length: 7 }, (_, i) => (
@@ -176,6 +199,56 @@ export function Landing() {
             </Feature>
           </div>
         </section>
+        {/* ── how it works, and what you get: plain text a visitor (and a search engine) can read ── */}
+        <section aria-labelledby="how-title" className="relative mx-auto max-w-6xl px-5 py-16 sm:px-10">
+          <h2 id="how-title" className="font-display text-3xl font-bold tracking-tight">
+            How to start tracking your habits
+          </h2>
+          <ol className="mt-6 grid gap-4 md:grid-cols-3">
+            {STEPS.map((step, i) => (
+              <li key={step.title} className={`${card} p-6`}>
+                <span className="text-sm font-bold text-brand">Step {i + 1}</span>
+                <h3 className="mt-1 font-display text-xl font-bold tracking-tight">{step.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted">{step.body}</p>
+              </li>
+            ))}
+          </ol>
+          <p className="mt-6 text-[15px] leading-relaxed text-muted">
+            It takes about a minute.{" "}
+            <Link href="/register" className="font-semibold text-brand hover:underline">
+              Create a free account
+            </Link>{" "}
+            and add your first habit, or read the{" "}
+            <Link href="/blog" className="font-semibold text-brand hover:underline">
+              blog
+            </Link>{" "}
+            for ideas on which habits to begin with.
+          </p>
+        </section>
+
+        <section aria-labelledby="why-title" className="relative border-t border-line bg-card/60">
+          <div className="mx-auto max-w-6xl px-5 py-16 sm:px-10">
+            <h2 id="why-title" className="font-display text-3xl font-bold tracking-tight">
+              What you get with HabitFlow
+            </h2>
+            <div className="mt-6 grid gap-x-10 gap-y-7 sm:grid-cols-2 lg:grid-cols-3">
+              {BENEFITS.map((item) => (
+                <div key={item.title}>
+                  <h3 className="font-display text-lg font-bold tracking-tight">{item.title}</h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-muted">{item.body}</p>
+                </div>
+              ))}
+            </div>
+            <p className="mt-8 max-w-3xl text-[15px] leading-relaxed text-muted">
+              From October to January there is also the{" "}
+              <Link href="/winter-arc" className="font-semibold text-brand hover:underline">
+                Winter Arc challenge
+              </Link>
+              : 123 days, a small set of habits, points for every tick and one leaderboard for everyone who joins. It is optional, and it is free too.
+            </p>
+          </div>
+        </section>
+
         {/* ── questions people ask before signing up (also given to search engines, see app/page.tsx) ── */}
         <section aria-labelledby="faq-title" className="relative mx-auto max-w-3xl px-5 pb-20 sm:px-10">
           <h2 id="faq-title" className="font-display text-3xl font-bold tracking-tight">
@@ -209,7 +282,7 @@ function Feature({ title, label, body, delay, children }: { title: string; label
     <Reveal delay={delay}>
       <Spotlight className={`${card} h-full p-6`}>
         <div className="mb-5 flex h-10 items-center">{children}</div>
-        <h2 className="font-display text-2xl font-bold tracking-tight">{title}</h2>
+        <h3 className="font-display text-2xl font-bold tracking-tight">{title}</h3>
         <p className="text-sm font-medium text-brand">{label}</p>
         <p className="mt-2 text-sm leading-relaxed text-muted">{body}</p>
       </Spotlight>

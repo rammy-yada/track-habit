@@ -42,7 +42,10 @@ export default async function HomePage() {
   return (
     <>
       {/* "<" is escaped so nothing in the data could ever close the script tag */}
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, "\\u003c") }} />
+      {/* one block per thing, each naming its own type: some checkers cannot read a combined "@graph" */}
+      {structuredData["@graph"].map((item) => (
+        <script key={item["@id"]} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({ "@context": "https://schema.org", ...item }).replace(/</g, "\\u003c") }} />
+      ))}
       <Landing />
     </>
   );

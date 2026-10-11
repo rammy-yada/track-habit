@@ -13,10 +13,12 @@ const LINKS = [
 /** The links at the bottom of every public page. */
 export function SiteFooter() {
   return (
-    <footer className="border-t border-line px-5 py-8 text-sm text-muted sm:px-10">
+    <footer className="h-card border-t border-line px-5 py-8 text-sm text-muted sm:px-10">
       <div className="mx-auto flex max-w-5xl flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <div className="font-display text-base font-bold text-ink">{APP_NAME}</div>
+          <a href="/" className="p-name u-url block font-display text-base font-bold text-ink">
+            {APP_NAME}
+          </a>
           <p className="mt-1 text-xs">
             Small steps, better flow. Made by{" "}
             <a href={CREATOR.supportUrl} target="_blank" rel="noopener noreferrer" className="font-semibold text-brand hover:underline">
