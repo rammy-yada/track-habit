@@ -91,7 +91,8 @@ export default async function WinterArcPage() {
           <br />
           ARC
         </h1>
-        <Knight />
+        {/* the built-in drawing steps aside once an admin has placed their own pictures (Admin → Design) */}
+        {decor.arc.length === 0 && <Knight />}
         <span aria-hidden className="grain pointer-events-none absolute inset-0 opacity-70" />
       </section>
         {/* pictures placed from Admin → Design sit over the poster, in their own colours */}
