@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
   if (upload.length === 0 || upload.length > MAX_UPLOAD) return NextResponse.json({ error: "That image is too large (6 MB at most)." }, { status: 413 });
   let webp: Buffer;
   try {
-    webp = await sharp(upload, { limitInputPixels: 50_000_000, failOn: "error" }).rotate().resize(1200, 630, { fit: "cover", position: "attention" }).webp({ quality: 80 }).toBuffer();
+    webp = await sharp(upload, { limitInputPixels: 50_000_000, failOn: "error" }).rotate().resize(1200, 630, { fit: "cover", position: "attention" }).webp({ quality: 78, effort: 6, smartSubsample: true }).toBuffer();
   } catch {
     return NextResponse.json({ error: "That file isn't an image we can read. Use a JPG, PNG or WebP." }, { status: 400 });
   }

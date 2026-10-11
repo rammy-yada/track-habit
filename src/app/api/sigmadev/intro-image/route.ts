@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     try {
       // the site's logo is kept whole on a see-through square; the other icons fill theirs
       const fit = slot === "icon-logo" ? ({ fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } } as const) : ({ fit: "cover" } as const);
-      png = await sharp(upload, { limitInputPixels: 50_000_000, failOn: "error" }).rotate().resize(512, 512, fit).png({ compressionLevel: 9 }).toBuffer();
+      png = await sharp(upload, { limitInputPixels: 50_000_000, failOn: "error" }).rotate().resize(512, 512, fit).png({ compressionLevel: 9, effort: 10, palette: true, quality: 92 }).toBuffer();
     } catch {
       return NextResponse.json({ error: "That file isn't an image we can read. Use a PNG or JPG." }, { status: 400 });
     }
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
   }
   let webp: Buffer;
   try {
-    webp = await sharp(upload, { limitInputPixels: 50_000_000, failOn: "error" }).rotate().resize(900, 900, { fit: "inside", withoutEnlargement: true }).webp({ quality: 86, alphaQuality: 90 }).toBuffer();
+    webp = await sharp(upload, { limitInputPixels: 50_000_000, failOn: "error" }).rotate().resize(900, 900, { fit: "inside", withoutEnlargement: true }).webp({ quality: 82, alphaQuality: 85, effort: 6, smartSubsample: true }).toBuffer();
   } catch {
     return NextResponse.json({ error: "That file isn't an image we can read. Use a PNG, JPG or WebP." }, { status: 400 });
   }

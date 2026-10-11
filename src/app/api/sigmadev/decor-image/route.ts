@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
   let webp: Buffer;
   let size: { width: number; height: number };
   try {
-    const result = await sharp(upload, { limitInputPixels: 50_000_000, failOn: "error" }).rotate().resize(1200, 1200, { fit: "inside", withoutEnlargement: true }).webp({ quality: 88, alphaQuality: 92 }).toBuffer({ resolveWithObject: true });
+    const result = await sharp(upload, { limitInputPixels: 50_000_000, failOn: "error" }).rotate().resize(1200, 1200, { fit: "inside", withoutEnlargement: true }).webp({ quality: 82, alphaQuality: 85, effort: 6, smartSubsample: true }).toBuffer({ resolveWithObject: true });
     webp = result.data;
     size = { width: result.info.width, height: result.info.height };
   } catch {
