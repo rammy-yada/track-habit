@@ -132,8 +132,8 @@ export function DecorEditor({ initial, logo }: { initial: Decor; logo: number })
     e.preventDefault();
   }
 
-  // the canvas has the proportions of the real area: the tall panel beside the sign-in form, or the poster (wide on a computer, narrow on a phone)
-  const shape = scene === "auth" ? "aspect-[3/4] max-w-md" : phone ? "aspect-[390/620] max-w-[300px]" : "aspect-[768/620] max-w-2xl";
+  // the canvas has the proportions of the real area: the tall panel beside the sign-in form, or the poster (wide on a computer; on a phone 1.3 times as tall as it is wide, as on the page)
+  const shape = scene === "auth" ? "aspect-[3/4] max-w-md" : phone ? "aspect-[10/13] max-w-[300px]" : "aspect-[768/620] max-w-2xl";
 
   return (
     <>

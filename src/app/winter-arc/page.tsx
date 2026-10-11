@@ -81,7 +81,7 @@ export default async function WinterArcPage() {
 
       {/* ── the poster ── */}
       <div className="relative mx-auto max-w-3xl">
-      <section className="relative h-[620px] overflow-hidden bg-[linear-gradient(180deg,#f4f4f4_0%,#dcdcdc_30%,#9b9b9b_58%,#3a3a3a_80%,#050505_100%)] text-black grayscale sm:rounded-[36px]">
+      <section className="relative h-[min(620px,130vw)] overflow-hidden bg-[linear-gradient(180deg,#f4f4f4_0%,#dcdcdc_30%,#9b9b9b_58%,#3a3a3a_80%,#050505_100%)] text-black grayscale sm:rounded-[36px]">
         <span aria-hidden className="aurora absolute -left-24 top-32 h-48 w-96 rounded-full bg-white/80 blur-[52px]" />
         <span aria-hidden className="aurora absolute -right-28 top-56 h-40 w-80 rounded-full bg-[#5c5c5c]/70 blur-[56px] [animation-delay:-4s]" />
         <Snow />
