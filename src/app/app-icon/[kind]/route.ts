@@ -29,19 +29,35 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     kind = request.cookies.get("hf_icon")?.value === "arc" ? "arc" : "logo";
   }
   if (!(kind in BUILT_IN)) return new NextResponse(null, { status: 404 });
-  const row = await queryOne<{ image: Buffer }>("SELECT image FROM site_images WHERE slot = ?", [`icon-${kind}`]);
+  let row = await queryOne<{ image: Buffer }>("SELECT image FROM site_images WHERE slot = ?", [`icon-${kind}`]);
+  // An uploaded logo is the app's icon for everyone: with no Winter Arc icon of
+  // its own uploaded, the Winter Arc icon is the logo too, not the built-in snowflake.
+  if (!row && kind === "arc") {
+    row = await queryOne<{ image: Buffer }>("SELECT image FROM site_images WHERE slot = 'icon-logo'");
+    if (row) kind = "logo";
+  }
   // a relative address: the built-in file on this same site, whatever name the site is reached by
   if (!row) return new NextResponse(null, { status: 307, headers: { Location: BUILT_IN[kind](size, maskable), "Cache-Control": "no-cache" } }); // not remembered: an icon uploaded a minute from now must show up
 
-  // the logo is kept whole and, where a phone will cut the icon into its own shape, sits on white; the others fill the square on black
   const logo = kind === "logo";
-  const inner = maskable ? Math.round(size * (logo ? 0.66 : 0.78)) : size;
-  let image = sharp(row.image).resize(inner, inner, logo ? { fit: "contain", background: { r: 255, g: 255, b: 255, alpha: 0 } } : { fit: "cover" });
+  // What goes around and behind a logo: its own background colour when it has
+  // one (read from its corner), white when the corner is see-through.
+  let backdrop = "#050505";
+  let seeThrough = false;
+  if (logo) {
+    const corner = await sharp(row.image).extract({ left: 0, top: 0, width: 2, height: 2 }).ensureAlpha().raw().toBuffer();
+    seeThrough = corner[3] < 128;
+    backdrop = seeThrough ? "#ffffff" : `#${[corner[0], corner[1], corner[2]].map((c) => c.toString(16).padStart(2, "0")).join("")}`;
+  }
+  // "maskable": the phone cuts the icon into its own shape, so the drawing is made smaller with room around it
+  const inner = maskable ? Math.round(size * (seeThrough ? 0.66 : 0.78)) : size;
+  let image = sharp(row.image).resize(inner, inner, logo ? { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } } : { fit: "cover" });
   if (maskable) {
     const pad = Math.floor((size - inner) / 2);
-    image = image.extend({ top: pad, bottom: size - inner - pad, left: pad, right: size - inner - pad, background: logo ? "#ffffff" : "#050505" });
-    if (logo) image = image.flatten({ background: "#ffffff" });
+    image = image.extend({ top: pad, bottom: size - inner - pad, left: pad, right: size - inner - pad, background: backdrop });
   }
+  // an iPhone paints see-through parts of a home-screen icon black, so that size gets a solid backdrop as well
+  if (logo && (maskable || size <= 180)) image = image.flatten({ background: backdrop });
   return new NextResponse(new Uint8Array(await image.png().toBuffer()), {
     // an address that names the upload ("v=") never changes what it shows
     headers: { "Content-Type": "image/png", "Cache-Control": request.nextUrl.searchParams.has("v") ? "public, max-age=31536000, immutable" : "public, max-age=3600", "X-Content-Type-Options": "nosniff" },
