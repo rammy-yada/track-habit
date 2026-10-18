@@ -1,4 +1,5 @@
 import type { Lang } from "./mail";
+import { dayTurn, inTurn } from "./notify-copy";
 
 // The daily line sent as a morning notification. Original, short, and written
 // to be read in two seconds on a lock screen.
@@ -35,15 +36,13 @@ const QUOTES: Record<Lang, string[]> = {
   ],
 };
 
-/** The same quote for everyone on a given day, a different one each day. */
 /** What an admin has written to replace the built-in messages (empty parts fall back to the built-in ones). */
 export type CustomMessages = { quotes: string[]; nudges: string[]; comeback: Record<string, { title: string; body: string }> };
 export const NO_CUSTOM: CustomMessages = { quotes: [], nudges: [], comeback: {} };
 
-export function quoteFor(lang: Lang, date: string, custom: string[] = []): string {
-  const list = custom.length ? custom : QUOTES[lang];
-  const dayNumber = Math.floor(Date.parse(`${date}T00:00:00Z`) / 86_400_000);
-  return list[dayNumber % list.length];
+/** The day's quote for one person: a different one each day, and none again until all of them have been sent (`seed` gives each person their own order). */
+export function quoteFor(lang: Lang, date: string, custom: string[] = [], seed = ""): string {
+  return inTurn(custom.length ? custom : QUOTES[lang], `${seed}:quote`, dayTurn(date));
 }
 
 // ── Through-the-day motivation ───────────────────────────────────────────────
@@ -73,11 +72,9 @@ const NUDGES: Record<Lang, string[]> = {
   ],
 };
 
-export function nudgeFor(lang: Lang, seed: string, custom: string[] = []): string {
-  const list = custom.length ? custom : NUDGES[lang];
-  let hash = 0;
-  for (const ch of seed) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
-  return list[hash % list.length];
+/** The line for one person's `slot`-th reminder of the day: every line is used once before any comes back. */
+export function nudgeFor(lang: Lang, seed: string, date: string, slot: number, custom: string[] = []): string {
+  return inTurn(custom.length ? custom : NUDGES[lang], `${seed}:nudge`, dayTurn(date) * 2 + slot);
 }
 
 // ── Coming back ──────────────────────────────────────────────────────────────
@@ -125,46 +122,84 @@ export const BUILT_IN = { quotes: QUOTES.en, nudges: NUDGES.en, comeback: COMEBA
 // waking up, drinking water, one good thing to do, going to sleep. Each has a
 // part of the day it falls in (minutes from midnight); the exact minute is
 // different for every person and every day.
-type Care = { key: string; /** the picture shown beside the message */ icon: string; from: number; to: number; title: Record<Lang, string>; lines: Record<Lang, string[]> };
+type Care = { key: string; /** the picture shown beside the message */ icon: string; from: number; to: number; titles: Record<Lang, string[]>; lines: Record<Lang, string[]> };
 export const CARE: Care[] = [
   {
     key: "wake", icon: "/icons/n-sun.png", from: 6 * 60, to: 7 * 60 + 30,
-    title: { en: "Good morning ☀️", ne: "शुभ प्रभात ☀️" },
+    titles: { en: ["Good morning ☀️", "Up and at it 🌅", "Wake-up call ⏰"], ne: ["शुभ प्रभात ☀️", "उठ्ने बेला 🌅"] },
     lines: {
-      en: ["Up you get! The day is yours before anyone else wants a piece of it. A glass of water, then your first habit. 🌅", "Feet on the floor — that's the hardest part done. Everything after this is easier. 🚀", "A brand new day and a clean list. Open it up and see what today's you can do. ✨", "Rise first, then decide how you feel. It's always better once you're moving. 💪"],
-      ne: ["उठ्ने बेला भयो। आजको दिन तपाईंकै हो।", "खुट्टा भुइँमा राख्नुहोस्। सबैभन्दा गाह्रो काम सकियो।", "नयाँ दिन, नयाँ सुरुवात।"],
+      en: [
+        "Up you get! The day is yours before anyone else wants a piece of it. A glass of water, then your first habit. 🌅",
+        "Feet on the floor — that's the hardest part done. Everything after this is easier. 🚀",
+        "A brand new day and a clean list. Open it up and see what today's you can do. ✨",
+        "Rise first, then decide how you feel. It's always better once you're moving. 💪",
+        "Open the curtains and let the light in. Daylight in the first ten minutes wakes you up better than any alarm. 🌤️",
+        "Before the phone, before the news: one minute of stretching. Arms up, shoulders back, deep breath. 🧘",
+      ],
+      ne: ["उठ्ने बेला भयो। आजको दिन तपाईंकै हो।", "खुट्टा भुइँमा राख्नुहोस्। सबैभन्दा गाह्रो काम सकियो।", "नयाँ दिन, नयाँ सुरुवात।", "पर्दा खोल्नुहोस्, घाम भित्र आउन दिनुहोस्। 🌤️", "फोनभन्दा पहिले एक मिनेट शरीर तन्काउनुहोस्। 🧘"],
     },
   },
   {
     key: "water1", icon: "/icons/n-water.png", from: 10 * 60, to: 12 * 60,
-    title: { en: "Water break 💧", ne: "पानी पिउने बेला 💧" },
+    titles: { en: ["Water break 💧", "Time for a glass 🥤", "Hydration check 💧"], ne: ["पानी पिउने बेला 💧", "एक गिलास पानी 🥤"] },
     lines: {
-      en: ["A glass of water, right now. Your head, your skin and your energy will all thank you. 🥤", "Pause for a moment and drink some water before you start the next thing. It takes ten seconds. 🚰", "Feeling thirsty already means you waited too long. Have a full glass now and keep the bottle close. 💦"],
-      ne: ["अहिले नै एक गिलास पानी पिउनुहोस्।", "अर्को काम सुरु गर्नुअघि पानी पिउनुहोस्।"],
+      en: [
+        "A glass of water, right now. Your head, your skin and your energy will all thank you. 🥤",
+        "Pause for a moment and drink some water before you start the next thing. It takes ten seconds. 🚰",
+        "Feeling thirsty already means you waited too long. Have a full glass now and keep the bottle close. 💦",
+        "Tired or unfocused this morning? Often it's thirst, not sleep. Drink a glass and see. 🧠",
+        "Put a bottle on your desk where you can see it. You'll drink twice as much without thinking about it. 🍶",
+        "Coffee counts for less than you think. Have a glass of plain water alongside it. ☕",
+      ],
+      ne: ["अहिले नै एक गिलास पानी पिउनुहोस्।", "अर्को काम सुरु गर्नुअघि पानी पिउनुहोस्।", "थकाइ लाग्यो? धेरैजसो निद्रा होइन, तिर्खा हो। 🧠", "बोतल आँखाले देखिने ठाउँमा राख्नुहोस्। 🍶"],
     },
   },
   {
     key: "good", icon: "/icons/n-heart.png", from: 12 * 60 + 30, to: 14 * 60 + 30,
-    title: { en: "One good thing today ✨", ne: "आज एउटा राम्रो काम ✨" },
+    titles: { en: ["One good thing today ✨", "A small kindness 💛", "Today's good deed 🌱"], ne: ["आज एउटा राम्रो काम ✨", "सानो दयालु काम 💛"] },
     lines: {
-      en: ["Message someone you haven't spoken to in a while. Two lines is enough to make their day. 💬", "Say thank you to one person today, and really mean it. It costs nothing and people remember it. 🙏", "Tidy one small corner — just one. A clear space makes for a clearer head. 🧹", "Step outside for five minutes and look at the sky. No phone, just air and daylight. 🌤️", "Help someone today without being asked. Small things count: a door, a bag, a kind word. 🤝", "Give one honest compliment today. Tell someone exactly what they did well. 🌟", "Put your phone down for one whole meal today. Taste the food and talk to whoever is there. 🍽️", "Write down one thing that went well today. One line is enough, and it adds up over a winter. 📝", "Call home today. Five minutes will mean more to them than you think. 📞", "Stretch for two minutes, right where you are. Neck, shoulders, back — you'll feel the difference. 🧘"],
-      ne: ["धेरै भएको कुरा नगरेको कसैलाई सन्देश पठाउनुहोस्।", "आज कसैलाई मनैदेखि धन्यवाद भन्नुहोस्।", "पाँच मिनेट बाहिर निस्केर आकाश हेर्नुहोस्।", "नभनीकनै कसैलाई सहयोग गर्नुहोस्।", "घरमा फोन गर्नुहोस्।", "आज राम्रो भएको एउटा कुरा लेख्नुहोस्।"],
+      en: [
+        "Message someone you haven't spoken to in a while. Two lines is enough to make their day. 💬",
+        "Say thank you to one person today, and really mean it. It costs nothing and people remember it. 🙏",
+        "Tidy one small corner — just one. A clear space makes for a clearer head. 🧹",
+        "Step outside for five minutes and look at the sky. No phone, just air and daylight. 🌤️",
+        "Help someone today without being asked. Hold a door, carry a bag, answer a question. 🤝",
+        "Call home. Even five minutes. Someone there will smile all evening. 📞",
+        "Write down one thing that went well today, however small. It trains your mind to notice the good. 📝",
+        "Give someone a real compliment — about something they did, not how they look. 🌟",
+        "Put your phone in another room for twenty minutes and do one thing with full attention. 📵",
+      ],
+      ne: ["धेरै भएको कुरा नगरेको कसैलाई सन्देश पठाउनुहोस्।", "आज कसैलाई मनैदेखि धन्यवाद भन्नुहोस्।", "पाँच मिनेट बाहिर निस्केर आकाश हेर्नुहोस्।", "नभनीकनै कसैलाई सहयोग गर्नुहोस्।", "घरमा फोन गर्नुहोस्।", "आज राम्रो भएको एउटा कुरा लेख्नुहोस्।", "बीस मिनेट फोन अर्को कोठामा राखेर एउटा काम ध्यान दिएर गर्नुहोस्। 📵"],
     },
   },
   {
     key: "water2", icon: "/icons/n-water.png", from: 14 * 60 + 30, to: 16 * 60 + 30,
-    title: { en: "Water again 💧", ne: "फेरि पानी 💧" },
+    titles: { en: ["Water again 💧", "Afternoon refill 🚰", "Second glass? 💧"], ne: ["फेरि पानी 💧", "दिउँसोको पानी 🚰"] },
     lines: {
-      en: ["Afternoon slump? Drink water first, then decide how tired you really are. It works more often than coffee. ⚡", "Time for another glass. Most people are behind on water by now — catch up while it's easy. 🥤", "Refill the bottle now. Future you is going to be thirsty and grateful. 🚰"],
-      ne: ["दिउँसो अल्छी लाग्यो? पहिले पानी पिउनुहोस्।", "अर्को गिलास पानी पिउनुहोस्।"],
+      en: [
+        "Afternoon slump? Drink water first, then decide how tired you really are. It works more often than coffee. ⚡",
+        "Time for another glass. Most people are behind on water by now — catch up while it's easy. 🥤",
+        "Refill the bottle now. Future you is going to be thirsty and grateful. 🚰",
+        "A headache coming on? Water before painkillers — it's often the cause. 💧",
+        "Stand up, walk to the kitchen, drink a full glass. You get water and a stretch in one go. 🚶",
+        "Halfway through the day: are you halfway through your water? If not, now's the moment. 🌊",
+      ],
+      ne: ["दिउँसो अल्छी लाग्यो? पहिले पानी पिउनुहोस्।", "अर्को गिलास पानी पिउनुहोस्।", "टाउको दुख्न लाग्यो? औषधिभन्दा पहिले पानी। 💧", "उठ्नुहोस्, हिँड्नुहोस्, एक गिलास पानी पिउनुहोस्। 🚶"],
     },
   },
   {
     key: "sleep", icon: "/icons/n-moon.png", from: 21 * 60 + 30, to: 22 * 60 + 15,
-    title: { en: "Time to wind down 🌙", ne: "सुत्ने बेला भयो 🌙" },
+    titles: { en: ["Time to wind down 🌙", "Bedtime soon 😴", "Lights low 🌙"], ne: ["सुत्ने बेला भयो 🌙", "आराम गर्ने बेला 😴"] },
     lines: {
-      en: ["Tomorrow is built tonight. Put the phone down, dim the lights and give yourself a proper night's sleep. 😴", "Screens off, lights low. You've done enough for today — rest is part of the work. 🛌", "The best thing you can do for tomorrow's habits is to sleep now. Morning-you is counting on it. 🌙", "Time for bed. Tomorrow starts tonight, and you'll thank yourself at 6 AM. ⭐"],
-      ne: ["भोलिको दिन आजको निद्राले बनाउँछ। फोन राखेर सुत्नुहोस्।", "आजलाई पुग्यो। अब आराम गर्नुहोस्।", "भोलिका बानीका लागि सबैभन्दा राम्रो काम: अहिले सुत्नु।"],
+      en: [
+        "Tomorrow is built tonight. Put the phone down, dim the lights and give yourself a proper night's sleep. 😴",
+        "Screens off, lights low. You've done enough for today — rest is part of the work. 🛌",
+        "The best thing you can do for tomorrow's habits is to sleep now. Morning-you is counting on it. 🌙",
+        "Time for bed. Tomorrow starts tonight, and you'll thank yourself at 6 AM. ⭐",
+        "Plug the phone in across the room, not beside the bed. You'll fall asleep faster and wake up easier. 🔌",
+        "Write tomorrow's first task on paper, then let it go. Your mind can rest once it's written down. 📝",
+      ],
+      ne: ["भोलिको दिन आजको निद्राले बनाउँछ। फोन राखेर सुत्नुहोस्।", "आजलाई पुग्यो। अब आराम गर्नुहोस्।", "भोलिका बानीका लागि सबैभन्दा राम्रो काम: अहिले सुत्नु।", "फोन ओछ्यानबाट टाढा चार्ज गर्नुहोस्। 🔌"],
     },
   },
 ];

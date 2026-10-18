@@ -1,5 +1,5 @@
 import "server-only";
-import { arcSeason } from "@/lib/arc";
+import { arcDayPoints, arcSeason } from "@/lib/arc";
 import { addDays, diffDays } from "@/lib/dates";
 import { execute, query } from "@/lib/db";
 import { getMessages, iconVersions } from "@/lib/messages";
@@ -10,6 +10,7 @@ import { arcReminderEmail, comebackEmail, emailLang, mailEnabled, sendMail, unsu
 import { lastPushError, pushProblem, sendPush } from "@/lib/push";
 import { CARE, CARE_CATCH_UP, COMEBACK_DAYS, comebackFor, nudgeFor, QUIET_AFTER_DAYS, quoteFor } from "@/lib/quotes";
 import { decodeEntities } from "@/lib/text";
+import { arcEveningMessage, dayTurn, habitMessage, inTurn, morningMessage, nudgeMessage, type DayFacts } from "@/lib/notify-copy";
 
 const QUOTE_HOUR = 8; //    morning quote, in each person's own timezone
 const EVENING_HOUR = 19; // "you still have habits open" (Winter Arc members)
@@ -144,7 +145,6 @@ export async function runReminders({ origin, now = new Date(), dry = false }: { 
     if (!clock) return;
     const { today } = clock;
     const lang = emailLang(person);
-    const ne = lang === "ne";
     const name = decodeEntities(person.full_name).split(" ")[0];
     const push = canPush && person.push;
     const mail = canMail && person.email_reminders === 1;
@@ -152,19 +152,38 @@ export async function runReminders({ origin, now = new Date(), dry = false }: { 
     const away = Math.max(0, diffDays(person.last_done ?? person.joined, today));
     const quiet = away >= QUIET_AFTER_DAYS;
 
-    // how many habits are still open today — looked up only when something needs it
-    let leftToday: number | undefined;
-    const habitsLeft = async () => {
-      if (leftToday === undefined) {
-        const [status] = await query<{ habits: number; done: number }>(
-          `SELECT (SELECT COUNT(*) FROM habits WHERE user_id = ? AND is_active = 1) AS habits,
-                  (SELECT COUNT(*) FROM habit_logs l JOIN habits h ON h.id = l.habit_id AND h.is_active = 1 WHERE l.user_id = ? AND l.log_date = ? AND l.completed_count > 0) AS done`,
-          [person.id, person.id, today],
-        );
-        leftToday = Number(status.habits) - Number(status.done);
+    // Today as it stands for this person — which habits are open, how many are
+    // done, the streak — looked up once, and only when a message needs it.
+    let known: { facts: DayFacts; habitStreak: Map<number, number> } | undefined;
+    const today_ = async () => {
+      if (known) return known;
+      const [habits, logs] = await Promise.all([
+        query<{ id: number; name: string; icon: string }>("SELECT id, name, icon FROM habits WHERE user_id = ? AND is_active = 1 ORDER BY created_at, id", [person.id]),
+        query<{ habit_id: number; log_date: string }>("SELECT habit_id, log_date::text AS log_date FROM habit_logs WHERE user_id = ? AND completed_count > 0 AND log_date BETWEEN ? AND ?", [person.id, addDays(today, -90), today]),
+      ]);
+      const byHabit = new Map<number, Set<string>>();
+      const days = new Set<string>();
+      for (const log of logs) {
+        if (!byHabit.has(log.habit_id)) byHabit.set(log.habit_id, new Set());
+        byHabit.get(log.habit_id)!.add(log.log_date);
+        days.add(log.log_date);
       }
-      return leftToday;
+      const run = (has: (day: string) => boolean) => {
+        let n = 0;
+        while (n < 90 && has(addDays(today, -1 - n))) n++;
+        return n;
+      };
+      const open = habits.filter((h) => !byHabit.get(h.id)?.has(today)).map((h) => ({ icon: h.icon, name: decodeEntities(h.name) }));
+      const yesterday = addDays(today, -1);
+      known = {
+        facts: { total: habits.length, done: habits.length - open.length, left: open.length, open, streakBefore: run((d) => days.has(d)), yesterday: logs.filter((l) => l.log_date === yesterday).length },
+        habitStreak: new Map(habits.map((h) => [h.id, run((d) => byHabit.get(h.id)?.has(d) ?? false)])),
+      };
+      return known;
     };
+    const habitsLeft = async () => (await today_()).facts.left;
+    const turn = dayTurn(today);
+    const seed = String(person.id);
 
     // ── habit reminders: asked for explicitly, so they always go out ──
     if (push) {
@@ -179,14 +198,20 @@ export async function runReminders({ origin, now = new Date(), dry = false }: { 
         const late = clock.minutes - (h * 60 + m);
         if (late < 0 || late >= HABIT_WINDOW) continue;
         if (!(await claim(person.id, `h${habit.id}`, today))) continue;
-        if (!dry) delivered += await sendPush(person.id, { icon: "/icons/n-clock.png", title: ne ? `${habit.icon} ${decodeEntities(habit.name)} — समय भयो` : `${habit.icon} ${decodeEntities(habit.name)} — it's time`, body: ne ? `${name}, समय भयो! अहिले गर्नुहोस्, अनि टिक लगाएर स्ट्रिक जोगाउनुहोस्। 🔥` : `${name}, this is the moment you set aside for it. Do it now, then tick it off and keep your streak alive. 🔥`, url: "/dashboard", tag: `habit-${habit.id}`, badge: await habitsLeft() });
+        if (!dry) {
+          const { facts, habitStreak } = await today_();
+          delivered += await sendPush(person.id, { icon: "/icons/n-clock.png", ...habitMessage(lang, name, { icon: habit.icon, name: decodeEntities(habit.name) }, habitStreak.get(habit.id) ?? 0, facts), url: "/dashboard", tag: `habit-${habit.id}`, badge: facts.left });
+        }
         sent.habitReminders++;
       }
     }
 
     // ── morning quote ──
     if (push && !quiet && person.notify_motivation > 0 && clock.hour >= QUOTE_HOUR && clock.hour < QUOTE_UNTIL && (await claim(person.id, "push_quote", today))) {
-      if (!dry) delivered += await sendPush(person.id, { icon: "/icons/n-sun.png", title: ne ? `शुभ प्रभात, ${name}! ☀️` : `Rise and shine, ${name}! ☀️`, body: quoteFor(lang, today, custom.quotes), url: "/dashboard", tag: "quote", badge: await habitsLeft() });
+      if (!dry) {
+        const { facts } = await today_();
+        delivered += await sendPush(person.id, { icon: "/icons/n-sun.png", ...morningMessage(lang, name, facts, quoteFor(lang, today, custom.quotes, seed), seed, turn), url: "/dashboard", tag: "quote", badge: facts.left });
+      }
       sent.quotes++;
     }
 
@@ -198,27 +223,24 @@ export async function runReminders({ origin, now = new Date(), dry = false }: { 
         if (clock.minutes < due || clock.minutes >= due + NUDGE_CATCH_UP || clock.hour >= DAY_ENDS) continue;
         const left = await habitsLeft();
         if (left <= 0 || !(await claim(person.id, `nudge${i}`, today))) continue;
-        if (!dry)
-          delivered += await sendPush(person.id, {
-            icon: "/icons/n-target.png",
-            title: ne ? `${name}, आजका ${left} बानी बाँकी 🎯` : `${name}, ${left} to go — you've got this 🎯`,
-            body: nudgeFor(lang, `${today}:${i}:${person.id}`, custom.nudges),
-            url: "/dashboard",
-            tag: "nudge",
-            badge: left,
-          });
+        if (!dry) {
+          const { facts } = await today_();
+          delivered += await sendPush(person.id, { icon: "/icons/n-target.png", ...nudgeMessage(lang, name, facts, nudgeFor(lang, seed, today, i, custom.nudges), seed, turn + i * 7), url: "/dashboard", tag: "nudge", badge: left });
+        }
         sent.nudges++;
       }
     }
 
     // ── daily care: wake up, water, one good thing, sleep — each at a different minute every day ──
     if (push && !quiet && person.notify_care === 1) {
+      // the morning quote already says good morning: the wake-up one is for people who turned the quote off
+      const quoteToo = person.notify_motivation > 0;
       for (const care of CARE) {
+        if (care.key === "wake" && quoteToo) continue;
         const due = randomMinute(`${person.id}:${today}:${care.key}`, care.from, care.to);
         if (clock.minutes < due || clock.minutes >= due + CARE_CATCH_UP) continue;
         if (!(await claim(person.id, `care_${care.key}`, today))) continue;
-        const lines = care.lines[lang];
-        if (!dry) delivered += await sendPush(person.id, { icon: care.icon, title: care.title[lang], body: lines[randomMinute(`${today}:${care.key}:${person.id}`, 0, lines.length)], url: "/dashboard", tag: `care-${care.key}` });
+        if (!dry) delivered += await sendPush(person.id, { icon: care.icon, title: inTurn(care.titles[lang], `${seed}:${care.key}:t`, turn), body: inTurn(care.lines[lang], `${seed}:${care.key}`, turn), url: "/dashboard", tag: `care-${care.key}` });
         sent.care++;
       }
     }
@@ -250,15 +272,11 @@ export async function runReminders({ origin, now = new Date(), dry = false }: { 
     if (left <= 0) return; // nothing to remind them of
 
     if (push && (await claim(person.id, "push_arc", today))) {
-      if (!dry)
-        delivered += await sendPush(person.id, {
-          icon: "/icons/arc-192.png",
-          title: ne ? `Winter Arc · दिन ${season.day} ❄️` : `Winter Arc · Day ${season.day} of ${season.totalDays} ❄️`,
-          body: ne ? `${name}, आजका ${left} बानी बाँकी छन्। मध्यरात अघि पूरा गर्नुभयो भने मात्र आजको अङ्क जोडिन्छ। अझै समय छ! 💪` : `${name}, ${left} habit${left === 1 ? " is" : "s are"} still open today. Finish before midnight to bank today's points and hold your place on the leaderboard. You've got this! 💪`,
-          url: "/dashboard",
-          tag: "arc-evening",
-          badge: left,
-        });
+      if (!dry) {
+        const { facts } = await today_();
+        const pointsLeft = arcDayPoints(facts.total) - arcDayPoints(facts.done);
+        delivered += await sendPush(person.id, { icon: "/icons/arc-192.png", ...arcEveningMessage(lang, name, facts, { day: season.day, totalDays: season.totalDays, pointsLeft }, seed, turn), url: "/arc", tag: "arc-evening", badge: left });
+      }
       sent.eveningNotifications++;
     }
 
