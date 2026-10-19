@@ -57,6 +57,8 @@ self.addEventListener("push", (event) => {
       icon: message.icon || "/app-icon/logo?s=192",
       badge: "/icons/badge-96.png", // the small one-colour mark in Android's status bar
       tag: message.tag || "habitflow", // a newer one of the same kind replaces the older
+      renotify: true, // …and still rings and shows: without this, replacing yesterday's unread one would arrive silently
+      timestamp: Date.now(),
       data: { url: message.url || "/dashboard" },
     }),
   ];
@@ -72,8 +74,15 @@ self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const target = new URL((event.notification.data && event.notification.data.url) || "/dashboard", self.location.origin).href;
   event.waitUntil(
-    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((windows) => {
-      for (const client of windows) if ("focus" in client) return client.navigate(target).then((c) => (c || client).focus());
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(async (windows) => {
+      // an open window is brought forward and sent to the screen; if that fails (a window this worker doesn't control can't be steered), a new one opens
+      for (const client of windows) {
+        try {
+          const focused = await client.focus();
+          if (client.url !== target) await (focused || client).navigate(target);
+          return;
+        } catch (_) {}
+      }
       return self.clients.openWindow(target);
     }),
   );

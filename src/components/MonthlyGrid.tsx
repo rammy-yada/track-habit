@@ -88,7 +88,7 @@ export function MonthlyGrid({ data }: { data: Data }) {
           <span className="flex items-center gap-2">
             <span className="grid h-5 w-5 place-items-center rounded-md border border-dashed border-line" /> Future
           </span>
-          <span className="ml-auto font-semibold">Click a past day to toggle it</span>
+          <span className="ml-auto font-semibold">Tap a past day to tick or untick it</span>
         </div>
 
         {error && (

@@ -19,7 +19,7 @@ export function AuthAside({ decor = [] }: { decor?: DecorItem[] }) {
   return (
     <aside className="relative hidden overflow-hidden border-r border-line bg-card lg:flex lg:w-[46%] lg:flex-col lg:justify-between lg:p-12">
       <FlowField className="absolute inset-0" />
-      <Decor items={decor} />
+      <Decor items={decor} first area="46vw" />
       <div className="relative">
         <Logo size="lg" />
       </div>

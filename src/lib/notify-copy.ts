@@ -80,10 +80,16 @@ export function nudgeMessage(lang: Lang, name: string, f: DayFacts, line: string
 }
 
 /** At the time someone set for one habit: that habit, its own streak, and the day so far. */
-export function habitMessage(lang: Lang, name: string, habit: { icon: string; name: string }, habitStreak: number, f: DayFacts) {
+export function habitMessage(lang: Lang, name: string, habit: { icon: string; name: string }, habitStreak: number, f: DayFacts, plannedFor: string | null = null) {
   const ne = lang === "ne";
   const streak = habitStreak >= 1 ? (ne ? `अहिले गर्नुभयो भने लगातार दिन ${habitStreak + 1} हुन्छ 🔥` : `Tick it now for day ${habitStreak + 1} in a row 🔥`) : ne ? `आज गरेर नयाँ स्ट्रिक सुरु गर्नुहोस्।` : "Do it now and start a streak today.";
   const day = f.total > 0 ? (ne ? ` आज ${f.total} मध्ये ${f.done} पूरा।` : ` ${f.done} of ${f.total} done today.`) : "";
+  // sent late (the scheduler was slow): say when it was planned instead of pretending it is the moment
+  if (plannedFor) {
+    const [h, m] = plannedFor.split(":").map(Number);
+    const at = `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+    return { title: ne ? `${habit.icon} ${habit.name} — अझै बाँकी, ${name}` : `${habit.icon} ${habit.name} — still to do, ${name}`, body: `${ne ? `${at} को लागि राखिएको थियो। अझै समय छ।` : `You planned it for ${at}. There's still time.`} ${streak}${day}` };
+  }
   return { title: ne ? `${habit.icon} ${habit.name} — समय भयो, ${name}` : `${habit.icon} ${habit.name} — it's time, ${name}`, body: `${streak}${day}` };
 }
 

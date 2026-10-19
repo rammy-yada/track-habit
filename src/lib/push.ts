@@ -80,7 +80,13 @@ export async function sendPush(userId: number, message: PushMessage): Promise<nu
   let delivered = 0;
   for (const device of devices) {
     try {
-      await webpush.sendNotification({ endpoint: device.endpoint, keys: { p256dh: device.p256dh, auth: device.auth } }, JSON.stringify(message), { TTL: 6 * 3600, timeout: 8000 });
+      await webpush.sendNotification({ endpoint: device.endpoint, keys: { p256dh: device.p256dh, auth: device.auth } }, JSON.stringify(message), {
+        // "high": a phone that is asleep (Android's Doze) delivers it now instead of holding it until it next wakes, which can be hours
+        urgency: "high",
+        // a reminder that couldn't be delivered within three hours is no longer worth showing
+        TTL: 3 * 3600,
+        timeout: 8000,
+      });
       delivered++;
     } catch (err) {
       // 404 / 410: the app was uninstalled or notifications were switched off on that device

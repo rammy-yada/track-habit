@@ -66,6 +66,15 @@ export function buildManifest(icon: AppIcon, logo = 0): MetadataRoute.Manifest {
     categories: ["productivity", "lifestyle", "health"],
     prefer_related_applications: false,
     icons,
+    // shown in Android's and desktop Chrome's install sheet, so people see the app before installing it
+    screenshots: [
+      { src: "/screenshots/today.webp", sizes: "780x1688", type: "image/webp", form_factor: "narrow", label: "Today's habits: tick them off, keep your streak" },
+      { src: "/screenshots/stats.webp", sizes: "780x1688", type: "image/webp", form_factor: "narrow", label: "Your progress, week by week" },
+      { src: "/screenshots/month.webp", sizes: "780x1688", type: "image/webp", form_factor: "narrow", label: "A year of activity at a glance" },
+      { src: "/screenshots/wide.webp", sizes: "1920x1200", type: "image/webp", form_factor: "wide", label: "HabitFlow on a computer" },
+    ],
+    // opening the app again (from its icon or a notification) brings back the window that is already open, instead of starting another
+    launch_handler: { client_mode: ["navigate-existing", "auto"] },
     // long-press the app icon on Android to jump straight to these
     shortcuts: [
       { name: "Today's habits", short_name: "Today", url: "/dashboard", icons: [{ src: logo ? `/app-icon/logo?s=192&v=${logo}.${ICON_DRAWING}` : "/icons/icon-192.png", sizes: "192x192" }] },

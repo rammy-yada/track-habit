@@ -96,7 +96,7 @@ export default async function WinterArcPage() {
         <span aria-hidden className="grain pointer-events-none absolute inset-0 opacity-70" />
       </section>
         {/* pictures placed from Admin → Design sit over the poster, in their own colours */}
-        <Decor items={decor.arc} className="sm:rounded-[36px]" />
+        <Decor items={decor.arc} className="sm:rounded-[36px]" first area="min(100vw, 768px)" />
       </div>
 
       <main className="mx-auto max-w-3xl px-5 pb-20 sm:px-0">

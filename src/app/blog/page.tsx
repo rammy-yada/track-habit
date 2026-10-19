@@ -47,7 +47,18 @@ export default async function BlogPage() {
                 <Link href={`/blog/${post.slug}`} className="flex h-full flex-col">
                   {post.cover ? (
                     // eslint-disable-next-line @next/next/no-img-element -- a small WebP served (and cached for a year) by our own route
-                    <img src={post.cover} alt={`Cover picture: ${post.title}`} width={1200} height={630} loading={i < 3 ? "eager" : "lazy"} decoding="async" className="aspect-[1200/630] w-full object-cover" />
+                    <img
+                      src={post.cover}
+                      srcSet={`${post.cover}&w=400 400w, ${post.cover}&w=800 800w, ${post.cover} 1200w`}
+                      sizes="(min-width: 768px) 50vw, 100vw"
+                      alt={`Cover picture: ${post.title}`}
+                      width={1200}
+                      height={630}
+                      loading={i < 3 ? "eager" : "lazy"}
+                      fetchPriority={i === 0 ? "high" : "auto"}
+                      decoding="async"
+                      className="aspect-[1200/630] w-full object-cover"
+                    />
                   ) : (
                     <div aria-hidden className="grid aspect-[1200/630] w-full place-items-center bg-[linear-gradient(135deg,var(--brand-soft),transparent)] font-display text-5xl font-extrabold text-brand/30">
                       {post.title[0]}

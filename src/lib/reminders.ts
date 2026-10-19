@@ -16,7 +16,7 @@ const QUOTE_HOUR = 8; //    morning quote, in each person's own timezone
 const EVENING_HOUR = 19; // "you still have habits open" (Winter Arc members)
 const COMEBACK_HOUR = 18; // "your habits miss you"
 const COMEBACK_EMAIL_DAY = 7; // the one email sent to someone who has been away
-const HABIT_WINDOW = 180; // a habit reminder is sent within this many minutes after its set time
+const HABIT_WINDOW = 120; // a habit reminder is sent within this many minutes after its set time (later than that it is no use)
 const MAX_EMAILS = 40; //   per run: stays well inside a free email plan's daily limit
 
 // The scheduler is not punctual: a free one may call only every few hours.
@@ -196,11 +196,11 @@ export async function runReminders({ origin, now = new Date(), dry = false }: { 
       for (const habit of habits) {
         const [h, m] = habit.reminder_time.split(":").map(Number);
         const late = clock.minutes - (h * 60 + m);
-        if (late < 0 || late >= HABIT_WINDOW) continue;
+        if (late < 0 || late >= HABIT_WINDOW || clock.hour >= DAY_ENDS) continue;
         if (!(await claim(person.id, `h${habit.id}`, today))) continue;
         if (!dry) {
           const { facts, habitStreak } = await today_();
-          delivered += await sendPush(person.id, { icon: "/icons/n-clock.png", ...habitMessage(lang, name, { icon: habit.icon, name: decodeEntities(habit.name) }, habitStreak.get(habit.id) ?? 0, facts), url: "/dashboard", tag: `habit-${habit.id}`, badge: facts.left });
+          delivered += await sendPush(person.id, { icon: "/icons/n-clock.png", ...habitMessage(lang, name, { icon: habit.icon, name: decodeEntities(habit.name) }, habitStreak.get(habit.id) ?? 0, facts, late >= 20 ? habit.reminder_time.slice(0, 5) : null), url: "/dashboard", tag: `habit-${habit.id}`, badge: facts.left });
         }
         sent.habitReminders++;
       }
@@ -238,7 +238,9 @@ export async function runReminders({ origin, now = new Date(), dry = false }: { 
       for (const care of CARE) {
         if (care.key === "wake" && quoteToo) continue;
         const due = randomMinute(`${person.id}:${today}:${care.key}`, care.from, care.to);
-        if (clock.minutes < due || clock.minutes >= due + CARE_CATCH_UP) continue;
+        // "wake up" at 10 AM or "go to sleep" after 11 PM would be wrong, so those two expire sooner
+        const catchUp = care.key === "wake" || care.key === "sleep" ? 60 : CARE_CATCH_UP;
+        if (clock.minutes < due || clock.minutes >= due + catchUp || clock.hour >= DAY_ENDS) continue;
         if (!(await claim(person.id, `care_${care.key}`, today))) continue;
         if (!dry) delivered += await sendPush(person.id, { icon: care.icon, title: inTurn(care.titles[lang], `${seed}:${care.key}:t`, turn), body: inTurn(care.lines[lang], `${seed}:${care.key}`, turn), url: "/dashboard", tag: `care-${care.key}` });
         sent.care++;
