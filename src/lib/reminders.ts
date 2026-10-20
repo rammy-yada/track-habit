@@ -158,7 +158,7 @@ export async function runReminders({ origin, now = new Date(), dry = false }: { 
     const today_ = async () => {
       if (known) return known;
       const [habits, logs] = await Promise.all([
-        query<{ id: number; name: string; icon: string }>("SELECT id, name, icon FROM habits WHERE user_id = ? AND is_active = 1 ORDER BY created_at, id", [person.id]),
+        query<{ id: number; name: string; icon: string; created: string }>("SELECT id, name, icon, created_at::date::text AS created FROM habits WHERE user_id = ? AND is_active = 1 ORDER BY created_at, id", [person.id]),
         query<{ habit_id: number; log_date: string }>("SELECT habit_id, log_date::text AS log_date FROM habit_logs WHERE user_id = ? AND completed_count > 0 AND log_date BETWEEN ? AND ?", [person.id, addDays(today, -90), today]),
       ]);
       const byHabit = new Map<number, Set<string>>();
@@ -173,10 +173,33 @@ export async function runReminders({ origin, now = new Date(), dry = false }: { 
         while (n < 90 && has(addDays(today, -1 - n))) n++;
         return n;
       };
-      const open = habits.filter((h) => !byHabit.get(h.id)?.has(today)).map((h) => ({ icon: h.icon, name: decodeEntities(h.name) }));
+      const openHabits = habits.filter((h) => !byHabit.get(h.id)?.has(today));
+      const open = openHabits.map((h) => ({ icon: h.icon, name: decodeEntities(h.name) }));
       const yesterday = addDays(today, -1);
+      const hadYesterday = habits.filter((h) => h.created <= yesterday);
+      const ticksBetween = (from: number, to: number) => logs.filter((l) => l.log_date >= addDays(today, -to) && l.log_date <= addDays(today, -from)).length;
+      // the open habit gone longest without a tick (only habits a few days old, and not ones abandoned a month ago)
+      let neglected: DayFacts["neglected"] = null;
+      for (const h of openHabits) {
+        if (h.created > addDays(today, -4)) continue;
+        const since = run((d) => !(byHabit.get(h.id)?.has(d) ?? false) && d >= h.created) + 1;
+        if (since >= 3 && since <= 30 && (!neglected || since > neglected.days)) neglected = { icon: h.icon, name: decodeEntities(h.name), days: since };
+      }
       known = {
-        facts: { total: habits.length, done: habits.length - open.length, left: open.length, open, streakBefore: run((d) => days.has(d)), yesterday: logs.filter((l) => l.log_date === yesterday).length },
+        facts: {
+          total: habits.length,
+          done: habits.length - open.length,
+          left: open.length,
+          open,
+          streakBefore: run((d) => days.has(d)),
+          yesterday: logs.filter((l) => l.log_date === yesterday).length,
+          perfectYesterday: hadYesterday.length > 0 && hadYesterday.every((h) => byHabit.get(h.id)?.has(yesterday)),
+          missedYesterday: !days.has(yesterday) && days.has(addDays(today, -2)),
+          week: ticksBetween(1, 7),
+          lastWeek: ticksBetween(8, 14),
+          neglected,
+          weekday: new Date(`${today}T12:00:00Z`).getUTCDay(),
+        },
         habitStreak: new Map(habits.map((h) => [h.id, run((d) => byHabit.get(h.id)?.has(d) ?? false)])),
       };
       return known;

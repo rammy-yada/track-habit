@@ -30,8 +30,8 @@ const toLines = (text: string) => text.split("\n").map((line) => line.trim()).fi
 /**
  * Admin → Notifications: the words people are sent — the morning quote, the
  * through-the-day motivation, the "come back" messages — and the two icons
- * that go with them. Anything left empty uses the built-in wording (which
- * comes in English and Nepali; your own text is sent to everyone as written).
+ * that go with them. Quotes and reminder lines written here are mixed in
+ * with the built-in ones (lines in Nepali go to people who chose Nepali).
  */
 export function AdminMessages({ messages, icons, builtIn, problem, devices, people }: Props) {
   const ready = problem === null;
@@ -154,9 +154,6 @@ function ListEditor({ title, note, name, value, onChange, builtIn }: { title: st
     <section className={`${card} p-5`} aria-label={title}>
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="text-sm font-bold">{title}</h2>
-        <button type="button" className={btnSmall} onClick={() => onChange([...new Set([...toLines(value), ...builtIn])].join("\n"))}>
-          Add the built-in ones
-        </button>
         {count > 0 && (
           <button type="button" className={btnSmall} onClick={() => onChange("")}>
             Clear
@@ -168,7 +165,7 @@ function ListEditor({ title, note, name, value, onChange, builtIn }: { title: st
         <span className={`${label} sr-only`}>{title}</span>
         <textarea className={`${input} min-h-[220px] font-mono text-[13px]`} name={name} value={value} onChange={(e) => onChange(e.target.value)} placeholder={builtIn.slice(0, 3).join("\n")} />
       </label>
-      <p className="mt-1 text-xs text-muted">{count ? `${count} of your own` : `Using the ${builtIn.length} built-in ones (English and Nepali)`}</p>
+      <p className="mt-1 text-xs text-muted">{count ? `${count} of your own, mixed in with the ${builtIn.length}+ built-in ones` : `Using the ${builtIn.length}+ built-in ones (English and Nepali)`} · lines written in Nepali go to people who chose Nepali</p>
     </section>
   );
 }

@@ -21,6 +21,30 @@ const QUOTES: Record<Lang, string[]> = {
     "You promised yourself this. Not anyone else — yourself. Keep that promise and watch what it does to your confidence. 🤝",
     "The streak you're building is proof. Proof that you can be trusted by the one person who matters most: you. ⛓️",
     "Do it tired. Do it unsure. Do it badly if you must. Just don't let today be the day you didn't. 👊",
+    "Discipline is choosing what you want most over what you want now. Choose well this morning. 🎯",
+    "You don't rise to your goals. You fall to your habits. Build the floor today. 🧱",
+    "The best time to start was yesterday. The second best is the next five minutes. ⏰",
+    "Don't count the days. Make the days count — starting with this one. 📅",
+    "One percent better every day is thirty-seven times better in a year. Today's one percent is waiting. 📈",
+    "You've already done the hardest part of many things: deciding. Now the easy part — doing. ✅",
+    "Your habits are a letter you write to your future self. What will today's line say? ✉️",
+    "Strong people aren't born. They're built, one ordinary morning at a time. 💪",
+    "Momentum is a lazy friend: it only shows up after you've started. So start. 🚀",
+    "Be the person who does it even when nobody would notice if you didn't. 🌙",
+    "Excuses are always available. So is ten minutes. Pick the ten minutes. ⏳",
+    "The version of you a year from now is decided by the next few hours. Make them proud. 🌟",
+    "Progress is quiet. It looks like nothing, then everything. Keep going. 🌱",
+    "Make it so small you can't say no. Then do it. Then do it again tomorrow. 🔁",
+    "Today isn't about being perfect. It's about not giving up on yourself. ❤️",
+    "Cold mornings make warm results. Get up and get one done. ❄️",
+    "The gap between who you are and who you want to be is called action. Close it a little today. 🌉",
+    "Win the morning, and the rest of the day follows. First habit, first win. 🏁",
+    "Nobody has ever regretted keeping a promise to themselves. Keep one today. 🤝",
+    "Small habits don't add up — they multiply. Feed the compound interest. 💰",
+    "Feelings follow actions. Do the thing, and the motivation will catch up. ⚡",
+    "You are allowed to be both a work in progress and proud of how far you've come. 🌄",
+    "Don't break the chain. Not because of the chain, but because of who you become keeping it. ⛓️",
+    "Start where you are. Use what you have. Do what you can — right now. 🛠️",
   ],
   ne: [
     "तपाईंको सट्टा अरू कसैले गरिदिँदैन। राम्रो कुरा: यो सबै तपाईंकै हो। सूची खोलेर पहिलो काम सुरु गर्नुहोस्। 💪",
@@ -33,6 +57,14 @@ const QUOTES: Record<Lang, string[]> = {
     "एक पटक छुट्यो भने गल्ती, दुई पटक छुट्यो भने बानी। आज नछुटाउने दिन हो। 🔥",
     "पाँच मिनेटको काम एक घण्टाको योजनाभन्दा राम्रो। एउटा बानी रोजेर पाँच मिनेट दिनुहोस्। ⏱️",
     "नराम्ररी भए पनि उपस्थित हुनुहोस्। सानो टिक पनि गनिन्छ, र स्ट्रिक जोगिन्छ। 👊",
+    "आजको सानो प्रयास भोलिको ठूलो परिवर्तन हो। 🌱",
+    "प्रेरणा सुरु गराउँछ, बानीले अगाडि बढाउँछ। 🔥",
+    "पूर्ण हुनु जरुरी छैन, निरन्तर हुनु जरुरी छ। ⛓️",
+    "आफूलाई दिएको वाचा पूरा गर्नुहोस् — आज पनि। 🤝",
+    "सुरु गर्न ठूलो हुनु पर्दैन, तर ठूलो हुन सुरु गर्नु पर्छ। 🚀",
+    "हरेक दिन एक प्रतिशत राम्रो — वर्षको अन्त्यमा अर्कै तपाईं। 📈",
+    "अल्छीलाई जित्ने एउटै उपाय: पहिलो पाँच मिनेट। ⏳",
+    "आजको बिहान जित्नुहोस्, दिन आफैँ पछ्याउँछ। 🏁",
   ],
 };
 
@@ -41,8 +73,18 @@ export type CustomMessages = { quotes: string[]; nudges: string[]; comeback: Rec
 export const NO_CUSTOM: CustomMessages = { quotes: [], nudges: [], comeback: {} };
 
 /** The day's quote for one person: a different one each day, and none again until all of them have been sent (`seed` gives each person their own order). */
+/**
+ * The built-in lines for that language with an admin's own added in (they
+ * don't replace them). An admin's line in Nepali script goes to people who
+ * chose Nepali; any other goes to everyone else.
+ */
+function pool(builtIn: Record<Lang, string[]>, lang: Lang, custom: string[]): string[] {
+  const own = custom.filter((line) => /[\u0900-\u097F]/.test(line) === (lang === "ne"));
+  return [...new Set([...builtIn[lang], ...own])];
+}
+
 export function quoteFor(lang: Lang, date: string, custom: string[] = [], seed = ""): string {
-  return inTurn(custom.length ? custom : QUOTES[lang], `${seed}:quote`, dayTurn(date));
+  return inTurn(pool(QUOTES, lang, custom), `${seed}:quote`, dayTurn(date));
 }
 
 // ── Through-the-day motivation ───────────────────────────────────────────────
@@ -59,6 +101,20 @@ const NUDGES: Record<Lang, string[]> = {
     "The hardest part is the first thirty seconds. After that it's just doing. Go and get the first thirty seconds. ⚡",
     "You don't have to finish everything. You have to start one thing. The rest tends to follow. 💪",
     "Remember why you began. That reason hasn't changed — only the time left today has. Use it. ❤️",
+    "Two minutes. That's all it takes to start. Set a timer and begin before the timer ends. ⏱️",
+    "If you only do one thing in the next hour, make it this. Future-you will remember. 🧠",
+    "Stack it: do one habit right after something you already do — after lunch, after a call, after coffee. 🔗",
+    "Don't aim to finish. Aim to begin. Finishing usually follows. 🚪",
+    "The couch will still be there in ten minutes. Your streak might not be. 🛋️",
+    "Make it easier: shrink the habit. Five push-ups, one page, one glass. Small still counts. 🤏",
+    "You planned this day for a reason. Give that plan ten honest minutes. 📋",
+    "Busy day? That's when habits matter most. Squeeze in the smallest version. 💼",
+    "Every tick is proof you can be trusted — by you. Go collect one. ✅",
+    "Put the phone down after this notification and do one habit. That's the whole plan. 📵",
+    "Halfway through the day is a great time to turn it around. Start now. 🔄",
+    "Do it badly if you have to. A messy rep beats a perfect plan. 💪",
+    "Remember how good it felt last time you finished everything? That's on offer again today. 🌟",
+    "The day is not over. Neither are you. One more tick. 🔥",
   ],
   ne: [
     "आधा दिन गइसक्यो, बाँकी आधा अझै तपाईंकै हो। सूची खोलेर एउटा अहिले नै पूरा गर्नुहोस्। ⏳",
@@ -69,12 +125,18 @@ const NUDGES: Record<Lang, string[]> = {
     "एउटा बानी, अहिले नै। त्यसपछि हेर्नुहोस् कस्तो लाग्छ। 💪",
     "पछि सुरु गर्न कहिल्यै सजिलो हुँदैन। आजको सबैभन्दा राम्रो समय यही हो। 🚀",
     "आजको चेन नटुटाउनुहोस्। तपाईंको स्ट्रिक यिनै केही मिनेटमा भर पर्छ। ⛓️",
+    "दुई मिनेट मात्र — टाइमर राखेर सुरु गर्नुहोस्। ⏱️",
+    "बानीलाई सानो बनाउनुहोस्: एक पाना, एक गिलास, पाँच पुसअप। 🤏",
+    "व्यस्त दिन? सबैभन्दा सानो संस्करण गर्नुहोस्। 💼",
+    "यो सूचनापछि फोन राख्नुहोस् र एउटा बानी गर्नुहोस्। 📵",
+    "दिन सकिएको छैन, तपाईं पनि हार्नुभएको छैन। अर्को एउटा टिक। 🔥",
+    "राम्रो नभए पनि गर्नुहोस् — अधुरो प्रयास पनि गनिन्छ। 💪",
   ],
 };
 
 /** The line for one person's `slot`-th reminder of the day: every line is used once before any comes back. */
 export function nudgeFor(lang: Lang, seed: string, date: string, slot: number, custom: string[] = []): string {
-  return inTurn(custom.length ? custom : NUDGES[lang], `${seed}:nudge`, dayTurn(date) * 2 + slot);
+  return inTurn(pool(NUDGES, lang, custom), `${seed}:nudge`, dayTurn(date) * 2 + slot);
 }
 
 // ── Coming back ──────────────────────────────────────────────────────────────

@@ -17,7 +17,45 @@ export type DayFacts = {
   streakBefore: number;
   /** Ticks yesterday. */
   yesterday: number;
+  /** Every habit there was yesterday was done. */
+  perfectYesterday: boolean;
+  /** Nothing yesterday, after ticking the day before: the moment a streak usually dies. */
+  missedYesterday: boolean;
+  /** Ticks in the last seven days (not today), and in the seven before that. */
+  week: number;
+  lastWeek: number;
+  /** The open habit gone longest without a tick (3+ days), if any. */
+  neglected: { icon: string; name: string; days: number } | null;
+  /** 0 Sunday … 6 Saturday, on the person's own clock. */
+  weekday: number;
 };
+
+const MILESTONES = [7, 14, 21, 30, 50, 60, 75, 100, 150, 200, 365];
+
+/** Something worth saying about today, when there is one: a milestone, yesterday's result, the start of the week. */
+function headline(lang: Lang, name: string, f: DayFacts): string | null {
+  const ne = lang === "ne";
+  const next = f.streakBefore + 1;
+  if (MILESTONES.includes(next)) return ne ? `आज लगातार ${next} दिन पुग्छ, ${name} 🏆` : `Today makes ${next} days in a row, ${name} 🏆`;
+  if (f.perfectYesterday) return ne ? `हिजो सबै ${f.total} बानी पूरा, ${name} 🌟` : `Perfect day yesterday — all ${f.total} done, ${name} 🌟`;
+  if (f.missedYesterday) return ne ? `हिजो छुट्यो। आज दोब्बर गनिन्छ, ${name} 💪` : `Yesterday slipped. Today counts double, ${name} 💪`;
+  if (f.weekday === 1) return ne ? `नयाँ हप्ता, ${name} — राम्रो सुरुवात गरौँ 🗓️` : `New week, ${name} — set the tone today 🗓️`;
+  if (f.weekday === 6 || f.weekday === 0) return ne ? `बिदाको दिन, ${name} — एउटा वाचा पूरा गरौँ ☀️` : `Weekend mode, ${name} — keep one promise ☀️`;
+  return null;
+}
+
+/** One useful observation about their habits, when there is one. */
+function insight(lang: Lang, f: DayFacts): string | null {
+  const ne = lang === "ne";
+  if (f.missedYesterday) return ne ? "💡 कहिल्यै दुई दिन लगातार नछुटाउनुहोस् — आज एउटा टिकले फेरि बाटोमा ल्याउँछ।" : "💡 Never miss twice: one tick today puts you straight back on track.";
+  if (f.neglected) return ne ? `💡 ${f.neglected.icon} ${f.neglected.name} ${f.neglected.days} दिनदेखि टिक भएको छैन — आज त्यहीँबाट सुरु?` : `💡 ${f.neglected.icon} ${f.neglected.name} hasn't been ticked in ${f.neglected.days} days — start there today?`;
+  // the week's score only now and then (Monday, Thursday, Sunday), so it stays news
+  if (![1, 4, 0].includes(f.weekday)) return null;
+  const delta = f.week - f.lastWeek;
+  if (f.lastWeek > 0 && delta > 0) return ne ? `📈 पछिल्लो ७ दिनमा ${f.week} टिक — अघिल्लो हप्ताभन्दा ${delta} बढी।` : `📈 ${f.week} ticks in the last 7 days — ${delta} more than the week before.`;
+  if (f.lastWeek > 0 && delta < 0) return ne ? `📉 पछिल्लो ७ दिनमा ${f.week} टिक, अघिल्लो हप्ता ${f.lastWeek} — आज फर्काउन सकिन्छ।` : `📉 ${f.week} ticks in the last 7 days, ${f.lastWeek} the week before — today can turn it around.`;
+  return null;
+}
 
 const hash = (seed: string) => {
   let h = 2166136261;
@@ -59,7 +97,8 @@ export function morningMessage(lang: Lang, name: string, f: DayFacts, quote: str
       ];
   const plan = f.total === 0 ? (ne ? "आजको सूचीमा अझै बानी छैन — एउटा थप्नुहोस्।" : "Your list is empty — add one habit to begin.") : ne ? `आज ${f.total} बानी: ${openList(f, ne)}` : `Today, ${f.total}: ${openList(f, ne)}`;
   const streak = f.streakBefore >= 2 ? (ne ? ` · 🔥 ${f.streakBefore} दिनको स्ट्रिक` : ` · 🔥 ${f.streakBefore}-day streak`) : "";
-  return { title: inTurn(titles, `${seed}:morning`, turn), body: `${plan}${streak}\n${quote}` };
+  const note = insight(lang, f);
+  return { title: headline(lang, name, f) ?? inTurn(titles, `${seed}:morning`, turn), body: `${plan}${streak}${note ? `\n${note}` : ""}\n${quote}` };
 }
 
 /** Through the day, when habits are still open: what is left and how far along the day is. */
@@ -76,7 +115,9 @@ export function nudgeMessage(lang: Lang, name: string, f: DayFacts, line: string
       ];
   const left = ne ? `बाँकी: ${openList(f, ne)}` : `Left: ${openList(f, ne)}`;
   const risk = f.streakBefore >= 2 && f.done === 0 ? (ne ? ` · ${f.streakBefore} दिनको स्ट्रिक जोगाउन एउटा टिक पुग्छ` : ` · one tick keeps your ${f.streakBefore}-day streak`) : "";
-  return { title: inTurn(titles, `${seed}:nudge`, turn), body: `${left}${risk}\n${line}` };
+  // every other day, a habit that has been left behind gets the spotlight
+  const behind = f.neglected && turn % 2 === 0 ? (ne ? `${f.neglected.icon} ${f.neglected.name}: ${f.neglected.days} दिनदेखि बाँकी` : `${f.neglected.icon} ${f.neglected.name}: ${f.neglected.days} days since the last tick`) : null;
+  return { title: behind ?? inTurn(titles, `${seed}:nudge`, turn), body: `${left}${risk}\n${line}` };
 }
 
 /** At the time someone set for one habit: that habit, its own streak, and the day so far. */
