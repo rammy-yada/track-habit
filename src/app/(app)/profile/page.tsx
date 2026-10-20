@@ -16,7 +16,7 @@ export const metadata: Metadata = { title: "Profile" };
 export default async function ProfilePage() {
   const user = await requireUser();
   const [stats, arcMember] = await Promise.all([getProfileStats(user.id), isArcMember(user)]);
-  // Winter Arc badges: shown to members of the arc, once an admin has made some
+  // Winter Arc badges (the perfect-day milestones and any an admin made): shown to members of the arc
   const badges = arcMember ? await badgesFor(user.id, await arcNumbers(user.id, todayIn(user.timezone))) : [];
   return (
     <>

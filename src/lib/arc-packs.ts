@@ -145,6 +145,8 @@ export async function getArcPanel(user: User) {
     pack,
     packs: packs.map(({ id, name, icon, tagline, habits: list }) => ({ id, name, icon, tagline, habits: list.map((h) => `${h.icon} ${h.name}`) })),
     habits: habits.map((h) => ({ id: h.id, name: decodeEntities(h.name), icon: h.icon, doneToday: done.get(h.id)?.has(today) ?? false })),
+    /** The pack's habits this member has taken out (they can put them back). */
+    missing: pack ? (packs.find((p) => p.id === pack.id)?.habits ?? []).filter((t) => !habits.some((h) => decodeEntities(h.name).toLowerCase() === decodeEntities(t.name).toLowerCase())).map((t) => ({ name: decodeEntities(t.name), icon: t.icon })) : [],
     perfectDays: season.live ? countPerfectDays(habits, done, season.start, today) : 0,
     /** The same count without today, which is still live on the device. */
     perfectBefore: season.live ? countPerfectDays(habits, done, season.start, addDays(today, -1)) : 0,

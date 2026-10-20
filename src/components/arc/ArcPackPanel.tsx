@@ -4,13 +4,14 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { motion } from "motion/react";
 import { ArcSurprise, surpriseSeen } from "@/components/dashboard/ArcSurprise";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { btnSmall, card, eyebrow } from "@/components/ui/styles";
-import { choosePack } from "@/lib/actions/arc";
+import { btnSmall, card, eyebrow, input } from "@/components/ui/styles";
+import { addPackHabit, choosePack, removePackHabit } from "@/lib/actions/arc";
 import { MILESTONES } from "@/lib/arc-config";
 import type { getArcPanel } from "@/lib/arc-packs";
 import { resolveDone, setDone, settle, useOfflineQueue, whenOnline } from "@/lib/offline";
 
 type Panel = Awaited<ReturnType<typeof getArcPanel>>;
+const btnPrimarySmall = "inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand-solid px-3 py-1.5 text-xs font-semibold text-on-brand transition-colors hover:bg-brand-solid-hover disabled:opacity-50";
 
 /**
  * Winter Arc members only: the pack they are on, today's progress through it,
@@ -48,6 +49,19 @@ export function ArcPackPanel({ panel }: { panel: Panel }) {
     wasAllDone.current = allDone;
   }, [allDone, panel.today]);
 
+  // editing the pack
+  const [editing, setEditing] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newIcon, setNewIcon] = useState("✅");
+  function run(task: () => Promise<{ ok: true } | { ok: false; error: string }>, then?: () => void) {
+    setError(null);
+    startTransition(async () => {
+      const result = await whenOnline(task);
+      if (!result.ok) setError(result.error);
+      else then?.();
+    });
+  }
+
   function choose(id: number) {
     setError(null);
     startTransition(async () => {
@@ -66,10 +80,19 @@ export function ArcPackPanel({ panel }: { panel: Panel }) {
           <p className={eyebrow}>Members only</p>
           <h2 className="font-display text-lg font-bold tracking-tight">{pack ? `${pack.icon} ${pack.name} pack` : "Choose your pack"}</h2>
         </div>
-        {pack && packs.length > 1 && (
-          <button type="button" className={btnSmall} onClick={() => setChoosing((v) => !v)} aria-expanded={choosing}>
-            {choosing ? "Close" : "Change pack"}
-          </button>
+        {pack && (
+          <div className="flex gap-1.5">
+            {!choosing && (
+              <button type="button" className={editing ? btnPrimarySmall : btnSmall} onClick={() => setEditing((v) => !v)} aria-expanded={editing} data-edit-pack>
+                {editing ? "Done" : "Edit pack"}
+              </button>
+            )}
+            {packs.length > 1 && !editing && (
+              <button type="button" className={btnSmall} onClick={() => setChoosing((v) => !v)} aria-expanded={choosing}>
+                {choosing ? "Close" : "Change pack"}
+              </button>
+            )}
+          </div>
         )}
       </div>
 
@@ -79,7 +102,57 @@ export function ArcPackPanel({ panel }: { panel: Panel }) {
         </p>
       )}
 
-      {pack && !choosing && (
+      {/* editing: take habits out, put the pack's own back, or add one of your own */}
+      {pack && editing && (
+        <div className="mt-4" data-pack-editor>
+          <ul className="space-y-2">
+            {habits.map((h) => (
+              <li key={h.id} className="flex min-h-[50px] items-center gap-3 rounded-xl border border-line px-3.5 py-2">
+                <span aria-hidden className="text-lg">
+                  {h.icon}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-sm font-semibold">{h.name}</span>
+                <button type="button" className={`${btnSmall} hover:!border-bad hover:!text-bad`} disabled={pending || habits.length <= 1} onClick={() => run(() => removePackHabit(h.id))} data-remove-pack-habit>
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+          {panel.missing.length > 0 && (
+            <div className="mt-4">
+              <p className="text-xs font-semibold text-muted">Taken out — tap to put back</p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {panel.missing.map((m) => (
+                  <button key={m.name} type="button" disabled={pending} onClick={() => run(() => addPackHabit(m.name, m.icon))} className="rounded-full border border-dashed border-line px-3 py-1.5 text-xs font-medium text-muted hover:border-brand hover:text-brand">
+                    + {m.icon} {m.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          <form
+            className="mt-4 flex gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const name = newName.trim();
+              if (!name) return;
+              run(() => addPackHabit(name, newIcon), () => {
+                setNewName("");
+                setNewIcon("✅");
+              });
+            }}
+          >
+            <input className={`${input} !w-14 flex-none !px-0 text-center text-lg`} value={newIcon} maxLength={4} onChange={(e) => setNewIcon(e.target.value)} aria-label="Icon (an emoji)" name="pack_habit_icon" />
+            <input className={`${input} !w-auto min-w-0 flex-1`} value={newName} maxLength={60} onChange={(e) => setNewName(e.target.value)} placeholder="Add your own habit…" aria-label="New habit for your pack" name="pack_habit_name" />
+            <button type="submit" className={`${btnPrimarySmall} flex-none px-4`} disabled={pending || !newName.trim()}>
+              Add
+            </button>
+          </form>
+          <p className="mt-2 text-xs text-muted">Removing a habit keeps its past check-ins. Perfect days count the habits in your pack on each day.</p>
+        </div>
+      )}
+
+      {pack && !choosing && !editing && (
         <>
           <div className="mt-4 flex items-center gap-3">
             <div className="h-2 flex-1 overflow-hidden rounded-full bg-line">

@@ -1,4 +1,5 @@
 import "server-only";
+import { dayLevel } from "./day-level";
 import { query, queryOne } from "./db";
 import { arcSeason, isArcMember } from "./arc";
 import { countPerfectDays, getMemberPack, getOpenPacks } from "./arc-packs";
@@ -74,6 +75,7 @@ export async function getCategories(): Promise<Category[]> {
 
 // ── Dashboard ────────────────────────────────────────────────────────────────
 
+
 export async function getDashboard(user: User) {
   const today = todayIn(user.timezone);
   const [habits, logs, totals, todayNotes, categories, packs] = await Promise.all([
@@ -144,6 +146,17 @@ export async function getDashboard(user: User) {
     return { label: formatDate(date, { month: "short", day: "numeric" }), value: perDay.get(date) ?? 0 };
   });
 
+  // Every day since the account was opened (up to a year), as how much of the
+  // list got done: 0 nothing … 4 everything. Today is added live on the device.
+  const opened = String(user.created_at).slice(0, 10);
+  const from = opened > addDays(today, -365) ? (opened > today ? today : opened) : addDays(today, -365);
+  const levels: number[] = [];
+  for (let day = from; day < today; day = addDays(day, 1)) {
+    const due = habits.filter((h) => h.created <= day).length;
+    levels.push(dayLevel(perDay.get(day) ?? 0, due));
+  }
+  const calendar = { from, levels };
+
   // The Winter Arc section: which pack, how many perfect days so far (not
   // counting today, which is still live on the client), and the surprises.
   let arc: { pack: string | null; day: number; totalDays: number; perfectBefore: number; surprises: string[] } | null = null;
@@ -165,6 +178,7 @@ export async function getDashboard(user: User) {
     daysInMonth: daysInMonth(Number(today.slice(0, 4)), Number(today.slice(5, 7))),
     habits: views,
     trend,
+    calendar,
     categories,
   };
 }

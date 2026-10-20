@@ -11,6 +11,7 @@ import { ArcTips } from "@/components/arc/ArcTips";
 import { WorkoutPicker } from "@/components/arc/WorkoutPicker";
 import { getArc } from "@/lib/arc";
 import { getArcPanel } from "@/lib/arc-packs";
+import { tipContext } from "@/lib/arc-tip-context";
 import { getArcSettings } from "@/lib/arc-settings";
 import { requireUser } from "@/lib/auth";
 import { diffDays, formatDate, todayIn } from "@/lib/dates";
@@ -29,13 +30,14 @@ export default async function ArcPage() {
   const { season } = arc;
   const member = arc.me !== null;
   // members only: their pack, goals and quote
-  const [panel, goals, mine] = member
+  const [panel, goals, mine, tipsFor] = member
     ? await Promise.all([
         getArcPanel(user),
         query<{ id: number; text: string; done: number }>("SELECT id, text, done FROM arc_goals WHERE user_id = ? AND season = ? ORDER BY id", [user.id, season.year]),
         queryOne<{ quote: string }>("SELECT quote FROM winter_arc_members WHERE user_id = ? AND season = ?", [user.id, season.year]),
+        tipContext(user),
       ])
-    : [null, [], null];
+    : [null, [], null, { situations: [], neglected: null }];
   const { intro } = await getArcSettings();
 
   return (
@@ -63,7 +65,7 @@ export default async function ArcPage() {
         }
         tips={
           <div className="space-y-8">
-            <ArcTips dayNumber={season.live ? season.day - 1 : diffDays("2026-01-01", today)} />
+            <ArcTips dayNumber={season.live ? season.day - 1 : diffDays("2026-01-01", today)} situations={tipsFor.situations} neglected={tipsFor.neglected} />
             <WorkoutPicker existing={habits.map((h) => decodeEntities(h.name))} />
           </div>
         }

@@ -1,11 +1,13 @@
 import { ImageResponse } from "next/og";
 import { NextResponse, type NextRequest } from "next/server";
+import QRCode from "qrcode";
 import sharp from "sharp";
 import { arcSeason, getArc } from "@/lib/arc";
 import { currentUser, type User } from "@/lib/auth";
 import { SHARE_HASHTAGS } from "@/lib/constants";
 import { todayIn } from "@/lib/dates";
 import { queryOne } from "@/lib/db";
+import { SITE_URL } from "@/lib/site";
 import { initial } from "@/lib/text";
 import { overLimit } from "@/lib/throttle";
 
@@ -40,6 +42,7 @@ export async function GET(request: NextRequest) {
   const ticks = Array.from({ length: 41 }, (_, i) => i / 40 <= progress);
   const line = !me ? "I'm in." : me.streak >= 7 ? `${me.streak} days without missing one.` : me.rank <= 3 ? "On the podium. Staying there." : "Showing up. Every day.";
 
+  const qr = await siteQr();
   return new ImageResponse(
     (
       <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "radial-gradient(circle at 50% 22%, #4a4a4a 0%, #1a1a1a 32%, #050505 62%)", color: "#fff", fontFamily: "sans-serif" }}>
@@ -88,9 +91,12 @@ export async function GET(request: NextRequest) {
               ))}
             </div>
           )}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 44 }}>
-            <div style={{ display: "flex", fontSize: 34, letterSpacing: 4 }}>{SHARE_HASHTAGS.map((tag) => `#${tag}`).join("  ")}</div>
-            <div style={{ display: "flex", fontSize: 30, letterSpacing: 8, color: "#bdbdbd" }}>HABITFLOW</div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: 40 }}>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <div style={{ display: "flex", fontSize: 30, letterSpacing: 8, color: "#bdbdbd" }}>HABITFLOW</div>
+              <div style={{ display: "flex", fontSize: 30, letterSpacing: 3, marginTop: 10 }}>{SHARE_HASHTAGS.map((tag) => `#${tag}`).join("  ")}</div>
+            </div>
+            <SiteCode qr={qr} />
           </div>
         </div>
       </div>
@@ -117,6 +123,7 @@ async function quoteCard(user: User) {
   // longer lines get smaller letters, so the quote always fits
   const size = quote.length > 110 ? 62 : quote.length > 70 ? 76 : quote.length > 40 ? 92 : 112;
 
+  const qr = await siteQr();
   return new ImageResponse(
     (
       <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", background: "linear-gradient(180deg, #2b2b2b 0%, #0a0a0a 46%, #000 100%)", color: "#fff", padding: 84, fontFamily: "sans-serif" }}>
@@ -143,13 +150,43 @@ async function quoteCard(user: User) {
               <div style={{ display: "flex", fontSize: 30, color: "#bdbdbd", marginTop: 4 }}>{`@${user.username}`}</div>
             </div>
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 44 }}>
-            <div style={{ display: "flex", fontSize: 34, letterSpacing: 4 }}>{SHARE_HASHTAGS.map((tag) => `#${tag}`).join("  ")}</div>
-            <div style={{ display: "flex", fontSize: 30, letterSpacing: 8, color: "#bdbdbd" }}>HABITFLOW</div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: 40 }}>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <div style={{ display: "flex", fontSize: 30, letterSpacing: 8, color: "#bdbdbd" }}>HABITFLOW</div>
+              <div style={{ display: "flex", fontSize: 30, letterSpacing: 3, marginTop: 10 }}>{SHARE_HASHTAGS.map((tag) => `#${tag}`).join("  ")}</div>
+            </div>
+            <SiteCode qr={qr} />
           </div>
         </div>
       </div>
     ),
     { width: 1080, height: 1350, headers: { "Cache-Control": "private, no-store" } },
+  );
+}
+
+/** Where the code on a shared picture leads: the Winter Arc page, so whoever scans it can join. */
+const SHARE_URL = `${SITE_URL}/winter-arc`;
+
+/** The code as a picture (black on white, the way every phone camera reads it best). Made once, then remembered. */
+let qrCache: Promise<string> | null = null;
+function siteQr(): Promise<string> {
+  qrCache ??= QRCode.toDataURL(SHARE_URL, { margin: 1, width: 300, errorCorrectionLevel: "M", color: { dark: "#000000", light: "#ffffff" } }).catch((err) => {
+    qrCache = null;
+    throw err;
+  });
+  return qrCache.catch(() => "");
+}
+
+/** A small scannable code with the site's address under it, for the corner of a shared picture. */
+function SiteCode({ qr }: { qr: string }) {
+  if (!qr) return <div style={{ display: "flex", fontSize: 24, color: "#bdbdbd" }}>{SITE_URL.replace(/^https?:\/\//, "")}</div>;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+      <div style={{ display: "flex", padding: 8, borderRadius: 18, background: "#fff" }}>
+        {/* eslint-disable-next-line @next/next/no-img-element -- drawn into the generated picture */}
+        <img src={qr} width={132} height={132} alt="" />
+      </div>
+      <div style={{ display: "flex", fontSize: 19, color: "#bdbdbd", marginTop: 10, letterSpacing: 1 }}>{SITE_URL.replace(/^https?:\/\//, "")}</div>
+    </div>
   );
 }

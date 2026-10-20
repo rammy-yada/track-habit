@@ -1,4 +1,5 @@
 import "server-only";
+import { badgeIconsFor } from "./badges";
 import { query, queryOne } from "./db";
 import type { User } from "./auth";
 import { addDays, diffDays, formatDate, todayIn } from "./dates";
@@ -80,6 +81,8 @@ export async function getArc(user: User) {
     query<{ log_date: string; pts: number | string }>(`SELECT log_date, pts FROM (${DAILY_POINTS}) d WHERE user_id = ?`, [season.start, season.end, user.id]),
   ]);
 
+  // badges on the rows that are shown (the top 30)
+  const icons = await badgeIconsFor(rows.slice(0, 30).map((r) => r.id), today).catch(() => new Map<number, string[]>());
   const board = rows.map((row, i) => ({
     rank: i + 1,
     name: publicName(row.full_name),
@@ -89,6 +92,7 @@ export async function getArc(user: User) {
     points: Number(row.points),
     activeDays: Number(row.active_days),
     isMe: row.id === user.id,
+    badges: icons.get(row.id) ?? [],
   }));
   const mine = board.find((entry) => entry.isMe) ?? null;
 

@@ -25,6 +25,7 @@ export function ArcQuote({ member, saved, day, totalDays, live, photoVersion }: 
   const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
   const [share, setShare] = useState(false);
   const [working, setWorking] = useState(false);
+  const [allIdeas, setAllIdeas] = useState(false);
   const [saving, startTransition] = useTransition();
   useEffect(() => setShare(canShareFiles()), []);
 
@@ -89,13 +90,17 @@ export function ArcQuote({ member, saved, day, totalDays, live, photoVersion }: 
             {text.length}/{MAX}
           </span>
         </div>
-        <div className="mt-3 flex flex-wrap gap-1.5">
+        <div className="mt-3 flex flex-wrap gap-1.5" data-quote-ideas>
           <span className="py-1 text-xs text-muted">Ideas:</span>
-          {QUOTE_IDEAS.map((idea) => (
+          {/* three to start with; the rest on request, so the box isn't buried under them */}
+          {(allIdeas ? QUOTE_IDEAS : QUOTE_IDEAS.slice(0, 3)).map((idea) => (
             <button key={idea} type="button" onClick={() => setText(idea)} className="rounded-full border border-line px-3 py-1.5 text-xs font-medium text-muted hover:border-brand hover:text-brand">
               {idea}
             </button>
           ))}
+          <button type="button" onClick={() => setAllIdeas((all) => !all)} className="rounded-full px-2.5 py-1.5 text-xs font-semibold text-brand hover:underline" aria-expanded={allIdeas} data-more-ideas>
+            {allIdeas ? "Show fewer" : `Show ${QUOTE_IDEAS.length - 3} more`}
+          </button>
         </div>
         <button type="button" className={`${btnPrimary} mt-4 w-full sm:w-auto`} onClick={save} disabled={saving || !dirty}>
           {saving ? "Saving…" : dirty ? "Save and update the picture" : "Saved"}

@@ -7,7 +7,7 @@ import { getMemberPack, givePackHabits } from "../arc-packs";
 import { arcNumbers, badgesFor } from "../badges";
 import { execute, query, queryOne } from "../db";
 import { ageOn, countryName, flag, genderLabel } from "../people";
-import { decodeEntities } from "../text";
+import { clean, decodeEntities } from "../text";
 import { formatTimestamp, todayIn } from "../dates";
 import { toId } from "../validation";
 import { workoutById, WORKOUTS } from "../workouts";
@@ -95,6 +95,65 @@ export async function choosePack(packIdInput: number): Promise<Result> {
   if (current) await execute("UPDATE habits SET is_active = 0 WHERE user_id = ? AND arc_season = ? AND arc_habit_id IN (SELECT id FROM arc_pack_habits WHERE pack_id = ?)", [user.id, year, current.id]);
   await execute("UPDATE winter_arc_members SET pack_id = ? WHERE user_id = ? AND season = ?", [pack.id, user.id, year]);
   await givePackHabits(user.id, pack.id, year);
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+// ── Editing your own pack ────────────────────────────────────────────────────
+// A member can shape the pack they chose: take a habit out (its past
+// check-ins are kept, and it can be put back) or add one of their own. The
+// habits in the pack are what perfect days and the day's surprise count.
+
+const PACK_MAX = 12;
+
+/** Takes one habit out of the member's Winter Arc pack. */
+export async function removePackHabit(habitIdInput: number): Promise<Result> {
+  const user = await requireUser();
+  const habitId = toId(habitIdInput);
+  const { year } = arcSeason(todayIn(user.timezone));
+  if (!habitId) return { ok: false, error: "Invalid request." };
+  const left = await queryOne<{ n: number | string }>("SELECT COUNT(*) AS n FROM habits WHERE user_id = ? AND is_active = 1 AND arc_season = ?", [user.id, year]);
+  if (Number(left?.n ?? 0) <= 1) return { ok: false, error: "Keep at least one habit in your pack." };
+  const done = await execute("UPDATE habits SET is_active = 0 WHERE id = ? AND user_id = ? AND arc_season = ? AND is_active = 1", [habitId, user.id, year]);
+  if (!done.rowCount) return { ok: false, error: "That habit isn't in your pack." };
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/**
+ * Adds a habit to the member's pack: one they type, or one of the pack's own
+ * they took out earlier. A habit they already have with that name is moved
+ * into the pack (or brought back, with its history) rather than duplicated.
+ */
+export async function addPackHabit(nameInput: string, iconInput: string): Promise<Result> {
+  const user = await requireUser();
+  const name = clean(nameInput, 200);
+  const icon = clean(iconInput, 10) || "✅";
+  const { year } = arcSeason(todayIn(user.timezone));
+  if (!name) return { ok: false, error: "Give the habit a name." };
+  if (name.length > 60) return { ok: false, error: "Keep the name under 60 characters." };
+  const member = await queryOne<{ pack_id: number | null }>("SELECT pack_id FROM winter_arc_members WHERE user_id = ? AND season = ?", [user.id, year]);
+  if (!member) return { ok: false, error: "Join the Winter Arc first." };
+  const inPack = await queryOne<{ n: number | string }>("SELECT COUNT(*) AS n FROM habits WHERE user_id = ? AND is_active = 1 AND arc_season = ?", [user.id, year]);
+  if (Number(inPack?.n ?? 0) >= PACK_MAX) return { ok: false, error: `A pack holds up to ${PACK_MAX} habits. Take one out first.` };
+
+  const active = await queryOne<{ id: number; arc_season: number | null }>("SELECT id, arc_season FROM habits WHERE user_id = ? AND is_active = 1 AND LOWER(name) = LOWER(?) LIMIT 1", [user.id, name]);
+  if (active?.arc_season === year) return { ok: false, error: "That habit is already in your pack." };
+  if (active) {
+    await execute("UPDATE habits SET arc_season = ? WHERE id = ?", [year, active.id]);
+  } else {
+    const earlier = await queryOne<{ id: number }>("SELECT id FROM habits WHERE user_id = ? AND is_active = 0 AND arc_season = ? AND LOWER(name) = LOWER(?) ORDER BY id DESC LIMIT 1", [user.id, year, name]);
+    if (earlier) {
+      await execute("UPDATE habits SET is_active = 1, icon = ? WHERE id = ?", [icon, earlier.id]);
+    } else {
+      const total = await queryOne<{ n: number | string }>("SELECT COUNT(*) AS n FROM habits WHERE user_id = ? AND is_active = 1", [user.id]);
+      if (Number(total?.n ?? 0) >= 50) return { ok: false, error: "Maximum 50 habits allowed." };
+      // one of the pack's own habits keeps its link to the pack
+      const template = member.pack_id ? await queryOne<{ id: number }>("SELECT id FROM arc_pack_habits WHERE pack_id = ? AND LOWER(name) = LOWER(?)", [member.pack_id, name]) : null;
+      const category = (await queryOne("SELECT id FROM categories WHERE name = 'Health'")) ? "Health" : "General";
+      await execute("INSERT INTO habits (user_id, name, description, category, icon, color, frequency, target_count, arc_habit_id, arc_season) VALUES (?, ?, '', ?, ?, '#64748b', 'daily', 1, ?, ?)", [user.id, name, category, icon, template?.id ?? null, year]);
+    }
+  }
   revalidatePath("/", "layout");
   return { ok: true };
 }

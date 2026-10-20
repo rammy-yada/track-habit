@@ -200,6 +200,12 @@ export function ArcScreen({ arc, compact = false }: { arc: Arc; /** a short bann
                     <span className="flex items-center gap-1.5 truncate text-[13px] font-semibold">
                       {entry.name}
                       {entry.isMe && <span className="rounded-sm bg-white px-1.5 py-px text-[9px] font-bold uppercase tracking-wider text-black">You</span>}
+                      {/* the latest three badges earned; the rest are in their profile */}
+                      {entry.badges.length > 0 && (
+                        <span className="shrink-0 text-[12px] leading-none" title={`${entry.badges.length} ${entry.badges.length === 1 ? "badge" : "badges"}`} data-row-badges>
+                          {entry.badges.slice(-3).join("")}
+                        </span>
+                      )}
                     </span>
                     <span className="block truncate text-[11px] text-white/50">
                       @{entry.username} · {entry.activeDays} active {entry.activeDays === 1 ? "day" : "days"}
@@ -286,6 +292,11 @@ function PodiumSpot({ entry, place, first, onView }: { entry: Entry | undefined;
           {entry?.isMe && <span className="ml-1 text-white/60">(you)</span>}
         </span>
         <span className="text-[11px] font-medium tabular-nums text-white/60">{entry ? <><AnimatedNumber value={entry.points} /> pts</> : "—"}</span>
+        {entry && entry.badges.length > 0 && (
+          <span className="mt-0.5 text-[12px] leading-none" title={`${entry.badges.length} ${entry.badges.length === 1 ? "badge" : "badges"}`} data-row-badges>
+            {entry.badges.slice(-3).join("")}
+          </span>
+        )}
       </motion.div>
 
       {/* the block rises out of the floor; first place gets a moving glint */}

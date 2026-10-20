@@ -1,5 +1,7 @@
 "use client";
 
+import { dayLevel } from "@/lib/day-level";
+import { DaysCalendar } from "./DaysCalendar";
 import { useCallback, useEffect, useOptimistic, useRef, useState, useTransition } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
@@ -64,7 +66,6 @@ export function HabitBoard({ data }: { data: Awaited<ReturnType<typeof getDashbo
   const allDone = total > 0 && doneCount === total;
   const visible = habits.filter((h) => filter === "all" || (filter === "done") === h.doneToday);
 
-  const todayDay = Number(data.today.slice(8));
 
   // The number on the app's icon: habits still open today (none when done).
   useEffect(() => {
@@ -375,45 +376,7 @@ export function HabitBoard({ data }: { data: Awaited<ReturnType<typeof getDashbo
               </section>
             </Reveal>
             <Reveal delay={0.08} className="min-w-0">
-              <section className={`${card} p-5`}>
-                <div className="mb-3 flex items-baseline justify-between gap-3">
-                  <h2 className="text-sm font-bold">{data.monthLabel}</h2>
-                  <Link href="/monthly" className="-my-1.5 py-1.5 text-xs font-semibold text-brand hover:underline">
-                    Open monthly view →
-                  </Link>
-                </div>
-                <div className="overflow-x-auto pb-1">
-                  <table className="border-separate border-spacing-y-1.5 text-xs">
-                    <tbody>
-                      {habits.map((h, row) => {
-                        const days = new Set(h.monthDays);
-                        if (h.doneToday) days.add(todayDay);
-                        return (
-                          <tr key={h.id}>
-                            <th scope="row" className="max-w-[120px] truncate pr-3 text-left font-medium text-muted">
-                              <span aria-hidden>{h.icon}</span> {h.name}
-                            </th>
-                            {Array.from({ length: data.daysInMonth }, (_, i) => {
-                              const day = i + 1;
-                              const done = days.has(day);
-                              return (
-                                <td key={day} className="px-[1.5px]">
-                                  <span
-                                    title={`${data.monthLabel.split(" ")[0]} ${day}${day > todayDay ? "" : done ? " — done" : " — missed"}`}
-                                    className={`cell-in block h-3 w-3 rounded-[4px] ${day === todayDay ? "ring-1 ring-brand ring-offset-1 ring-offset-card" : ""} ${day > todayDay ? "border border-line" : done ? "" : "bg-raised"}`}
-                                    style={{ ["--d" as string]: row * 2 + i, background: done ? h.color : undefined }}
-                                  />
-                                </td>
-                              );
-                            })}
-                            <td className="pl-3 text-right font-semibold tabular-nums text-ink">{Math.round((days.size / todayDay) * 100)}%</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
+              <DaysCalendar from={data.calendar.from} levels={data.calendar.levels} today={data.today} todayLevel={dayLevel(doneCount, total)} />
             </Reveal>
           </div>
         )}
