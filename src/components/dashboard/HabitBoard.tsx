@@ -1,5 +1,6 @@
 "use client";
 
+import { InstallApp } from "@/components/InstallApp";
 import { dayLevel } from "@/lib/day-level";
 import { DaysCalendar } from "./DaysCalendar";
 import { useCallback, useEffect, useOptimistic, useRef, useState, useTransition } from "react";
@@ -380,6 +381,11 @@ export function HabitBoard({ data }: { data: Awaited<ReturnType<typeof getDashbo
             </Reveal>
           </div>
         )}
+      </div>
+
+      {/* members on a phone who haven't installed yet: installing is what makes reminders work (it floats above the tab bar) */}
+      <div className="[&_[data-install=banner]]:bottom-[calc(env(safe-area-inset-bottom)+84px)]">
+        <InstallApp variant="banner" />
       </div>
 
       <HabitFormModal open={adding} onClose={closeAdd} categories={data.categories} />

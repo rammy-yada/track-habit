@@ -2,6 +2,7 @@
 
 import { Fragment } from "react";
 import Link from "next/link";
+import { InstallApp } from "@/components/InstallApp";
 import { SiteFooter } from "@/components/PublicPage";
 import { FAQ } from "@/lib/faq";
 import { motion } from "motion/react";
@@ -76,11 +77,16 @@ export function Landing({ arc }: { arc: { live: boolean; daysLeft: number; start
           <Link href="/login" className="hidden rounded-xl px-4 py-2.5 text-sm font-semibold text-muted transition-colors hover:text-ink sm:block">
             Sign in
           </Link>
+          {/* on a computer, in the header; on a phone, the card at the bottom of the screen */}
+          <span className="hidden md:inline-flex">
+            <InstallApp variant="pill" />
+          </span>
           <Link href="/register" className={btnPrimary}>
             Get Started
           </Link>
         </nav>
       </header>
+      <InstallApp variant="banner" />
 
       <main className="relative flex-1">
         {/* the current, fading out toward the bottom of the hero */}

@@ -16,6 +16,12 @@ const emit = () => listeners.forEach((listener) => listener());
 export function startPwa() {
   if (started || typeof window === "undefined") return;
   started = true;
+  // an offer that came before this code loaded (caught by the small script in <head>)
+  const early = (window as Window & { __installOffer?: InstallPromptEvent }).__installOffer;
+  if (early) {
+    deferred = early;
+    emit();
+  }
 
   window.addEventListener("beforeinstallprompt", (event) => {
     event.preventDefault(); // we show our own button instead of the browser's banner
@@ -55,14 +61,22 @@ export async function promptInstall(): Promise<boolean> {
   return outcome === "accepted";
 }
 
-export type Device = { platform: "ios" | "android" | "desktop"; installed: boolean; secure: boolean };
+/**
+ * browser — "safari": the iPhone's own browser; "chrome-ios" (and other iPhone
+ * browsers): installable from their share button; "in-app": the browser
+ * inside Instagram, Facebook, TikTok and the like, which can't install at all;
+ * "samsung": Samsung Internet; "other": everything else.
+ */
+export type Device = { platform: "ios" | "android" | "desktop"; installed: boolean; secure: boolean; browser: "safari" | "chrome-ios" | "in-app" | "samsung" | "other" };
 
 export function detectDevice(): Device {
   const ua = navigator.userAgent;
   // iPadOS reports itself as a Mac; touch points give it away.
   const ios = /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
   const installed = window.matchMedia("(display-mode: standalone)").matches || (navigator as Navigator & { standalone?: boolean }).standalone === true;
-  return { platform: ios ? "ios" : /Android/i.test(ua) ? "android" : "desktop", installed, secure: window.isSecureContext };
+  const inApp = /FBAN|FBAV|FB_IAB|Instagram|Line\/|Twitter|TikTok|musical_ly|Snapchat|LinkedInApp|GSA\/|Messenger|Pinterest|; wv\)/i.test(ua);
+  const browser = inApp ? "in-app" : ios ? (/CriOS|FxiOS|EdgiOS|OPiOS/.test(ua) ? "chrome-ios" : "safari") : /SamsungBrowser/i.test(ua) ? "samsung" : "other";
+  return { platform: ios ? "ios" : /Android/i.test(ua) ? "android" : "desktop", installed, secure: window.isSecureContext, browser };
 }
 
 // ── Welcome guide open/close plumbing ────────────────────────────────────────

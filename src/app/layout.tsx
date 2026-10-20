@@ -67,6 +67,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="en" suppressHydrationWarning className={`${geist.variable} ${geistMono.variable} ${bricolage.variable} ${italiana.variable}`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        {/* Android/Chrome offer installing once, early — often before the app's own code has loaded. Kept here for the "Install app" button. */}
+        <script dangerouslySetInnerHTML={{ __html: `addEventListener("beforeinstallprompt",function(e){e.preventDefault();window.__installOffer=e})` }} />
         <link rel="manifest" href="/manifest.webmanifest" crossOrigin="use-credentials" />
       </head>
       <body>

@@ -8,7 +8,8 @@ import { Burst } from "@/components/dashboard/effects";
 import { Modal } from "@/components/ui/Modal";
 import { btnGhost, btnPrimary } from "@/components/ui/styles";
 import { addWorkoutHabit } from "@/lib/actions/arc";
-import { detectDevice, guideSeen, markGuideSeen, onOpenGuide, promptInstall, useCanInstall, type Device } from "@/lib/pwa";
+import { detectDevice, guideSeen, markGuideSeen, onOpenGuide, useCanInstall, type Device } from "@/lib/pwa";
+import { InstallApp } from "@/components/InstallApp";
 import { WORKOUTS } from "@/lib/workouts";
 
 type Props = { firstName: string; pushKey: string | null; arc: { live: boolean; member: boolean } };
@@ -26,7 +27,7 @@ const STARTERS = ["water-3l", "steps-10k", "sleep-11", "wake-early", "cold-showe
 export function WelcomeGuide({ firstName, pushKey, arc }: Props) {
   const [open, setOpen] = useState(false);
   const [index, setIndex] = useState(0);
-  const [device, setDevice] = useState<Device>({ platform: "desktop", installed: false, secure: true });
+  const [device, setDevice] = useState<Device>({ platform: "desktop", installed: false, secure: true, browser: "other" });
   const canInstall = useCanInstall();
   const pathname = usePathname();
   const router = useRouter();
@@ -217,75 +218,20 @@ export function WelcomeGuide({ firstName, pushKey, arc }: Props) {
 }
 
 function InstallStep({ device, canInstall }: { device: Device; canInstall: boolean }) {
-  const [result, setResult] = useState<"idle" | "installed" | "dismissed">("idle");
 
-  if (result === "installed") return <p>Installed. Look for the HabitFlow icon on your home screen or app list.</p>;
   if (device.installed) return <p>You opened HabitFlow from its own icon, so it&apos;s already installed on this device. Nothing more to do.</p>;
 
   const benefits = <p className="mt-3">Installed, it opens full screen from its own icon like any other app — and it works offline: ticks you make without a connection are kept on the device and sync when you&apos;re back online.</p>;
 
-  if (canInstall) {
-    return (
-      <>
-        <p>Your browser can install HabitFlow directly.</p>
-        <motion.button type="button" className={`${btnPrimary} mt-3`} whileTap={{ scale: 0.95 }} onClick={async () => setResult((await promptInstall()) ? "installed" : "dismissed")}>
-          Install app
-        </motion.button>
-        {benefits}
-      </>
-    );
-  }
-
-  const list = "list-decimal space-y-1.5 pl-5 marker:font-semibold marker:text-brand";
+  // one button for every device: the real install dialog where the browser allows it, the exact steps where it doesn't
   return (
     <>
-      {device.platform === "ios" && (
-        <ol className={list}>
-          <li>
-            Tap the <b className="text-ink">Share</b> button <ShareIcon /> in the browser&apos;s toolbar.
-          </li>
-          <li>
-            Scroll down and tap <b className="text-ink">Add to Home Screen</b>.
-          </li>
-          <li>
-            Tap <b className="text-ink">Add</b>.
-          </li>
-        </ol>
-      )}
-      {device.platform === "android" && (
-        <ol className={list}>
-          <li>
-            Open the browser menu <b className="text-ink">⋮</b> at the top right.
-          </li>
-          <li>
-            Tap <b className="text-ink">Install app</b> (or <b className="text-ink">Add to Home screen</b>).
-          </li>
-          <li>
-            Confirm with <b className="text-ink">Install</b>.
-          </li>
-        </ol>
-      )}
-      {device.platform === "desktop" && (
-        <ol className={list}>
-          <li>
-            <b className="text-ink">Chrome or Edge:</b> click the install icon at the right end of the address bar.
-          </li>
-          <li>
-            <b className="text-ink">Safari on Mac:</b> File → Add to Dock.
-          </li>
-          <li>On your phone, open this same address and tap the ? button for phone steps.</li>
-        </ol>
-      )}
-      {result === "dismissed" && <p className="mt-3">No problem — you can install later from the browser menu.</p>}
-      {device.secure ? benefits : <p className="mt-3 rounded-lg bg-warn-soft px-3 py-2 text-[13px] text-warn">This address isn&apos;t https, so the browser may only add a shortcut rather than a full app. A proper install needs the site served over https.</p>}
+      <p>{canInstall ? "Your browser can install HabitFlow directly." : "Add HabitFlow to your home screen — a few taps, once."}</p>
+      <div className="mt-3">
+        <InstallApp />
+      </div>
+      {device.secure ? benefits : <p className="mt-3 rounded-lg bg-warn-soft px-3 py-2 text-[13px] text-warn">This address isn&apos;t https, so the browser may only add a shortcut rather than a full app.</p>}
     </>
   );
 }
 
-function ShareIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="inline -translate-y-px text-brand" role="img" aria-label="(a square with an arrow pointing up)">
-      <path d="M12 15V3m0 0L8 7m4-4l4 4M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1" />
-    </svg>
-  );
-}

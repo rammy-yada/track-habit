@@ -51,7 +51,11 @@ export async function tipContext(user: User): Promise<{ situations: Situation[];
     if (gap >= 3 && (!neglected || gap > neglected.days)) neglected = { name: decodeEntities(h.name), days: gap };
   }
 
-  const hour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: user.timezone, hour: "2-digit", hourCycle: "h23" }).format(new Date()));
+  // an unknown timezone must not take the page down: then it is simply not "evening"
+  let hour = 12;
+  try {
+    hour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: user.timezone, hour: "2-digit", hourCycle: "h23" }).format(new Date()));
+  } catch {}
   const openToday = habits.some((h) => !done.get(h.id)?.has(today));
 
   if (member.joined > addDays(today, -3)) situations.push("new");
