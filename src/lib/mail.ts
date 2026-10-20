@@ -79,7 +79,7 @@ function layout({ heading, lines, button, footer }: { heading: string; lines: st
 <body style="margin:0;padding:0;background:#ffffff;font-family:${font};color:#111111;-webkit-text-size-adjust:100%">
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:collapse;background:#ffffff">
 <tr><td style="padding:20px 16px 8px">
-  <p style="margin:0 0 20px;font-size:15px;font-weight:700;color:#2563eb">HabitFlow</p>
+  <p style="margin:0 0 20px;font-size:15px;font-weight:700;color:#2563eb"><img src="${esc(origin)}/app-icon/logo?s=64" width="24" height="24" alt="" style="vertical-align:middle;border-radius:6px;margin-right:8px;border:0">HabitFlow</p>
   <h1 style="margin:0 0 14px;font-size:21px;line-height:1.3;font-weight:700;color:#111111">${esc(heading)}</h1>
 ${lines.map((line) => `  <p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:#333333">${line}</p>`).join("\n")}
 ${button ? `  <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:6px 0 20px"><tr><td style="background:#2563eb;border-radius:8px"><a href="${esc(button.url)}" style="display:inline-block;padding:12px 22px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;font-family:${font}">${esc(button.label)}</a></td></tr></table>` : ""}

@@ -2,21 +2,28 @@
 
 import { motion } from "motion/react";
 import { Flame } from "@/components/dashboard/effects";
+import { useLogoVersion } from "@/components/Providers";
 
 // Small looping scenes, one per guide step. Each shows the real thing in miniature.
 
 const loop = (duration: number) => ({ duration, repeat: Infinity, ease: "easeInOut" as const });
 
 export function WelcomeArt() {
+  const logo = useLogoVersion();
   return (
     <div className="relative grid h-full place-items-center">
       <span className="ripple absolute h-20 w-20 rounded-full border border-brand" />
       <span className="ripple absolute h-20 w-20 rounded-full border border-brand [animation-delay:1.2s]" />
-      <span className="relative grid h-20 w-20 place-items-center rounded-3xl bg-brand-solid text-on-brand shadow-[0_18px_40px_-14px_var(--brand-solid)]">
-        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <motion.path d="M2 12h4l3-9 6 18 3-9h4" animate={{ pathLength: [0, 1, 1, 0], opacity: [0, 1, 1, 0] }} transition={{ duration: 2.8, repeat: Infinity, times: [0, 0.45, 0.8, 1] }} />
-        </svg>
-      </span>
+      {logo ? (
+        // eslint-disable-next-line @next/next/no-img-element -- the admin's own logo
+        <img src={`/app-icon/logo?s=192&v=${logo}`} alt="" width={80} height={80} className="relative h-20 w-20 rounded-3xl object-contain shadow-[0_18px_40px_-14px_var(--brand-solid)]" />
+      ) : (
+        <span className="relative grid h-20 w-20 place-items-center rounded-3xl bg-brand-solid text-on-brand shadow-[0_18px_40px_-14px_var(--brand-solid)]">
+          <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <motion.path d="M2 12h4l3-9 6 18 3-9h4" animate={{ pathLength: [0, 1, 1, 0], opacity: [0, 1, 1, 0] }} transition={{ duration: 2.8, repeat: Infinity, times: [0, 0.45, 0.8, 1] }} />
+          </svg>
+        </span>
+      )}
     </div>
   );
 }
@@ -128,6 +135,7 @@ export function NavArt({ phone, tabs }: { phone: boolean; tabs: string[] }) {
 
 /** The app icon drops onto a phone's home screen. */
 export function InstallArt() {
+  const logo = useLogoVersion();
   return (
     <div className="grid h-full place-items-center">
       <div className="relative h-[128px] w-[78px] rounded-[18px] border-2 border-line bg-card p-2">
@@ -141,9 +149,14 @@ export function InstallArt() {
             animate={{ y: [-70, 0, 0, 0], scale: [1.6, 1, 1, 1], opacity: [0, 1, 1, 0] }}
             transition={{ duration: 2.8, repeat: Infinity, times: [0, 0.3, 0.85, 1] }}
           >
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M2 12h4l3-9 6 18 3-9h4" />
-            </svg>
+            {logo ? (
+              // eslint-disable-next-line @next/next/no-img-element -- the admin's own logo, as the icon landing on the home screen
+              <img src={`/app-icon/logo?s=96&v=${logo}`} alt="" className="h-full w-full rounded-[5px] object-cover" />
+            ) : (
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M2 12h4l3-9 6 18 3-9h4" />
+              </svg>
+            )}
           </motion.span>
         </div>
       </div>

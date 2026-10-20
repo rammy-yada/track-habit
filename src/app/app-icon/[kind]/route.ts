@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import sharp from "sharp";
 import { queryOne } from "@/lib/db";
+import { badgePng } from "@/lib/logo-image";
 
 export const dynamic = "force-dynamic";
 
@@ -8,6 +9,8 @@ export const dynamic = "force-dynamic";
 const BUILT_IN: Record<string, (size: number, maskable: boolean) => string> = {
   arc: (size, maskable) => (maskable ? "/icons/arc-maskable-512.png" : size <= 180 ? "/icons/arc-apple.png" : size <= 192 ? "/icons/arc-192.png" : "/icons/arc-512.png"),
   away: () => "/icons/away-192.png",
+  // the one-colour mark in Android's status bar
+  badge: () => "/icons/badge-96.png",
   // the site's own logo (Admin → Design → Logo)
   logo: (size, maskable) => (maskable ? "/icons/maskable-512.png" : size <= 180 ? "/apple-icon.png" : size <= 192 ? "/icons/icon-192.png" : "/icons/icon-512.png"),
 };
@@ -29,10 +32,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     kind = request.cookies.get("hf_icon")?.value === "arc" ? "arc" : "logo";
   }
   if (!(kind in BUILT_IN)) return new NextResponse(null, { status: 404 });
+  if (kind === "badge") {
+    const png = await badgePng(96);
+    if (!png) return new NextResponse(null, { status: 307, headers: { Location: BUILT_IN.badge(96, false), "Cache-Control": "no-cache" } });
+    return new NextResponse(new Uint8Array(png), { headers: { "Content-Type": "image/png", "Cache-Control": "public, max-age=3600", "X-Content-Type-Options": "nosniff" } });
+  }
   let row = await queryOne<{ image: Buffer }>("SELECT image FROM site_images WHERE slot = ?", [`icon-${kind}`]);
-  // An uploaded logo is the app's icon for everyone: with no Winter Arc icon of
-  // its own uploaded, the Winter Arc icon is the logo too, not the built-in snowflake.
-  if (!row && kind === "arc") {
+  // An uploaded logo is the app's icon for everyone: with no Winter Arc (or
+  // "come back") icon of its own uploaded, that icon is the logo too, not the built-in one.
+  if (!row && (kind === "arc" || kind === "away")) {
     row = await queryOne<{ image: Buffer }>("SELECT image FROM site_images WHERE slot = 'icon-logo'");
     if (row) kind = "logo";
   }

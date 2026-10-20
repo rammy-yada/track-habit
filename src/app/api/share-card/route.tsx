@@ -7,6 +7,7 @@ import { currentUser, type User } from "@/lib/auth";
 import { SHARE_HASHTAGS } from "@/lib/constants";
 import { todayIn } from "@/lib/dates";
 import { queryOne } from "@/lib/db";
+import { logoDataUrl } from "@/lib/logo-image";
 import { SITE_URL } from "@/lib/site";
 import { initial } from "@/lib/text";
 import { overLimit } from "@/lib/throttle";
@@ -42,7 +43,7 @@ export async function GET(request: NextRequest) {
   const ticks = Array.from({ length: 41 }, (_, i) => i / 40 <= progress);
   const line = !me ? "I'm in." : me.streak >= 7 ? `${me.streak} days without missing one.` : me.rank <= 3 ? "On the podium. Staying there." : "Showing up. Every day.";
 
-  const qr = await siteQr();
+  const [qr, logo] = await Promise.all([siteQr(), logoDataUrl(80)]);
   return new ImageResponse(
     (
       <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "radial-gradient(circle at 50% 22%, #4a4a4a 0%, #1a1a1a 32%, #050505 62%)", color: "#fff", fontFamily: "sans-serif" }}>
@@ -93,7 +94,11 @@ export async function GET(request: NextRequest) {
           )}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: 40 }}>
             <div style={{ display: "flex", flexDirection: "column" }}>
-              <div style={{ display: "flex", fontSize: 30, letterSpacing: 8, color: "#bdbdbd" }}>HABITFLOW</div>
+              <div style={{ display: "flex", alignItems: "center", fontSize: 30, letterSpacing: 8, color: "#bdbdbd" }}>
+                {/* eslint-disable-next-line @next/next/no-img-element -- drawn into the generated picture */}
+                {logo && <img src={logo} width={40} height={40} alt="" style={{ borderRadius: 10, marginRight: 14 }} />}
+                HABITFLOW
+              </div>
               <div style={{ display: "flex", fontSize: 30, letterSpacing: 3, marginTop: 10 }}>{SHARE_HASHTAGS.map((tag) => `#${tag}`).join("  ")}</div>
             </div>
             <SiteCode qr={qr} />
@@ -123,7 +128,7 @@ async function quoteCard(user: User) {
   // longer lines get smaller letters, so the quote always fits
   const size = quote.length > 110 ? 62 : quote.length > 70 ? 76 : quote.length > 40 ? 92 : 112;
 
-  const qr = await siteQr();
+  const [qr, logo] = await Promise.all([siteQr(), logoDataUrl(80)]);
   return new ImageResponse(
     (
       <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", background: "linear-gradient(180deg, #2b2b2b 0%, #0a0a0a 46%, #000 100%)", color: "#fff", padding: 84, fontFamily: "sans-serif" }}>
@@ -152,7 +157,11 @@ async function quoteCard(user: User) {
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: 40 }}>
             <div style={{ display: "flex", flexDirection: "column" }}>
-              <div style={{ display: "flex", fontSize: 30, letterSpacing: 8, color: "#bdbdbd" }}>HABITFLOW</div>
+              <div style={{ display: "flex", alignItems: "center", fontSize: 30, letterSpacing: 8, color: "#bdbdbd" }}>
+                {/* eslint-disable-next-line @next/next/no-img-element -- drawn into the generated picture */}
+                {logo && <img src={logo} width={40} height={40} alt="" style={{ borderRadius: 10, marginRight: 14 }} />}
+                HABITFLOW
+              </div>
               <div style={{ display: "flex", fontSize: 30, letterSpacing: 3, marginTop: 10 }}>{SHARE_HASHTAGS.map((tag) => `#${tag}`).join("  ")}</div>
             </div>
             <SiteCode qr={qr} />

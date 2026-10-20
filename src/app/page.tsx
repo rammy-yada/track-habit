@@ -17,7 +17,7 @@ const structuredData = {
   "@context": "https://schema.org",
   "@graph": [
     { "@type": "WebSite", "@id": `${SITE_URL}/#website`, url: SITE_URL, name: APP_NAME, description: SITE_DESCRIPTION, inLanguage: "en", publisher: { "@id": `${SITE_URL}/#org` } },
-    { "@type": "Organization", "@id": `${SITE_URL}/#org`, name: APP_NAME, url: SITE_URL, logo: `${SITE_URL}/icons/icon-512.png` },
+    { "@type": "Organization", "@id": `${SITE_URL}/#org`, name: APP_NAME, url: SITE_URL, logo: `${SITE_URL}/app-icon/logo?s=512` },
     { "@type": "FAQPage", "@id": `${SITE_URL}/#faq`, mainEntity: FAQ.map((item) => ({ "@type": "Question", name: item.q, acceptedAnswer: { "@type": "Answer", text: item.a } })) },
     {
       "@type": "WebApplication",

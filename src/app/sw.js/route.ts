@@ -26,7 +26,7 @@ const PAGES = "habitflow-pages-" + BUILD;
 const OFFLINE_URL = "/offline.html";
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(ASSETS).then((cache) => cache.addAll([OFFLINE_URL, "/icons/icon-192.png"])));
+  event.waitUntil(caches.open(ASSETS).then((cache) => cache.addAll([OFFLINE_URL, "/app-icon/logo?s=192"])));
 });
 
 self.addEventListener("activate", (event) => {
@@ -55,7 +55,7 @@ self.addEventListener("push", (event) => {
     self.registration.showNotification(message.title || "HabitFlow", {
       body: message.body || "",
       icon: message.icon || "/app-icon/logo?s=192",
-      badge: "/icons/badge-96.png", // the small one-colour mark in Android's status bar
+      badge: "/app-icon/badge", // the small one-colour mark in Android's status bar, made from the uploaded logo
       tag: message.tag || "habitflow", // a newer one of the same kind replaces the older
       renotify: true, // …and still rings and shows: without this, replacing yesterday's unread one would arrive silently
       timestamp: Date.now(),
@@ -95,6 +95,12 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (request.method !== "GET" || url.origin !== self.location.origin) return;
   if (url.pathname.startsWith("/api/") || url.pathname === "/sw.js") return;
+
+  // the logo (and the other app icons): from the network, the saved copy when offline
+  if (url.pathname.startsWith("/app-icon/")) {
+    event.respondWith(fetch(request).catch(async () => (await caches.match(request)) || Response.error()));
+    return;
+  }
 
   // App files never change for a given build: device copy first.
   if (isAsset(url)) {

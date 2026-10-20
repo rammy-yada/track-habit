@@ -104,7 +104,7 @@ export async function runReminders({ origin, now = new Date(), dry = false }: { 
 
   // wording and icons an admin has set (Admin → Notifications); empty parts use the built-in ones
   const [custom, icons] = await Promise.all([getMessages(), iconVersions()]);
-  const awayIcon = `/app-icon/away?s=192&v=${icons.away}`;
+  const awayIcon = `/app-icon/away?s=192&u=${icons.away}`; // "u", not "v": with none of its own uploaded this is the logo, which can change
 
   // ── once a day: tidy up, and check how full the database is ──
   let storage: string | undefined;
@@ -300,7 +300,7 @@ export async function runReminders({ origin, now = new Date(), dry = false }: { 
       if (!dry) {
         const { facts } = await today_();
         const pointsLeft = arcDayPoints(facts.total) - arcDayPoints(facts.done);
-        delivered += await sendPush(person.id, { icon: "/icons/arc-192.png", ...arcEveningMessage(lang, name, facts, { day: season.day, totalDays: season.totalDays, pointsLeft }, seed, turn), url: "/arc", tag: "arc-evening", badge: left });
+        delivered += await sendPush(person.id, { icon: `/app-icon/arc?s=192&u=${icons.arc}`, ...arcEveningMessage(lang, name, facts, { day: season.day, totalDays: season.totalDays, pointsLeft }, seed, turn), url: "/arc", tag: "arc-evening", badge: left });
       }
       sent.eveningNotifications++;
     }
