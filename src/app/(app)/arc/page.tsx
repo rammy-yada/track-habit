@@ -5,6 +5,7 @@ import { ArcGoals } from "@/components/arc/ArcGoals";
 import { ArcHub } from "@/components/arc/ArcHub";
 import { ArcIntro } from "@/components/arc/ArcIntro";
 import { ArcPackPanel } from "@/components/arc/ArcPackPanel";
+import { ArcTrophy } from "@/components/arc/ArcTrophy";
 import { ArcQuote } from "@/components/arc/ArcQuote";
 import { ArcScreen } from "@/components/arc/ArcScreen";
 import { ArcTips } from "@/components/arc/ArcTips";
@@ -49,17 +50,23 @@ export default async function ArcPage() {
         goals={<ArcGoals member={member} goals={goals.map((g) => ({ id: g.id, text: g.text, done: g.done === 1 }))} endsOn={formatDate(season.end, { month: "long", day: "numeric" })} />}
         pack={
           panel ? (
-            <ArcPackPanel panel={panel} />
+            <div className="space-y-4">
+              <ArcTrophy perfectDays={panel.perfectDays} daysLeft={season.live ? season.totalDays - season.day : season.totalDays} member />
+              <ArcPackPanel panel={panel} />
+            </div>
           ) : (
-            <div className="rounded-2xl border border-line bg-card p-7 text-center">
-              <p className="text-4xl" aria-hidden>
-                📦
-              </p>
-              <h2 className="mt-3 font-display text-xl font-bold tracking-tight">Pick a pack to begin</h2>
-              <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted">Join the Winter Arc and choose a ready-made set of habits. They are added to your checklist, and finishing them each day earns points, badges and a surprise.</p>
-              <Link href="/arc/start" className={`${btnPrimary} mt-5`}>
-                Join the Winter Arc
-              </Link>
+            <div className="space-y-4">
+              <ArcTrophy perfectDays={0} daysLeft={season.live ? season.totalDays - season.day : season.totalDays} member={false} />
+              <div className="rounded-2xl border border-line bg-card p-7 text-center">
+                <p className="text-4xl" aria-hidden>
+                  📦
+                </p>
+                <h2 className="mt-3 font-display text-xl font-bold tracking-tight">Pick a pack to begin</h2>
+                <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted">Join the Winter Arc and choose a ready-made set of habits. They are added to your checklist, and finishing them each day earns points, badges and a surprise.</p>
+                <Link href="/arc/start" className={`${btnPrimary} mt-5`}>
+                  Join the Winter Arc
+                </Link>
+              </div>
             </div>
           )
         }
