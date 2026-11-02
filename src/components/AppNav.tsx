@@ -1,9 +1,10 @@
 "use client";
 
+import { COBALT, MARIGOLD, ON_COBALT } from "@/components/ui/cobalt";
 import { releaseDevicePush } from "@/lib/pwa";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { ConfirmDialog } from "./ui/ConfirmDialog";
 import { motion } from "motion/react";
 import { Logo } from "./Logo";
@@ -47,6 +48,7 @@ const MEMBER: NavLink[] = [
   { href: "/popular", label: "Popular", short: "Popular", icon: "popular" },
   { href: "/monthly", label: "Monthly View", short: "Month", icon: "monthly", desktopOnly: true }, // on phones it is opened from Today
   { href: "/profile", label: "Profile", short: "Profile", icon: "profile" },
+  { href: "/blog", label: "Blog", short: "Blog", icon: "blog", desktopOnly: true }, // on phones it is in Popular
   { href: "/support", label: "Support Us", short: "Support", icon: "donate", desktopOnly: true }, // on phones it lives in Profile
 ];
 const ADMIN: NavLink[] = [
@@ -160,6 +162,31 @@ export function MobileBars({ user, arc }: { user: NavUser; arc?: ArcState }) {
   const pathname = usePathname();
   const admin = user.role === "admin";
   const tabs = (admin ? ADMIN : MEMBER).filter((link) => !link.desktopOnly);
+  const cobaltTop = pathname === "/dashboard" || pathname === "/analytics" || pathname === "/profile" || pathname === "/sigmadev/account";
+  // The phone's own status bar takes the colour of the top of the screen. It is
+  // set again whenever the theme or the day's state changes, and whenever the
+  // framework replaces these tags, which it does on each navigation.
+  useEffect(() => {
+    const root = document.documentElement;
+    const paint = () => {
+      const phone = window.matchMedia("(max-width: 767px)").matches;
+      const painted = cobaltTop && phone && root.dataset.theme !== "arc";
+      document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((m) => {
+        const plain = m.media.includes("dark") ? "#090c13" : "#f6f7fb";
+        const wanted = !painted ? plain : "allDone" in root.dataset ? MARIGOLD : COBALT;
+        if (m.content !== wanted) m.content = wanted;
+      });
+    };
+    paint();
+    const head = new MutationObserver(paint);
+    head.observe(document.head, { childList: true });
+    const html = new MutationObserver(paint);
+    html.observe(root, { attributes: true, attributeFilter: ["data-theme", "data-all-done"] });
+    return () => {
+      head.disconnect();
+      html.disconnect();
+    };
+  }, [cobaltTop]);
   // Profile is a screen of its own on a phone, like an app's settings: no
   // title bar and no tab bar, just a way back.
   if (pathname === "/popular") return null; // a full-screen section with its own back button
@@ -175,7 +202,7 @@ export function MobileBars({ user, arc }: { user: NavUser; arc?: ArcState }) {
     );
   return (
     <>
-      <header className="sticky top-0 z-30 flex h-[61px] items-center justify-between border-b border-line bg-card/85 px-4 backdrop-blur md:hidden">
+      <header data-cobalt-bar={cobaltTop ? "" : undefined} style={cobaltTop ? ON_COBALT : undefined} className={`sticky top-0 z-30 flex h-[61px] items-center justify-between px-4 md:hidden ${cobaltTop ? "" : "border-b border-line bg-card/85 backdrop-blur"}`}>
         <span className="flex items-center gap-2">
           <Logo href={admin ? "/sigmadev" : "/dashboard"} />
           {admin && <AdminBadge />}

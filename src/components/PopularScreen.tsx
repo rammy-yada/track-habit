@@ -8,14 +8,15 @@ import { whenOnline } from "@/lib/offline";
 import type { PopularItem } from "@/lib/popular";
 
 type Product = { id: number; name: string; price: string; description: string; category: string; image: string | null };
-type Tab = "skills" | "shop";
+type Tab = "skills" | "shop" | "read";
+type PostCard = { slug: string; title: string; excerpt: string; cover: string | null; minutes: number };
 
 /**
  * The Popular section. Two views, switched with a pill that floats at the
  * bottom of the screen: the habits and skills most people here are building
  * (add any with a tap), and — once there is at least one — products to buy.
  */
-export function PopularScreen({ popular, products }: { popular: PopularItem[]; products: Product[] }) {
+export function PopularScreen({ popular, products, posts }: { popular: PopularItem[]; products: Product[]; posts: PostCard[] }) {
   const [tab, setTab] = useState<Tab>("skills");
   const [added, setAdded] = useState<Set<string>>(() => new Set(popular.filter((p) => p.mine).map((p) => p.name)));
   const [busy, setBusy] = useState<string | null>(null);
@@ -23,6 +24,7 @@ export function PopularScreen({ popular, products }: { popular: PopularItem[]; p
   const [filter, setFilter] = useState("All");
   const [, startTransition] = useTransition();
   const hasShop = products.length > 0;
+  const tabs = ([["skills", "🔥 Popular"], ...(posts.length ? [["read", "📖 Read"]] : []), ...(hasShop ? [["shop", "🛍️ Buy"]] : [])] as [Tab, string][]);
   const top = Math.max(1, popular[0]?.people ?? 0);
   const categories = ["All", ...new Set(products.map((p) => p.category).filter(Boolean))];
   const shown = products.filter((p) => filter === "All" || p.category === filter);
@@ -50,7 +52,7 @@ export function PopularScreen({ popular, products }: { popular: PopularItem[]; p
       </header>
 
       <div className="flex-1 overflow-y-auto overscroll-contain">
-        <div className={`mx-auto w-full max-w-3xl px-4 pt-3 sm:px-6 ${hasShop ? "pb-28" : "pb-10"}`}>
+        <div className={`mx-auto w-full max-w-3xl px-4 pt-3 sm:px-6 ${tabs.length > 1 ? "pb-28" : "pb-10"}`}>
           {error && (
             <p role="alert" className="mb-3 rounded-xl bg-bad-soft px-3.5 py-2.5 text-[13px] font-medium text-bad">
               {error}
@@ -86,6 +88,31 @@ export function PopularScreen({ popular, products }: { popular: PopularItem[]; p
                   );
                 })}
               </ol>
+            </section>
+          )}
+
+          {tab === "read" && (
+            <section aria-label="Read" data-popular-read>
+              <h2 className="font-display text-4xl font-extrabold tracking-tight">Read</h2>
+              <p className="mt-1 text-sm text-muted">Short pieces on building habits that last.</p>
+              <ul className="mt-5">
+                {posts.map((post) => (
+                  <li key={post.slug} className="border-t border-line">
+                    <Link href={`/blog/${post.slug}`} className="flex items-start gap-3 py-4">
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-display text-lg font-bold leading-snug tracking-tight">{post.title}</span>
+                        {post.excerpt && <span className="mt-1 line-clamp-2 block text-sm leading-relaxed text-muted">{post.excerpt}</span>}
+                        <span className="mt-1.5 block text-xs text-muted">{post.minutes} min read</span>
+                      </span>
+                      {/* eslint-disable-next-line @next/next/no-img-element -- the post's own cover, served by our route */}
+                      {post.cover && <img src={`${post.cover}&w=400`} alt="" width={96} height={96} loading="lazy" className="h-24 w-24 shrink-0 rounded-xl object-cover" />}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              <Link href="/blog" className="mt-2 inline-block py-2 text-sm font-semibold text-brand hover:underline">
+                See all posts
+              </Link>
             </section>
           )}
 
@@ -133,15 +160,10 @@ export function PopularScreen({ popular, products }: { popular: PopularItem[]; p
       </div>
 
       {/* the switch between the two views floats above the content, within reach of a thumb */}
-      {hasShop && (
+      {tabs.length > 1 && (
         <div className="pointer-events-none absolute inset-x-0 bottom-[calc(18px+env(safe-area-inset-bottom))] flex justify-center px-4">
           <div role="tablist" aria-label="Popular sections" className="pointer-events-auto flex rounded-full border border-line bg-card p-1 shadow-[0_10px_30px_-8px_rgb(0_0_0/0.45)]">
-            {(
-              [
-                ["skills", "🔥 Popular skills"],
-                ["shop", "🛍️ Buy products"],
-              ] as const
-            ).map(([id, text]) => (
+            {tabs.map(([id, text]) => (
               <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)} className={`relative rounded-full px-4 py-2.5 text-sm font-semibold ${tab === id ? "text-on-brand" : "text-muted"}`} data-popular-tab={id}>
                 {tab === id && <motion.span layoutId="popular-pill" className="absolute inset-0 rounded-full bg-brand-solid" transition={{ type: "spring", stiffness: 420, damping: 34 }} />}
                 <span className="relative">{text}</span>

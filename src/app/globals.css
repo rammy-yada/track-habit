@@ -14,9 +14,9 @@
   --ink: #0d1220;
   --muted: #5a6478;
   --line: #e3e7ef;
-  --brand: #2563eb;
-  --brand-solid: #2563eb;
-  --brand-solid-hover: #1d4ed8;
+  --brand: #1B34E0;
+  --brand-solid: #1B34E0;
+  --brand-solid-hover: #1529b5;
   --on-brand: #ffffff;
   --brand-soft: #e8f0ff;
   --good: #0b8a5f;
@@ -28,6 +28,11 @@
   --chart: #2a78d6;
   --grid: #e7eaf1;
   --flame: #f97316;
+  --day-0: #ebedf0;
+  --day-1: #9be9a8;
+  --day-2: #40c463;
+  --day-3: #30a14e;
+  --day-4: #216e39;
 }
 
 [data-theme="dark"] {
@@ -39,8 +44,8 @@
   --muted: #98a2b7;
   --line: #242d3f;
   --brand: #6ea0ff;
-  --brand-solid: #2f6be6;
-  --brand-solid-hover: #4a81f5;
+  --brand-solid: #2f49ee;
+  --brand-solid-hover: #4a61f5;
   --brand-soft: #16264a;
   --good: #34d399;
   --good-soft: #0f2f25;
@@ -51,6 +56,11 @@
   --chart: #3987e5;
   --grid: #222b3b;
   --flame: #fb923c;
+  --day-0: #1d2433;
+  --day-1: #0e4429;
+  --day-2: #006d32;
+  --day-3: #26a641;
+  --day-4: #39d353;
 }
 
 /* ── Winter Arc: the black-and-white poster look, site-wide ────
@@ -78,6 +88,11 @@
   --chart: #d9d9d9;
   --grid: #232323;
   --flame: #ffffff;
+  --day-0: #1a1a1a;
+  --day-1: #4d4d4d;
+  --day-2: #808080;
+  --day-3: #b3b3b3;
+  --day-4: #ffffff;
 }
 
 @theme inline {
@@ -434,3 +449,12 @@ html[data-keyboard] [data-sheet] {
 .arc-intro[data-beat="title"] .ai-hint { opacity: 0; }
 .arc-intro[data-beat="title"] .ai-button { animation: ai-pulse 1.3s ease-in-out 1.4s infinite; }
 @keyframes ai-pulse { 50% { opacity: 0.6; } }
+
+/* Every habit done: the phone's top bar turns marigold with the block below it. */
+html[data-all-done] [data-cobalt-bar] {
+  background: #ffc400 !important;
+  color: #000 !important;
+  --ink: #000;
+  --brand: #000;
+  --brand-soft: rgba(0, 0, 0, 0.12);
+}

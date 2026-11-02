@@ -5,31 +5,13 @@ import Link from "next/link";
 import { motion } from "motion/react";
 import { InstallApp } from "@/components/InstallApp";
 import { Logo } from "@/components/Logo";
-import { SiteFooter } from "@/components/PublicPage";
+import { SiteFooter } from "@/components/SiteFooter";
+import { COBALT, MARIGOLD, ON_COBALT } from "@/components/ui/cobalt";
 import { btnPrimary } from "@/components/ui/styles";
 import { FAQ } from "@/lib/faq";
 
 // The home page is one idea: the question the app asks every day, and the box
 // that answers it. Cobalt, white, and marigold for "today" and nothing else.
-const COBALT = "#1B34E0";
-const MARIGOLD = "#FFC400";
-
-// Inside a cobalt block the site's own colours are redefined, so the logo and
-// the shared buttons read correctly there in either theme.
-const ON_COBALT = {
-  background: COBALT,
-  "--ink": "#ffffff",
-  "--muted": "rgba(255,255,255,0.82)",
-  "--line": "rgba(255,255,255,0.4)",
-  "--card": "transparent",
-  "--raised": "rgba(255,255,255,0.14)",
-  "--brand": "#ffffff",
-  "--brand-solid": "#ffffff",
-  "--brand-solid-hover": "#e6e9ff",
-  "--on-brand": COBALT,
-  "--brand-soft": "rgba(255,255,255,0.16)",
-  color: "#ffffff",
-} as React.CSSProperties;
 
 const STEPS = [
   { title: "Add your habits", body: "Type in what you want to do: read ten pages, drink water, go for a walk, study for an hour. Pick an icon and, if you like, a time to be reminded." },

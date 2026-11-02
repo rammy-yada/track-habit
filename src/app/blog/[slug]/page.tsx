@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { cache } from "react";
 import { PostBody } from "@/components/blog/PostBody";
 import { PublicPage } from "@/components/PublicPage";
+import { currentUser } from "@/lib/auth";
 import { btnPrimary } from "@/components/ui/styles";
 import { getPost, getPosts, isoDate, postDescription } from "@/lib/blog";
 import { readingMinutes, wordCount } from "@/lib/blog-format";
@@ -111,13 +112,16 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
         )}
       </article>
 
-      <aside className="mt-12 rounded-2xl border border-line bg-card p-6 text-center sm:p-8">
-        <h2 className="font-display text-2xl font-bold tracking-tight">Reading is the easy part</h2>
-        <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted">{APP_NAME} is a free habit tracker that works offline. Pick a few habits, tick them off each day, and watch the streak grow.</p>
-        <Link href="/register" className={`${btnPrimary} mt-5`}>
-          Start tracking — it&apos;s free
-        </Link>
-      </aside>
+      {/* for visitors: someone reading inside the app already has an account */}
+      {!(await currentUser()) && (
+        <aside className="mt-12 rounded-2xl border border-line bg-card p-6 text-center sm:p-8">
+          <h2 className="font-display text-2xl font-bold tracking-tight">Reading is the easy part</h2>
+          <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted">{APP_NAME} is a free habit tracker that works offline. Pick a few habits, tick them off each day, and watch the streak grow.</p>
+          <Link href="/register" className={`${btnPrimary} mt-5`}>
+            Start tracking — it&apos;s free
+          </Link>
+        </aside>
+      )}
 
       {others.length > 0 && (
         <section className="mt-12" aria-label="More posts">

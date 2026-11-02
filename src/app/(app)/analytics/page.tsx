@@ -11,9 +11,11 @@ export default async function AnalyticsPage() {
   const data = await getAnalytics(user);
   return (
     <>
-      <PageHeader title="Analytics">
-        <span className="text-[13px] font-medium text-muted">Data up to {data.todayLabel}</span>
-      </PageHeader>
+      <div className="hidden md:contents">
+        <PageHeader title="Analytics">
+          <span className="text-[13px] font-medium text-muted">Data up to {data.todayLabel}</span>
+        </PageHeader>
+      </div>
       <AnalyticsView data={data} />
     </>
   );

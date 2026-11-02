@@ -1,5 +1,6 @@
 "use client";
 
+import { ON_COBALT } from "@/components/ui/cobalt";
 import { DaysCalendar } from "@/components/dashboard/DaysCalendar";
 import { motion } from "motion/react";
 import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
@@ -36,7 +37,19 @@ export function AnalyticsView({ data }: { data: Awaited<ReturnType<typeof getAna
 
   return (
     <div className="space-y-4 px-4 py-6 md:px-8 md:py-7">
-      <motion.div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4" initial="hidden" animate="shown" variants={{ shown: { transition: { staggerChildren: 0.07 } } }}>
+      {/* on a phone the numbers sit straight on the cobalt, no boxes */}
+      <section style={ON_COBALT} className="-mx-4 -mt-6 px-4 pb-7 pt-3 md:hidden" aria-label="Your numbers" data-stats-hero>
+        <h1 className="font-display text-[clamp(3rem,15vw,4.5rem)] font-extrabold leading-[0.95] tracking-[-0.04em]">Your stats</h1>
+        <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-4">
+          {[...tiles, { label: "Done today", value: `${data.todayDone}/${data.totalHabits}` }].map((t) => (
+            <div key={t.label}>
+              <dd className="font-display text-4xl font-extrabold tabular-nums tracking-tight">{t.value}</dd>
+              <dt className="text-[13px] font-medium text-muted">{t.label}</dt>
+            </div>
+          ))}
+        </dl>
+      </section>
+      <motion.div className="grid-cols-2 gap-3 max-md:hidden md:grid lg:grid-cols-4 lg:gap-4" initial="hidden" animate="shown" variants={{ shown: { transition: { staggerChildren: 0.07 } } }}>
         {tiles.map((t) => (
           <Tile key={t.label} label={t.label}>
             <AnimatedNumber value={t.value} />

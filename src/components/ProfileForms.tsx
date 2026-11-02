@@ -94,7 +94,8 @@ export function ProfileForms({ user, stats, badges, badgeCount }: Props) {
   return (
     <div className="mx-auto max-w-xl space-y-5 px-4 py-6 md:py-8">
       {/* ── who you are ── */}
-      <motion.section className="flex flex-col items-center pt-2 text-center" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+      {/* on a phone the top of the screen, behind the back button, is cobalt (the override below is phone-only) */}
+      <motion.section className="flex flex-col items-center pt-2 text-center max-md:ml-[calc(50%-50vw)] max-md:w-screen max-md:-mt-[calc(84px+env(safe-area-inset-top))] max-md:px-4 max-md:pb-6 max-md:pt-[calc(60px+env(safe-area-inset-top))] max-md:[--ink:#fff] max-md:[--muted:rgba(255,255,255,.82)] max-md:[--line:rgba(255,255,255,.4)] max-md:[--card:transparent] max-md:[--brand:#fff] max-md:[--brand-solid:#fff] max-md:[--on-brand:#1B34E0] max-md:[--bad:#fff] max-md:bg-[#1B34E0] max-md:text-white" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} data-profile-hero>
         <div className="relative shrink-0">
           <motion.div initial={{ scale: 0.6, rotate: -20 }} animate={{ scale: 1, rotate: 0, opacity: uploading ? 0.5 : 1 }} transition={{ type: "spring", stiffness: 260, damping: 18 }}>
             {/* with no photo, the circle previews the colour being picked below */}
@@ -115,7 +116,7 @@ export function ProfileForms({ user, stats, badges, badgeCount }: Props) {
           </button>
           <input ref={fileInput} type="file" accept="image/*" hidden onChange={choosePhoto} data-photo-input />
         </div>
-        <h2 className="mt-4 max-w-full truncate font-display text-2xl font-bold tracking-tight">{user.fullName}</h2>
+        <h2 className="mt-4 max-w-full truncate font-display text-2xl font-bold tracking-tight max-md:text-4xl max-md:font-extrabold">{user.fullName}</h2>
         <p className="max-w-full truncate text-sm font-medium text-muted">@{user.username}</p>
         {photoError && (
           <p role="alert" className="mt-2 text-xs font-medium text-bad">
@@ -123,7 +124,7 @@ export function ProfileForms({ user, stats, badges, badgeCount }: Props) {
           </p>
         )}
         {!user.admin && (
-          <dl className="mt-5 grid w-full max-w-sm grid-cols-3 divide-x divide-line rounded-2xl border border-line bg-card py-3">
+          <dl className="mt-5 grid w-full max-w-sm grid-cols-3 divide-x divide-line py-3 md:rounded-2xl md:border md:border-line md:bg-card">
             {[
               [stats.habits, "Habits"],
               [stats.checkins, "Check-ins"],

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
-import { SiteFooter } from "@/components/PublicPage";
+import { SiteFooter } from "@/components/SiteFooter";
 import { CONTACT_EMAIL, CREATOR } from "@/lib/constants";
 
 /** Shared frame for the Privacy Policy and Terms pages. */

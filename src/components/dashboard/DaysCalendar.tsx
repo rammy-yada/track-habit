@@ -3,8 +3,8 @@
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 
-// GitHub's dark contribution colours: nothing done … everything done.
-const SHADES = ["#161b22", "#0e4429", "#006d32", "#26a641", "#39d353"];
+// Nothing done … everything done, in colours set per theme (see globals.css).
+const SHADES = [0, 1, 2, 3, 4].map((n) => `var(--day-${n})`);
 const WEEKDAYS = ["S", "M", "T", "W", "T", "F", "S"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const LEVEL_WORDS = ["nothing done", "a little done", "about half done", "most done", "everything done"];
@@ -17,7 +17,7 @@ const addDays = (date: string, n: number) => {
 
 /**
  * Days shaded by how much of the list got done, like GitHub's contribution
- * graph and always in its dark colours, with weeks running S M T W T F S.
+ * graph, with weeks running S M T W T F S.
  *
  * "month" (Today): this month, large, with a link to the report.
  * "all" (Stats): every month since the account was opened, side by side, to
@@ -39,15 +39,15 @@ export function DaysCalendar({ from, levels, today, todayLevel, view }: { from: 
   const big = view === "month";
 
   return (
-    <section className="rounded-2xl border border-[#30363d] bg-[#0d1117] p-5 text-[#c9d1d9]" aria-label="Your days" data-days-calendar={view}>
+    <section className="rounded-2xl border border-line bg-card p-5" aria-label="Your days" data-days-calendar={view}>
       <div className="mb-3 flex items-baseline justify-between gap-3">
-        <h2 className="text-sm font-bold text-[#f0f6fc]">Your days</h2>
+        <h2 className="text-sm font-bold">Your days</h2>
         {big ? (
-          <Link href="/analytics" className="-my-1.5 py-1.5 text-xs font-semibold text-[#58a6ff] hover:underline" data-view-report>
+          <Link href="/analytics" className="-my-1.5 py-1.5 text-xs font-semibold text-brand hover:underline" data-view-report>
             View report
           </Link>
         ) : (
-          <span className="text-[11px] text-[#8b949e]">
+          <span className="text-[11px] text-muted">
             since {MONTHS[Number(from.slice(5, 7)) - 1]} {Number(from.slice(8, 10))}, {from.slice(0, 4)}
           </span>
         )}
@@ -59,12 +59,12 @@ export function DaysCalendar({ from, levels, today, todayLevel, view }: { from: 
           const length = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
           return (
             <div key={first} className={big ? "" : "shrink-0 snap-end"} data-days-month={first.slice(0, 7)}>
-              <div className="mb-1.5 text-[11px] font-semibold text-[#8b949e]">
+              <div className="mb-1.5 text-[11px] font-semibold text-muted">
                 {MONTHS[month]} {year}
               </div>
               <div className={big ? "grid max-w-[340px] grid-cols-7 gap-1" : "grid grid-cols-[repeat(7,22px)] gap-1"}>
                 {WEEKDAYS.map((d, i) => (
-                  <span key={i} className="text-center text-[10px] font-semibold leading-5 text-[#8b949e]" aria-hidden>
+                  <span key={i} className="text-center text-[10px] font-semibold leading-5 text-muted" aria-hidden>
                     {d}
                   </span>
                 ))}
@@ -80,8 +80,8 @@ export function DaysCalendar({ from, levels, today, todayLevel, view }: { from: 
                     <span
                       key={day}
                       title={future ? undefined : `${MONTHS[month]} ${i + 1}: ${LEVEL_WORDS[l]}`}
-                      className={`block aspect-square rounded-[4px] ${day === today ? "ring-1 ring-[#f0f6fc] ring-offset-1 ring-offset-[#0d1117]" : ""}`}
-                      style={{ background: future ? "transparent" : SHADES[l], border: future ? "1px solid #21262d" : undefined }}
+                      className={`block aspect-square rounded-[4px] ${day === today ? "ring-2 ring-[#FFC400] ring-offset-1 ring-offset-card" : ""}`}
+                      style={{ background: future ? "transparent" : SHADES[l], border: future ? "1px solid var(--line)" : undefined }}
                     />
                   );
                 })}
@@ -90,7 +90,7 @@ export function DaysCalendar({ from, levels, today, todayLevel, view }: { from: 
           );
         })}
       </div>
-      <div className="mt-3 flex items-center justify-end gap-1 text-[10px] text-[#8b949e]">
+      <div className="mt-3 flex items-center justify-end gap-1 text-[10px] text-muted">
         Less
         {SHADES.map((c) => (
           <span key={c} className="h-[10px] w-[10px] rounded-[2px]" style={{ background: c }} />

@@ -1,5 +1,6 @@
 "use client";
 
+import { COBALT, MARIGOLD, ON_COBALT, ON_MARIGOLD } from "@/components/ui/cobalt";
 import { InstallApp } from "@/components/InstallApp";
 import { useLiveDay } from "@/lib/live-day";
 import { dayLevel } from "@/lib/day-level";
@@ -149,20 +150,52 @@ export function HabitBoard({ data }: { data: Awaited<ReturnType<typeof getDashbo
   const closeNote = useCallback(() => setNoteFor(null), []);
   const closeDelete = useCallback(() => setDeleting(null), []);
 
+  const dayLabel = today === data.today ? data.todayLabel : new Date(`${today}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+
   return (
     <>
-      <PageHeader title="Today's Habits">
-        <span className="rounded-xl border border-line bg-card px-3.5 py-2 text-[13px] font-medium text-muted">{today === data.today ? data.todayLabel : new Date(`${today}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" })}</span>
-        <motion.button type="button" className={btnPrimary} onClick={() => setAdding(true)} whileTap={{ scale: 0.95 }} whileHover={{ y: -1 }}>
-          <span className="text-base leading-none">+</span> Add Habit
-        </motion.button>
-      </PageHeader>
+      <div className="hidden md:contents">
+        <PageHeader title="Today's Habits">
+          <span className="rounded-xl border border-line bg-card px-3.5 py-2 text-[13px] font-medium text-muted">{dayLabel}</span>
+          <motion.button type="button" className={btnPrimary} onClick={() => setAdding(true)} whileTap={{ scale: 0.95 }} whileHover={{ y: -1 }}>
+            <span className="text-base leading-none">+</span> Add Habit
+          </motion.button>
+        </PageHeader>
+      </div>
+
+      {/* on a phone the day itself is the header: how many are left, and a box for each. Finishing the last one turns it marigold. */}
+      <AllDoneMark on={allDone} />
+      <section style={allDone ? ON_MARIGOLD : ON_COBALT} className="px-4 pb-6 pt-2 transition-colors duration-500 md:hidden" aria-label="Today at a glance" data-today-hero>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-sm font-semibold text-muted">{dayLabel}</span>
+          <motion.button type="button" whileTap={{ scale: 0.9 }} onClick={() => setAdding(true)} aria-label="Add habit" className="grid h-12 w-12 place-items-center rounded-full bg-brand-solid text-on-brand">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden>
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          </motion.button>
+        </div>
+        <h1 className="mt-1 font-display text-[clamp(3.6rem,19vw,5.5rem)] font-extrabold leading-[0.92] tracking-[-0.045em]">{total === 0 ? "Add a habit" : allDone ? "All done." : `${total - doneCount} to go`}</h1>
+        {total > 0 && (
+          <ul className="mt-4 flex flex-wrap gap-1.5" aria-label={`${doneCount} of ${total} done today`}>
+            {habits.map((h) => (
+              <li key={h.id} className={`grid h-7 w-7 place-items-center rounded-[22%] border-2 border-current ${h.doneToday ? "bg-[var(--ink)]" : "opacity-60"}`}>
+                {h.doneToday && (
+                  <svg viewBox="0 0 24 24" fill="none" strokeWidth="3.6" strokeLinecap="round" strokeLinejoin="round" className="h-[72%] w-[72%]" style={{ stroke: allDone ? MARIGOLD : COBALT }} aria-hidden>
+                    <path d="M5 12.5l4.5 4.5L19 7.5" />
+                  </svg>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+        {bestStreak > 0 && <p className="mt-3 text-sm font-medium text-muted">Best streak: {bestStreak} {bestStreak === 1 ? "day" : "days"}</p>}
+      </section>
 
       <div className="space-y-7 px-4 py-6 md:px-8 md:py-7">
         {/* ── the Winter Arc is running and this person isn't in it yet ── */}
         {data.arcInvite && (
-          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-            <Link href="/arc" className="relative flex items-center gap-4 overflow-hidden rounded-2xl bg-ink px-5 py-4 text-bg" data-arc-invite>
+          <motion.div className="max-md:-mx-4 max-md:-mt-6" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+            <Link href="/arc" className="relative flex items-center gap-4 overflow-hidden bg-ink px-5 py-4 text-bg max-md:bg-black max-md:py-3 max-md:text-white md:rounded-2xl" data-arc-invite>
               <span aria-hidden className="shine absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-white/15 to-transparent" />
               <motion.span className="relative text-3xl" aria-hidden animate={{ rotate: [0, 60] }} transition={{ duration: 6, repeat: Infinity, ease: "linear" }}>
                 ❄
@@ -172,17 +205,17 @@ export function HabitBoard({ data }: { data: Awaited<ReturnType<typeof getDashbo
                   Live now · Day {data.arcInvite.day} of {data.arcInvite.totalDays}
                 </span>
                 <span className="block font-display text-lg font-bold leading-tight">The Winter Arc has started</span>
-                <span className="block text-[13px] opacity-80">Pick a pack, show up every day, climb the leaderboard.</span>
+                <span className="block text-[13px] opacity-80 max-md:hidden">Pick a pack, show up every day, climb the leaderboard.</span>
               </span>
-              <span className="relative shrink-0 rounded-xl bg-bg px-3.5 py-2 text-sm font-bold text-ink">Join →</span>
+              <span className="relative shrink-0 rounded-xl bg-bg px-3.5 py-2 text-sm font-bold text-ink max-md:bg-white max-md:text-black">Join</span>
             </Link>
           </motion.div>
         )}
 
         {/* ── Winter Arc members: their pack is ticked off on the Winter Arc screen ── */}
         {data.arc && arcHabits.length > 0 && (
-          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-            <Link href="/arc" className="relative block overflow-hidden rounded-2xl bg-ink px-5 py-4 text-bg" data-arc-banner>
+          <motion.div className="max-md:-mx-4 max-md:-mt-6" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+            <Link href="/arc" className="relative block overflow-hidden bg-ink px-5 py-4 text-bg max-md:bg-black max-md:py-3 max-md:text-white md:rounded-2xl" data-arc-banner>
               <span aria-hidden className="shine absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-white/15 to-transparent" />
               <span className="relative flex items-center gap-4">
                 <motion.span className="text-3xl" aria-hidden animate={{ rotate: [0, 60] }} transition={{ duration: 6, repeat: Infinity, ease: "linear" }}>
@@ -195,10 +228,10 @@ export function HabitBoard({ data }: { data: Awaited<ReturnType<typeof getDashbo
                   <span className="block truncate font-display text-lg font-bold leading-tight">{data.arc.pack ?? "Your pack"}</span>
                   <span className="block text-[13px] opacity-80">{arcDone === arcHabits.length ? (data.arc.day > 0 ? "All done today — open your surprise 🎁" : "All done today 🎉") : `${arcDone} of ${arcHabits.length} done today · tick them inside the Arc`}</span>
                 </span>
-                <span className="shrink-0 rounded-xl bg-bg px-3.5 py-2 text-sm font-bold text-ink">Go to Arc →</span>
+                <span className="shrink-0 rounded-xl bg-bg px-3.5 py-2 text-sm font-bold text-ink max-md:bg-white max-md:text-black">Go to Arc</span>
               </span>
-              <span className="relative mt-3 block h-1.5 overflow-hidden rounded-full bg-bg/20">
-                <motion.span className="block h-full rounded-full bg-bg" initial={false} animate={{ width: `${(arcDone / arcHabits.length) * 100}%` }} transition={{ type: "spring", stiffness: 200, damping: 26 }} />
+              <span className="relative mt-3 block h-1.5 overflow-hidden rounded-full bg-bg/20 max-md:bg-white/20">
+                <motion.span className="block h-full rounded-full bg-bg max-md:bg-[#FFC400]" initial={false} animate={{ width: `${(arcDone / arcHabits.length) * 100}%` }} transition={{ type: "spring", stiffness: 200, damping: 26 }} />
               </span>
             </Link>
           </motion.div>
@@ -207,7 +240,7 @@ export function HabitBoard({ data }: { data: Awaited<ReturnType<typeof getDashbo
         {/* ── Stats ── */}
         <motion.section
           aria-label="Today at a glance"
-          className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4"
+          className="grid gap-3 max-md:!hidden md:grid-cols-2 lg:grid-cols-4 lg:gap-4"
           initial="hidden"
           animate="shown"
           variants={{ shown: { transition: { staggerChildren: 0.07 } } }}
@@ -315,7 +348,7 @@ export function HabitBoard({ data }: { data: Awaited<ReturnType<typeof getDashbo
                 <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-line">
                   <motion.div className="h-full rounded-full bg-brand-solid" initial={false} animate={{ width: mine.length ? `${(packDone / mine.length) * 100}%` : 0 }} transition={{ type: "spring", stiffness: 200, damping: 26 }} />
                 </div>
-                <ul className="space-y-2.5">
+                <ul className="md:space-y-2.5">
                   <AnimatePresence mode="popLayout" initial={false}>
                     {shown.map(row)}
                   </AnimatePresence>
@@ -329,7 +362,7 @@ export function HabitBoard({ data }: { data: Awaited<ReturnType<typeof getDashbo
           {total === 0 ? (
             <EmptyState onAdd={() => setAdding(true)} />
           ) : (
-            <ul className="space-y-2.5">
+            <ul className="md:space-y-2.5">
               <AnimatePresence mode="popLayout" initial={false}>
                 {visible.filter((h) => h.packId === null).map(row)}
                 {visible.length === 0 && !grouped && (
@@ -454,6 +487,17 @@ export function HabitBoard({ data }: { data: Awaited<ReturnType<typeof getDashbo
       </AnimatePresence>
     </>
   );
+}
+
+/** Tells the phone's top bar and status bar that the day is done, so they turn marigold with the block below them. */
+function AllDoneMark({ on }: { on: boolean }) {
+  useEffect(() => {
+    if (on) document.documentElement.dataset.allDone = "";
+    return () => {
+      delete document.documentElement.dataset.allDone;
+    };
+  }, [on]);
+  return null;
 }
 
 function StatTile({ children, className = "" }: { children: React.ReactNode; className?: string }) {

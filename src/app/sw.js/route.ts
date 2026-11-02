@@ -139,6 +139,8 @@ async function pageFromNetwork(request, preload) {
 
 // Save a page — but only a real, signed-in page, never a redirect to /login or an error.
 async function remember(url, response) {
+  // only the app's own screens: public pages look different signed in and out, so an old copy could be wrong
+  if (!/^\/(dashboard|analytics|monthly|arc|popular|profile|support)(\/|$)/.test(url.pathname)) return;
   if (!response.ok || response.redirected || !(response.headers.get("content-type") || "").includes("text/html")) return;
   const cache = await caches.open(PAGES);
   await cache.put(pageKey(url), response);

@@ -26,51 +26,55 @@ export function HabitRow({ habit, burstKey, onToggle, onNote, onEdit, onDelete, 
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, x: -40, scale: 0.94, transition: { duration: 0.22 } }}
       transition={{ type: "spring", stiffness: 380, damping: 32 }}
-      className="group relative overflow-hidden rounded-2xl border border-line bg-card"
+      className="group relative overflow-hidden border-b border-line md:rounded-2xl md:border md:bg-card"
       style={{ borderColor: done ? `color-mix(in srgb, ${habit.color} 35%, var(--line))` : undefined }}
     >
       {/* completion washes across the row like liquid, starting from the checkbox */}
       <motion.span
         aria-hidden
-        className="absolute inset-0"
+        className="absolute inset-0 max-md:hidden"
         style={{ background: `color-mix(in srgb, ${habit.color} 9%, transparent)` }}
         initial={false}
         animate={{ clipPath: done ? "circle(150% at 34px 50%)" : "circle(0% at 34px 50%)" }}
         transition={{ duration: done ? 0.7 : 0.35, ease: [0.3, 0.7, 0.2, 1] }}
       />
 
-      <div className="relative flex items-center gap-3 px-4 py-3.5 sm:gap-4 sm:px-5">
+      <div className="relative flex items-center gap-3 py-3.5 md:gap-4 md:px-5">
         <motion.button
           type="button"
           onClick={onToggle}
           whileTap={{ scale: 0.8 }}
           aria-pressed={done}
           aria-label={`${done ? "Mark as not done" : "Mark as done"}: ${habit.name}`}
-          className="relative grid h-8 w-8 shrink-0 place-items-center rounded-lg border-2 transition-colors sm:h-7 sm:w-7"
+          className={`relative grid h-12 w-12 shrink-0 place-items-center rounded-[22%] border-[3px] transition-colors md:h-7 md:w-7 md:rounded-lg md:border-2 ${done ? "max-md:!border-[#FFC400] max-md:!bg-[#FFC400]" : "max-md:!border-muted"}`}
           style={{ borderColor: done ? habit.color : "var(--line)", background: done ? habit.color : "transparent" }}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" className="h-7 w-7 max-md:stroke-black md:h-4 md:w-4" aria-hidden>
             <motion.path d="M5 12.5l4.5 4.5L19 7.5" initial={false} animate={{ pathLength: done ? 1 : 0, opacity: done ? 1 : 0 }} transition={{ duration: 0.3, ease: "easeOut" }} />
           </svg>
           {burstKey !== null && <Burst key={burstKey} color={habit.color} />}
         </motion.button>
 
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-xl" style={{ background: `color-mix(in srgb, ${habit.color} 14%, transparent)` }} aria-hidden>
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-xl max-md:hidden" style={{ background: `color-mix(in srgb, ${habit.color} 14%, transparent)` }} aria-hidden>
           {habit.icon}
         </span>
 
         <div className="min-w-0 flex-1">
           <div className="flex">
-            <span className={`relative max-w-full truncate text-[15px] font-semibold transition-colors ${done ? "text-muted" : "text-ink"}`}>
+            <span className={`relative max-w-full truncate font-display text-[17px] font-bold tracking-tight transition-colors md:font-sans md:text-[15px] md:font-semibold md:tracking-normal ${done ? "text-muted" : "text-ink"}`}>
+              <span aria-hidden className="mr-1.5 md:hidden">
+                {habit.icon}
+              </span>
               {habit.name}
               <motion.span aria-hidden className="absolute left-0 top-1/2 h-[1.5px] w-full origin-left bg-current" initial={false} animate={{ scaleX: done ? 1 : 0 }} transition={{ duration: 0.35, ease: "easeOut" }} />
             </span>
           </div>
-          <div className="mt-0.5 truncate text-xs text-muted">
+          <div className="mt-0.5 truncate text-xs text-muted max-md:hidden">
             {habit.category} · <span className="capitalize">{habit.frequency}</span>
             {habit.reminder && ` · ${habit.reminder}`}
             {habit.mood && " · note added"}
           </div>
+          {(habit.reminder || habit.mood) && <div className="mt-0.5 truncate text-xs text-muted md:hidden">{[habit.reminder, habit.mood && "note added"].filter(Boolean).join(", ")}</div>}
           <div className="mt-2 flex gap-1" aria-label={`Last 7 days: ${week.filter(Boolean).length} of 7 done`}>
             {week.map((on, i) => (
               <motion.span
@@ -84,7 +88,7 @@ export function HabitRow({ habit, burstKey, onToggle, onNote, onEdit, onDelete, 
           </div>
         </div>
 
-        <div className="hidden items-center gap-1.5 text-[13px] font-medium text-muted sm:flex" aria-label={`${streak} day streak`}>
+        <div className="flex shrink-0 items-center gap-1 text-[13px] font-medium text-muted md:gap-1.5" aria-label={`${streak} day streak`}>
           <Flame lit={streak > 0} />
           <span className="relative inline-flex h-5 min-w-[1ch] overflow-hidden tabular-nums text-ink">
             <AnimatePresence mode="popLayout" initial={false}>
@@ -93,11 +97,11 @@ export function HabitRow({ habit, burstKey, onToggle, onNote, onEdit, onDelete, 
               </motion.span>
             </AnimatePresence>
           </span>
-          <span>day streak</span>
+          <span className="max-md:hidden">day streak</span>
         </div>
 
         {/* desktop: the three actions inline */}
-        <div className="hidden shrink-0 gap-1.5 opacity-60 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 sm:flex">
+        <div className="hidden shrink-0 gap-1.5 opacity-60 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 md:flex">
           <RowButton label={`Add a note for ${habit.name}`} title="Note / mood" onClick={onNote}>
             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M8 12h5M8 16h8" />
           </RowButton>
@@ -109,7 +113,7 @@ export function HabitRow({ habit, burstKey, onToggle, onNote, onEdit, onDelete, 
           </RowButton>
         </div>
         {/* phone: one button that opens a sheet with big, easy targets */}
-        <button type="button" onClick={onMenu} aria-label={`More actions for ${habit.name}`} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-muted active:bg-raised sm:hidden">
+        <button type="button" onClick={onMenu} aria-label={`More actions for ${habit.name}`} className="grid h-10 w-10 shrink-0 place-items-center -mr-2 rounded-xl text-muted active:bg-raised md:hidden">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
             <circle cx="12" cy="5" r="1.8" />
             <circle cx="12" cy="12" r="1.8" />
