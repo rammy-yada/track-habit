@@ -10,7 +10,11 @@ import { arcReminderEmail, comebackEmail, emailLang, mailEnabled, sendMail, unsu
 import { lastPushError, pushProblem, sendPush } from "@/lib/push";
 import { CARE, CARE_CATCH_UP, COMEBACK_DAYS, comebackFor, nudgeFor, QUIET_AFTER_DAYS, quoteFor } from "@/lib/quotes";
 import { decodeEntities } from "@/lib/text";
-import { arcEveningMessage, dayTurn, habitMessage, inTurn, morningMessage, nudgeMessage, type DayFacts } from "@/lib/notify-copy";
+import { arcEveningMessage, dayTurn, discoveryMessage, habitMessage, inTurn, morningMessage, nudgeMessage, type DayFacts, type Discovery } from "@/lib/notify-copy";
+import { WORKOUTS } from "@/lib/workouts";
+import { TIP_GROUPS } from "@/lib/arc-tips";
+
+const ALL_TIPS = TIP_GROUPS.flatMap((group) => group.tips);
 
 const QUOTE_HOUR = 8; //    morning quote, in each person's own timezone
 const EVENING_HOUR = 19; // "you still have habits open" (Winter Arc members)
@@ -31,7 +35,14 @@ const NUDGE_CATCH_UP = 240; // minutes a "habits still open" nudge stays worth s
 // person chose in Profile), and the part of the day each one falls in. The
 // exact minute inside that part is different for every person and every day,
 // so they don't arrive like clockwork.
-const NUDGE_SLOTS: Record<number, [number, number][]> = { 0: [], 1: [], 2: [[12 * 60, 18 * 60]], 3: [[11 * 60, 15 * 60], [15 * 60, 20 * 60]] };
+// The first motivation notification of the day is the morning quote; the rest
+// share the day from 11 AM to 8 PM equally.
+function nudgeSlots(perDay: number): [number, number][] {
+  const count = Math.max(0, perDay - 1);
+  const [start, end] = [11 * 60, 20 * 60];
+  const width = (end - start) / count;
+  return Array.from({ length: count }, (_, i) => [Math.round(start + i * width), Math.round(start + (i + 1) * width)]);
+}
 function randomMinute(seed: string, from: number, to: number): number {
   let hash = 2166136261;
   for (const ch of seed) hash = Math.imul(hash ^ ch.charCodeAt(0), 16777619) >>> 0;
@@ -111,7 +122,7 @@ export async function runReminders({ origin, now = new Date(), dry = false }: { 
   const admins = await query<{ id: number; email: string }>("SELECT id, email FROM users WHERE role = 'admin' AND is_active = 1 ORDER BY id LIMIT 3");
   if (!dry && admins[0] && (await execute("INSERT INTO email_log (user_id, kind, day) VALUES (?, 'daily_check', ?) ON CONFLICT DO NOTHING", [admins[0].id, utc.today])).rowCount > 0) {
     // records of what was sent only matter for a day or two: without this the table grows for ever
-    await execute("DELETE FROM email_log WHERE day < CURRENT_DATE - 40");
+    await execute("DELETE FROM email_log WHERE day < CURRENT_DATE - 40 AND kind NOT LIKE 'blog%'"); // which posts someone was sent is kept, so none is suggested twice
     await execute("DELETE FROM rate_limits WHERE created_at < NOW() - INTERVAL '2 days'");
     await execute("DELETE FROM otp_codes WHERE expires_at < NOW() - INTERVAL '2 days'");
     await execute("DELETE FROM password_resets WHERE expires_at < NOW() - INTERVAL '7 days'");
@@ -123,12 +134,16 @@ export async function runReminders({ origin, now = new Date(), dry = false }: { 
     }
   }
 
-  const sent = { habitReminders: 0, quotes: 0, nudges: 0, care: 0, eveningNotifications: 0, eveningEmails: 0, comebackNotifications: 0, comebackEmails: 0 };
+  const sent = { habitReminders: 0, quotes: 0, nudges: 0, discoveries: 0, care: 0, eveningNotifications: 0, eveningEmails: 0, comebackNotifications: 0, comebackEmails: 0 };
   let emails = 0;
   let delivered = 0; // how many devices actually accepted a notification
   // Claim first, send second: if the row already exists this was already sent today.
   const claim = async (userId: number, kind: string, day: string) => dry || (await execute("INSERT INTO email_log (user_id, kind, day) VALUES (?, ?, ?) ON CONFLICT DO NOTHING", [userId, kind, day])).rowCount > 0;
   const release = (userId: number, kind: string, day: string) => execute("DELETE FROM email_log WHERE user_id = ? AND kind = ? AND day = ?", [userId, kind, day]);
+
+  // the newest published posts, asked for only if someone is due a suggestion
+  let posts: Promise<{ id: number; title: string; slug: string; excerpt: string | null }[]> | undefined;
+  const latestPosts = () => (posts ??= query<{ id: number; title: string; slug: string; excerpt: string | null }>("SELECT id, title, slug, excerpt FROM blog_posts WHERE published = 1 ORDER BY COALESCE(published_at, created_at) DESC, id DESC LIMIT 20"));
 
   const failed: string[] = [];
   for (const person of people) {
@@ -154,7 +169,7 @@ export async function runReminders({ origin, now = new Date(), dry = false }: { 
 
     // Today as it stands for this person — which habits are open, how many are
     // done, the streak — looked up once, and only when a message needs it.
-    let known: { facts: DayFacts; habitStreak: Map<number, number> } | undefined;
+    let known: { names: Set<string>; facts: DayFacts; habitStreak: Map<number, number> } | undefined;
     const today_ = async () => {
       if (known) return known;
       const [habits, logs] = await Promise.all([
@@ -175,6 +190,7 @@ export async function runReminders({ origin, now = new Date(), dry = false }: { 
       };
       const openHabits = habits.filter((h) => !byHabit.get(h.id)?.has(today));
       const open = openHabits.map((h) => ({ icon: h.icon, name: decodeEntities(h.name) }));
+      const names = new Set(habits.map((h) => decodeEntities(h.name).toLowerCase()));
       const yesterday = addDays(today, -1);
       const hadYesterday = habits.filter((h) => h.created <= yesterday);
       const ticksBetween = (from: number, to: number) => logs.filter((l) => l.log_date >= addDays(today, -to) && l.log_date <= addDays(today, -from)).length;
@@ -186,6 +202,7 @@ export async function runReminders({ origin, now = new Date(), dry = false }: { 
         if (since >= 3 && since <= 30 && (!neglected || since > neglected.days)) neglected = { icon: h.icon, name: decodeEntities(h.name), days: since };
       }
       known = {
+        names,
         facts: {
           total: habits.length,
           done: habits.length - open.length,
@@ -205,6 +222,22 @@ export async function runReminders({ origin, now = new Date(), dry = false }: { 
       return known;
     };
     const habitsLeft = async () => (await today_()).facts.left;
+
+    // What this person hasn't been offered: a blog post they haven't been sent, a habit they don't have.
+    const discoveryFor = async (slot: number) => {
+      const { names } = await today_();
+      const sentPosts = new Set((await query<{ kind: string }>("SELECT kind FROM email_log WHERE user_id = ? AND kind LIKE 'blog%'", [person.id])).map((r) => r.kind));
+      const post = (await latestPosts()).find((p) => !sentPosts.has(`blog${p.id}`));
+      const habit = WORKOUTS.filter((w) => !names.has(w.name.toLowerCase())).map((w) => ({ name: w.name, icon: w.icon })); // the ones listed in Popular
+      const season = arcSeason(today);
+      const options: Discovery[] = [{ kind: "quote", line: quoteFor(lang, addDays(today, 7 + slot), custom.quotes, seed) }];
+      if (post) options.push({ kind: "blog", title: decodeEntities(post.title), slug: post.slug, excerpt: decodeEntities(post.excerpt ?? "") });
+      if (lang === "en") options.push({ kind: "tip", ...inTurn(ALL_TIPS, `${seed}:tip`, turn + slot) });
+      if (habit.length) options.push({ kind: "habit", ...inTurn(habit, `${seed}:try`, turn + slot) });
+      if (person.member && season.live) options.push({ kind: "share", day: season.day });
+      const chosen = inTurn(options, `${seed}:find`, turn + slot * 3);
+      return { message: discoveryMessage(lang, name, chosen, seed, turn), postId: chosen.kind === "blog" ? post?.id : undefined };
+    };
     const turn = dayTurn(today);
     const seed = String(person.id);
 
@@ -219,7 +252,8 @@ export async function runReminders({ origin, now = new Date(), dry = false }: { 
       for (const habit of habits) {
         const [h, m] = habit.reminder_time.split(":").map(Number);
         const late = clock.minutes - (h * 60 + m);
-        if (late < 0 || late >= HABIT_WINDOW || clock.hour >= DAY_ENDS) continue;
+        // after 11 PM only one set for about now: a late-running one can wait, a reminder set for 11:30 can't
+        if (late < 0 || late >= HABIT_WINDOW || (clock.hour >= DAY_ENDS && late > 30)) continue;
         if (!(await claim(person.id, `h${habit.id}`, today))) continue;
         if (!dry) {
           const { facts, habitStreak } = await today_();
@@ -240,17 +274,32 @@ export async function runReminders({ origin, now = new Date(), dry = false }: { 
 
     // ── through the day: reminders for habits still open, at a different time for each person each day ──
     if (push && away < 2) {
-      const slots = NUDGE_SLOTS[person.notify_motivation] ?? [];
+      const slots = nudgeSlots(person.notify_motivation);
       for (let i = 0; i < slots.length; i++) {
         const due = randomMinute(`${person.id}:${today}:${i}`, slots[i][0], slots[i][1]);
-        if (clock.minutes < due || clock.minutes >= due + NUDGE_CATCH_UP || clock.hour >= DAY_ENDS) continue;
+        // worth sending only during its own part of the day
+        const catchUp = Math.min(NUDGE_CATCH_UP, slots[i][1] - slots[i][0]);
+        if (clock.minutes < due || clock.minutes >= due + catchUp || clock.hour >= DAY_ENDS) continue;
         const left = await habitsLeft();
-        if (left <= 0 || !(await claim(person.id, `nudge${i}`, today))) continue;
+        if (!(await claim(person.id, `nudge${i}`, today))) continue;
+        // every other one brings something to discover, and all of them do once the day's habits are done
+        const discover = left <= 0 || (turn + i) % 2 === 1;
+        if (discover) {
+          if (!dry) {
+            const { message, postId } = await discoveryFor(i);
+            const reached = await sendPush(person.id, message);
+            delivered += reached;
+            if (postId && reached > 0) await claim(person.id, `blog${postId}`, today); // only counts as sent once a device has it
+          }
+          sent.discoveries++;
+          break; // one per run: others still due go out on the next, not all together
+        }
         if (!dry) {
           const { facts } = await today_();
-          delivered += await sendPush(person.id, { icon: "/icons/n-target.png", ...nudgeMessage(lang, name, facts, nudgeFor(lang, seed, today, i, custom.nudges), seed, turn + i * 7), url: "/dashboard", tag: "nudge", badge: left });
+          delivered += await sendPush(person.id, { icon: "/icons/n-target.png", ...nudgeMessage(lang, name, facts, nudgeFor(lang, seed, today, i, slots.length, custom.nudges), seed, turn + i * 7), url: "/dashboard", tag: "nudge", badge: left });
         }
         sent.nudges++;
+        break;
       }
     }
 

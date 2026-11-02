@@ -51,7 +51,7 @@ export function ArcTrophy({ perfectDays, daysLeft, member }: { perfectDays: numb
         <div className={`relative shrink-0 ${won ? "text-ink" : "text-muted"}`}>
           {won && <span aria-hidden className="absolute inset-2 rounded-full blur-xl" style={{ background: won.color, opacity: 0.35 }} />}
           <span className="relative block">
-            <Cup color={shown.color} shade={shown.shade} won={won !== null} preview={won === null} size={76} id={`trophy-${shown.name}-${won ? "won" : "next"}`} />
+            <Cup color={shown.color} shade={shown.shade} won={won !== null} preview={won === null} size={56} id={`trophy-${shown.name}-${won ? "won" : "next"}`} />
           </span>
         </div>
         <div className="min-w-0 flex-1">
@@ -83,16 +83,16 @@ export function ArcTrophy({ perfectDays, daysLeft, member }: { perfectDays: numb
       )}
 
       {/* the four steps */}
-      <ul className="mt-4 grid grid-cols-4 gap-2">
+      <ul className="mt-3 grid grid-cols-4 gap-1.5">
         {TROPHY_TIERS.map((tier) => {
           const has = perfectDays >= tier.days && member;
           return (
-            <li key={tier.name} className={`rounded-xl border px-1 py-2 text-center ${has ? "border-brand bg-brand-soft" : "border-line"}`} title={`${tier.name}: ${tier.days} perfect days`} data-trophy-tier={tier.name} data-won={has}>
+            <li key={tier.name} className={`rounded-lg px-1 py-1.5 text-center ${has ? "bg-brand-soft" : ""}`} title={`${tier.name}: ${tier.days} perfect days`} data-trophy-tier={tier.name} data-won={has}>
               <span className={`mx-auto block w-fit ${has ? "" : "text-muted"}`}>
-                <Cup color={tier.color} shade={tier.shade} won={has} size={30} id={`trophy-${tier.name}-${has ? "won" : "off"}`} />
+                <Cup color={tier.color} shade={tier.shade} won={has} size={24} id={`trophy-${tier.name}-${has ? "won" : "off"}`} />
               </span>
               <span className="mt-1 block text-[10px] font-semibold">{tier.name}</span>
-              <span className="block text-[9px] text-muted">{tier.days}d</span>
+              <span className="block text-[10px] text-muted">{tier.days} days</span>
             </li>
           );
         })}

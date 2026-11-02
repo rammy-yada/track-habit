@@ -60,3 +60,6 @@ export const MOTTOS = [
   "Small steps, better flow.",
   "Master your day, master your life.",
 ];
+
+/** The most motivation notifications a day anyone can choose: about one every waking hour. */
+export const MAX_MOTIVATION = 12;

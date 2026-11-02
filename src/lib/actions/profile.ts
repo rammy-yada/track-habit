@@ -1,6 +1,7 @@
 "use server";
 
 import bcrypt from "bcryptjs";
+import { MAX_MOTIVATION } from "../constants";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { currentUser, passwordStamp, profileComplete, requireUser } from "../auth";
@@ -52,6 +53,7 @@ export async function changePasswordAction(_prev: ProfileState, formData: FormDa
 
   const hash = await bcrypt.hash(next, 12);
   await execute("UPDATE users SET password = ? WHERE id = ?", [hash, user.id]);
+  await execute("UPDATE password_resets SET used = 1 WHERE user_id = ?", [user.id]); // a reset link sent earlier must not undo this
   await forget(key);
   // Every other device signed in with the old password is now signed out;
   // this one carries on with the new fingerprint.
@@ -92,7 +94,7 @@ export async function deleteAccountAction(_prev: ProfileState, formData: FormDat
 /** Profile → App: how often motivation arrives, the "come back" nudges, and which app icon to use. */
 export async function updateAppPrefs(input: { motivation: number; comeback: boolean; care: boolean; appIcon: string }): Promise<{ ok: true } | { ok: false; error: string }> {
   const user = await requireUser();
-  const motivation = Number.isInteger(input?.motivation) && input.motivation >= 0 && input.motivation <= 3 ? input.motivation : null;
+  const motivation = Number.isInteger(input?.motivation) && input.motivation >= 0 && input.motivation <= MAX_MOTIVATION ? input.motivation : null;
   const appIcon = ["auto", "classic", "arc"].includes(input?.appIcon) ? input.appIcon : null;
   if (motivation === null || appIcon === null || typeof input?.comeback !== "boolean" || typeof input?.care !== "boolean") return { ok: false, error: "Invalid request." };
   await execute("UPDATE users SET notify_motivation = ?, notify_comeback = ?, notify_care = ?, app_icon = ? WHERE id = ?", [motivation, input.comeback ? 1 : 0, input.care ? 1 : 0, appIcon, user.id]);

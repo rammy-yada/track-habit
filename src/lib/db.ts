@@ -299,6 +299,8 @@ const UPGRADES = `
       rank    INT NOT NULL,
       PRIMARY KEY (user_id, season)
   );
+  ALTER TABLE habits ADD COLUMN IF NOT EXISTS arc_until DATE;
+  ALTER TABLE habits ADD COLUMN IF NOT EXISTS arc_from DATE;
   INSERT INTO categories (name, icon)
     SELECT * FROM (VALUES ('Health','🧘'), ('Productivity','🎯'), ('Learning','📚'), ('Finance','💰'), ('Social','🤝'), ('Routine','⏰')) AS d(name, icon)
     WHERE NOT EXISTS (SELECT 1 FROM categories);
@@ -307,7 +309,7 @@ const UPGRADES = `
 function upToDate(): Promise<void> {
   globalForDb.habitflowMigrated ??= (async () => {
     // the newest addition: a column, so the check looks for that column
-    const check = await pool().query("SELECT to_regclass('public.arc_ranks') IS NOT NULL AS ok");
+    const check = await pool().query("SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'habits' AND column_name = 'arc_from') AS ok");
     if (!check.rows[0].ok) await pool().query(UPGRADES);
   })().catch((err) => {
     globalForDb.habitflowMigrated = undefined; // try again on the next request
@@ -316,15 +318,16 @@ function upToDate(): Promise<void> {
   return globalForDb.habitflowMigrated;
 }
 
-// Couldn't even get a connection (database busy or out of connections): worth
-// one more try. Only failures from *before* the query ran are retried, so a
-// write can never be applied twice.
-//
-// The same goes for a connection the database closed while it sat idle
-// (57P05, or the socket simply being gone): the query never reached the
-// database, so it is sent again on a fresh connection.
-const BUSY = new Set(["53300", "57P03", "08001", "ECONNREFUSED", "57P05", "08006", "08003", "ECONNRESET", "EPIPE"]);
-const isBusy = (err: { code?: string; message?: string }) => BUSY.has(err.code ?? "") || /timeout exceeded when trying to connect|Connection terminated|Client has encountered a connection error/i.test(err.message ?? "");
+// Couldn't even get a connection (database busy or out of connections), or the
+// database closed one that sat idle: the query never ran, so one more try is
+// always safe.
+const BUSY = new Set(["53300", "57P03", "08001", "ECONNREFUSED", "57P05"]);
+// A connection that drops mid-way is different: the statement may already have
+// been applied, and only the answer lost. Sent again, "flip this value" would
+// flip it back and "add one" would add two. So only reads are retried on these.
+const DROPPED = new Set(["08006", "08003", "ECONNRESET", "EPIPE"]);
+const isDropped = (err: { code?: string; message?: string }) => DROPPED.has(err.code ?? "") || /Connection terminated|Client has encountered a connection error/i.test(err.message ?? "");
+const isBusy = (err: { code?: string; message?: string }) => BUSY.has(err.code ?? "") || /timeout exceeded when trying to connect/i.test(err.message ?? "");
 
 /** Queries are written with `?` placeholders; Postgres wants $1, $2, … */
 function numbered(sql: string): string {
@@ -339,7 +342,7 @@ async function run(sql: string, params: Param[]) {
     return await pool().query(text, params);
   } catch (first) {
     const err = first as { code?: string; message?: string };
-    if (isBusy(err)) {
+    if (isBusy(err) || (isDropped(err) && /^\s*SELECT\b/i.test(sql))) {
       // out of connections: give the others a moment to finish and hand theirs back
       await new Promise((resolve) => setTimeout(resolve, err.code === "53300" ? 1500 : 350));
       await upToDate();

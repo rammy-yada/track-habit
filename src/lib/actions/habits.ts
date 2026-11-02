@@ -93,7 +93,7 @@ export async function deleteHabit(habitIdInput: number): Promise<Result> {
   const habitId = toId(habitIdInput);
   if (!habitId) return { ok: false, error: "Invalid request." };
   // Soft delete: history stays in the database, the habit just stops showing.
-  await execute("UPDATE habits SET is_active = 0 WHERE id = ? AND user_id = ?", [habitId, user.id]);
+  await execute("UPDATE habits SET is_active = 0, arc_until = CASE WHEN arc_season IS NOT NULL THEN ?::date END WHERE id = ? AND user_id = ?", [todayIn(user.timezone), habitId, user.id]);
   revalidatePath("/", "layout");
   return { ok: true };
 }

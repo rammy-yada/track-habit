@@ -9,7 +9,7 @@ import { overLimit } from "@/lib/throttle";
 
 export const dynamic = "force-dynamic";
 
-type Op = { habitId: unknown; date: unknown; done: unknown };
+type Op = { habitId: unknown; date: unknown; done: unknown; at?: unknown };
 
 /**
  * POST /api/sync — applies habit ticks made on the device, including ones
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
 
   const results = [];
   for (const op of ops) {
-    const result = await setHabitDone(user, op?.habitId, op?.done === true, op?.date);
+    const result = await setHabitDone(user, op?.habitId, op?.done === true, op?.date, op?.at);
     results.push({ key: `${op?.habitId}:${op?.date}`, ...result });
   }
   if (results.some((r) => r.ok)) {

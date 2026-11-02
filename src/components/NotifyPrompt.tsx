@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { detectDevice, enablePush, pushState } from "@/lib/pwa";
+import { claimDevicePush, detectDevice, enablePush, pushState } from "@/lib/pwa";
 
 const KEY = "habitflow:notify-prompt"; // { until: timestamp, times: how often it was put off }
 const SNOOZE_DAYS = [1, 3, 7]; // put off once → asked tomorrow; twice → in 3 days; three times → in a week; then never again
@@ -13,10 +13,14 @@ const SNOOZE_DAYS = [1, 3, 7]; // put off once → asked tomorrow; twice → in 
  * been decided yet, it explains what will be sent before the browser's own
  * question pops up, and it backs off each time it is put off.
  */
-export function NotifyPrompt({ publicKey }: { publicKey: string | null }) {
+export function NotifyPrompt({ publicKey, userId }: { publicKey: string | null; userId: number }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (publicKey) void claimDevicePush(userId);
+  }, [publicKey, userId]);
 
   useEffect(() => {
     if (!publicKey) return;

@@ -60,7 +60,7 @@ export type Category = { id: number; name: string; icon: string };
 
 async function activeHabits(userId: number): Promise<HabitRow[]> {
   const rows = await query<HabitRow>(
-    `SELECT h.id, h.name, h.description, h.category, h.icon, h.color, h.frequency, h.target_count, h.reminder_time, h.arc_season, h.created_at::date::text AS created,
+    `SELECT h.id, h.name, h.description, h.category, h.icon, h.color, h.frequency, h.target_count, h.reminder_time, CASE WHEN EXISTS (SELECT 1 FROM winter_arc_members wm WHERE wm.user_id = h.user_id AND wm.season = h.arc_season) THEN h.arc_season END AS arc_season, h.created_at::date::text AS created,
             (SELECT pm.pack_id FROM arc_pack_habits t JOIN pack_members pm ON pm.pack_id = t.pack_id AND pm.user_id = h.user_id WHERE t.id = h.arc_habit_id AND h.arc_season IS NULL) AS pack_id
      FROM habits h WHERE h.user_id = ? AND h.is_active = 1 ORDER BY h.created_at ASC, h.id ASC`,
     [userId],
@@ -146,10 +146,11 @@ export async function getDashboard(user: User) {
     return { label: formatDate(date, { month: "short", day: "numeric" }), value: perDay.get(date) ?? 0 };
   });
 
-  // Every day since the account was opened (up to a year), as how much of the
-  // list got done: 0 nothing … 4 everything. Today is added live on the device.
+  // This month so far (from the day the account was opened, if that was this
+  // month), as how much of the list got done: 0 nothing … 4 everything. Today
+  // is added live on the device. The whole history is on the Stats page.
   const opened = String(user.created_at).slice(0, 10);
-  const from = opened > addDays(today, -365) ? (opened > today ? today : opened) : addDays(today, -365);
+  const from = [opened, `${today.slice(0, 8)}01`].sort()[1];
   const levels: number[] = [];
   for (let day = from; day < today; day = addDays(day, 1)) {
     const due = habits.filter((h) => h.created <= day).length;
@@ -170,6 +171,7 @@ export async function getDashboard(user: User) {
 
   return {
     today,
+    timezone: user.timezone,
     arc,
     arcInvite,
     packs,
@@ -184,6 +186,20 @@ export async function getDashboard(user: User) {
 }
 
 // ── Analytics ────────────────────────────────────────────────────────────────
+
+/** Every day from the one the account was opened until today, as 0 (nothing done) to 4 (everything): the Stats page's calendar. */
+async function dayHistory(user: User, today: string) {
+  const [habits, days] = await Promise.all([
+    query<{ created: string }>("SELECT created_at::date::text AS created FROM habits WHERE user_id = ? AND is_active = 1", [user.id]),
+    query<{ log_date: string; n: number | string }>("SELECT hl.log_date::text AS log_date, COUNT(*) AS n FROM habit_logs hl JOIN habits h ON h.id = hl.habit_id AND h.is_active = 1 WHERE hl.user_id = ? AND hl.completed_count > 0 GROUP BY hl.log_date", [user.id]),
+  ]);
+  const opened = String(user.created_at).slice(0, 10);
+  const from = opened > today ? today : opened;
+  const done = new Map(days.map((d) => [d.log_date, Number(d.n)]));
+  const levels: number[] = [];
+  for (let day = from; day <= today; day = addDays(day, 1)) levels.push(dayLevel(done.get(day) ?? 0, habits.filter((h) => h.created <= day).length));
+  return { from, levels };
+}
 
 export async function getAnalytics(user: User) {
   const today = todayIn(user.timezone);
@@ -237,7 +253,10 @@ export async function getAnalytics(user: User) {
   for (const row of dow) dowCounts[Number(row.dow)] = Number(row.n);
   const moodCounts = new Map(moods.map((m) => [m.mood, Number(m.n)]));
 
+  const calendar = await dayHistory(user, today);
   return {
+    today,
+    calendar,
     todayLabel: formatDate(today, { month: "short", day: "numeric", year: "numeric" }),
     totalHabits,
     todayDone,

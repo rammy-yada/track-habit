@@ -18,7 +18,9 @@ export async function leaveArc(): Promise<Result> {
   const user = await requireUser();
   const { year } = arcSeason(todayIn(user.timezone));
   await execute("DELETE FROM winter_arc_members WHERE user_id = ? AND season = ?", [user.id, year]);
-  revalidatePath("/arc");
+  // Their habits stay. While they aren't a member, Today shows them as ordinary
+  // habits (see activeHabits); if they come back, their perfect days are intact.
+  revalidatePath("/", "layout");
   return { ok: true };
 }
 
@@ -92,7 +94,7 @@ export async function choosePack(packIdInput: number): Promise<Result> {
 
   const current = await getMemberPack(user.id, year);
   if (current?.id === pack.id) return { ok: true };
-  if (current) await execute("UPDATE habits SET is_active = 0 WHERE user_id = ? AND arc_season = ? AND arc_habit_id IN (SELECT id FROM arc_pack_habits WHERE pack_id = ?)", [user.id, year, current.id]);
+  if (current) await execute("UPDATE habits SET is_active = 0, arc_until = ? WHERE user_id = ? AND arc_season = ? AND is_active = 1 AND arc_habit_id IN (SELECT id FROM arc_pack_habits WHERE pack_id = ?)", [todayIn(user.timezone), user.id, year, current.id]);
   await execute("UPDATE winter_arc_members SET pack_id = ? WHERE user_id = ? AND season = ?", [pack.id, user.id, year]);
   await givePackHabits(user.id, pack.id, year);
   revalidatePath("/", "layout");
@@ -114,7 +116,8 @@ export async function removePackHabit(habitIdInput: number): Promise<Result> {
   if (!habitId) return { ok: false, error: "Invalid request." };
   const left = await queryOne<{ n: number | string }>("SELECT COUNT(*) AS n FROM habits WHERE user_id = ? AND is_active = 1 AND arc_season = ?", [user.id, year]);
   if (Number(left?.n ?? 0) <= 1) return { ok: false, error: "Keep at least one habit in your pack." };
-  const done = await execute("UPDATE habits SET is_active = 0 WHERE id = ? AND user_id = ? AND arc_season = ? AND is_active = 1", [habitId, user.id, year]);
+  // it still counts for the days it was in the pack: taking it out doesn't turn past days perfect
+  const done = await execute("UPDATE habits SET is_active = 0, arc_until = ? WHERE id = ? AND user_id = ? AND arc_season = ? AND is_active = 1", [todayIn(user.timezone), habitId, user.id, year]);
   if (!done.rowCount) return { ok: false, error: "That habit isn't in your pack." };
   revalidatePath("/", "layout");
   return { ok: true };
@@ -140,18 +143,21 @@ export async function addPackHabit(nameInput: string, iconInput: string): Promis
   const active = await queryOne<{ id: number; arc_season: number | null }>("SELECT id, arc_season FROM habits WHERE user_id = ? AND is_active = 1 AND LOWER(name) = LOWER(?) LIMIT 1", [user.id, name]);
   if (active?.arc_season === year) return { ok: false, error: "That habit is already in your pack." };
   if (active) {
-    await execute("UPDATE habits SET arc_season = ? WHERE id = ?", [year, active.id]);
+    await execute("UPDATE habits SET arc_season = ?, arc_from = ?, arc_until = NULL WHERE id = ?", [year, todayIn(user.timezone), active.id]);
   } else {
-    const earlier = await queryOne<{ id: number }>("SELECT id FROM habits WHERE user_id = ? AND is_active = 0 AND arc_season = ? AND LOWER(name) = LOWER(?) ORDER BY id DESC LIMIT 1", [user.id, year, name]);
-    if (earlier) {
-      await execute("UPDATE habits SET is_active = 1, icon = ? WHERE id = ?", [icon, earlier.id]);
+    // Taken out earlier today (or before dates were kept): simply put back. Taken out on an
+    // earlier day: a new habit from today, so the old one's days stay as they were.
+    const today = todayIn(user.timezone);
+    const earlier = await queryOne<{ id: number; arc_until: string | null }>("SELECT id, arc_until::text AS arc_until FROM habits WHERE user_id = ? AND is_active = 0 AND arc_season = ? AND LOWER(name) = LOWER(?) ORDER BY id DESC LIMIT 1", [user.id, year, name]);
+    if (earlier && (earlier.arc_until === null || earlier.arc_until === today)) {
+      await execute("UPDATE habits SET is_active = 1, icon = ?, arc_until = NULL WHERE id = ?", [icon, earlier.id]);
     } else {
       const total = await queryOne<{ n: number | string }>("SELECT COUNT(*) AS n FROM habits WHERE user_id = ? AND is_active = 1", [user.id]);
       if (Number(total?.n ?? 0) >= 50) return { ok: false, error: "Maximum 50 habits allowed." };
       // one of the pack's own habits keeps its link to the pack
       const template = member.pack_id ? await queryOne<{ id: number }>("SELECT id FROM arc_pack_habits WHERE pack_id = ? AND LOWER(name) = LOWER(?)", [member.pack_id, name]) : null;
       const category = (await queryOne("SELECT id FROM categories WHERE name = 'Health'")) ? "Health" : "General";
-      await execute("INSERT INTO habits (user_id, name, description, category, icon, color, frequency, target_count, arc_habit_id, arc_season) VALUES (?, ?, '', ?, ?, '#64748b', 'daily', 1, ?, ?)", [user.id, name, category, icon, template?.id ?? null, year]);
+      await execute("INSERT INTO habits (user_id, name, description, category, icon, color, frequency, target_count, arc_habit_id, arc_season, arc_from) VALUES (?, ?, '', ?, ?, '#64748b', 'daily', 1, ?, ?, ?)", [user.id, name, category, icon, template?.id ?? null, year, today]);
     }
   }
   revalidatePath("/", "layout");
@@ -267,6 +273,7 @@ export async function viewArcProfile(userIdInput: number): Promise<{ ok: true; p
   const id = toId(userIdInput);
   const today = todayIn(viewer.timezone);
   const { year } = arcSeason(today);
+  if (!(await queryOne("SELECT 1 AS ok FROM winter_arc_members WHERE user_id = ? AND season = ?", [viewer.id, year]))) return { ok: false, error: "Join the Winter Arc to see profiles." };
   const target = id
     ? await queryOne<{ id: number; username: string; full_name: string; avatar_color: string; avatar_version: number; gender: string | null; birth_date: string | null; country: string | null; show_age: number; show_gender: number; show_country: number; created_at: string; timezone: string; pack: string | null }>(
         `SELECT u.id, u.username, u.full_name, u.avatar_color, u.avatar_version, u.gender, u.birth_date, u.country, u.show_age, u.show_gender, u.show_country, u.created_at, u.timezone,

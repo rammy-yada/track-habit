@@ -4,10 +4,11 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { motion } from "motion/react";
 import { ArcSurprise, surpriseSeen } from "@/components/dashboard/ArcSurprise";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { btnSmall, card, eyebrow, input } from "@/components/ui/styles";
+import { btnSmall, card, input } from "@/components/ui/styles";
 import { addPackHabit, choosePack, removePackHabit } from "@/lib/actions/arc";
 import { MILESTONES } from "@/lib/arc-config";
 import type { getArcPanel } from "@/lib/arc-packs";
+import { useLiveDay } from "@/lib/live-day";
 import { resolveDone, setDone, settle, useOfflineQueue, whenOnline } from "@/lib/offline";
 
 type Panel = Awaited<ReturnType<typeof getArcPanel>>;
@@ -22,7 +23,8 @@ export function ArcPackPanel({ panel }: { panel: Panel }) {
   const { pack, packs, perfectDays } = panel;
   // ticks made here go through the same on-device queue as the Today screen, so they show at once and work offline
   const queue = useOfflineQueue();
-  const habits = panel.habits.map((h) => ({ ...h, doneToday: resolveDone(queue, h.id, panel.today, h.doneToday) }));
+  const today = useLiveDay(panel.today, panel.timezone);
+  const habits = panel.habits.map((h) => ({ ...h, doneToday: resolveDone(queue, h.id, today, today === panel.today && h.doneToday) }));
   useEffect(() => {
     for (const h of panel.habits) settle(h.id, panel.today, h.doneToday);
   }, [panel.habits, panel.today, queue]);
@@ -41,13 +43,13 @@ export function ArcPackPanel({ panel }: { panel: Panel }) {
   const ticked = useRef(false);
   const wasAllDone = useRef(allDone);
   useEffect(() => {
-    if (allDone && !wasAllDone.current && ticked.current && !surpriseSeen(panel.today)) {
+    if (allDone && !wasAllDone.current && ticked.current && !surpriseSeen(today)) {
       const timer = setTimeout(() => setSurprise(true), 900); // let the tick land first
       wasAllDone.current = allDone;
       return () => clearTimeout(timer);
     }
     wasAllDone.current = allDone;
-  }, [allDone, panel.today]);
+  }, [allDone, today]);
 
   // editing the pack
   const [editing, setEditing] = useState(false);
@@ -77,7 +79,6 @@ export function ArcPackPanel({ panel }: { panel: Panel }) {
     <section className={`${card} p-5`} aria-label="Your Winter Arc pack" data-arc-panel>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className={eyebrow}>Members only</p>
           <h2 className="font-display text-lg font-bold tracking-tight">{pack ? `${pack.icon} ${pack.name} pack` : "Choose your pack"}</h2>
         </div>
         {pack && (
@@ -167,7 +168,7 @@ export function ArcPackPanel({ panel }: { panel: Panel }) {
               <li key={h.id}>
                 <motion.button type="button" role="checkbox" aria-checked={h.doneToday} whileTap={{ scale: 0.98 }} onClick={() => {
                   ticked.current = true;
-                  setDone(h.id, panel.today, !h.doneToday);
+                  setDone(h.id, today, !h.doneToday);
                 }} className={`flex min-h-[54px] w-full items-center gap-3 rounded-xl border px-3.5 py-2.5 text-left transition-colors ${h.doneToday ? "border-transparent bg-good-soft" : "border-line bg-card"}`} data-pack-habit={h.name}>
                   <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg border-2 text-sm font-bold transition-colors ${h.doneToday ? "border-good bg-good text-white" : "border-line text-transparent"}`}>✓</span>
                   <span aria-hidden className="text-lg">
@@ -255,7 +256,7 @@ export function ArcPackPanel({ panel }: { panel: Panel }) {
         onConfirm={() => swapTo && choose(swapTo.id)}
         onClose={() => setSwapTo(null)}
       />
-      <ArcSurprise open={surprise} onClose={closeSurprise} today={panel.today} perfectDays={panel.perfectBefore + (allDone ? 1 : 0)} surprises={panel.surprises} />
+      <ArcSurprise open={surprise} onClose={closeSurprise} today={today} perfectDays={Math.max(panel.kept, panel.perfectBefore + (allDone ? 1 : 0))} surprises={panel.surprises} />
     </section>
   );
 }

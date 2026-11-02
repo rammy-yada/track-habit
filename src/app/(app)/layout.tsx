@@ -46,7 +46,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       </div>
       <AppStatus userId={user.id} />
       <ArcTheme member={member} />
-      <NotifyPrompt publicKey={pushPublicKey()} />
+      <NotifyPrompt publicKey={pushPublicKey()} userId={user.id} />
       <IconCookie icon={iconFor(user.app_icon, member)} />
       <SaveCredential name={user.full_name} username={user.username} />
       {/* Suspense: the guide reads the URL's query string */}

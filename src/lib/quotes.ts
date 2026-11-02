@@ -135,8 +135,8 @@ const NUDGES: Record<Lang, string[]> = {
 };
 
 /** The line for one person's `slot`-th reminder of the day: every line is used once before any comes back. */
-export function nudgeFor(lang: Lang, seed: string, date: string, slot: number, custom: string[] = []): string {
-  return inTurn(pool(NUDGES, lang, custom), `${seed}:nudge`, dayTurn(date) * 2 + slot);
+export function nudgeFor(lang: Lang, seed: string, date: string, slot: number, slots: number, custom: string[] = []): string {
+  return inTurn(pool(NUDGES, lang, custom), `${seed}:nudge`, dayTurn(date) * Math.max(1, slots) + slot);
 }
 
 // ── Coming back ──────────────────────────────────────────────────────────────

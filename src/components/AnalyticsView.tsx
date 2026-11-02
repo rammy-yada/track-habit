@@ -1,5 +1,6 @@
 "use client";
 
+import { DaysCalendar } from "@/components/dashboard/DaysCalendar";
 import { motion } from "motion/react";
 import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
 import { Reveal } from "@/components/ui/Reveal";
@@ -46,6 +47,8 @@ export function AnalyticsView({ data }: { data: Awaited<ReturnType<typeof getAna
           <span className="text-muted">/{data.totalHabits}</span>
         </Tile>
       </motion.div>
+
+      <DaysCalendar view="all" from={data.calendar.from} levels={data.calendar.levels} today={data.today} />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <ChartCard title="Weekly completion" sub="Check-ins in each of the last four weeks">

@@ -100,7 +100,7 @@ export async function removePackHabit(idInput: number, everyone: boolean): Promi
   await requireAdmin();
   const id = toId(idInput);
   if (!id) return INVALID;
-  if (everyone === true) await execute("UPDATE habits SET is_active = 0 WHERE arc_habit_id = ?", [id]);
+  if (everyone === true) await execute("UPDATE habits SET is_active = 0, arc_until = CASE WHEN arc_season IS NOT NULL THEN CURRENT_DATE END WHERE arc_habit_id = ? AND is_active = 1", [id]);
   await execute("DELETE FROM arc_pack_habits WHERE id = ?", [id]);
   refresh();
   return { ok: true };

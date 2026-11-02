@@ -1,5 +1,6 @@
 "use client";
 
+import { releaseDevicePush } from "@/lib/pwa";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -144,6 +145,7 @@ export function LogoutButton({ className, children }: { className: string; child
         onConfirm={() =>
           startTransition(async () => {
             if (navigator.onLine) clearOfflineData();
+            await releaseDevicePush();
             await logoutAction();
           })
         }

@@ -11,7 +11,9 @@ export type TickResult = { ok: true } | { ok: false; error: string };
  * it wants (not "toggle"), so replaying the same change twice — a retry, or
  * an offline change syncing later — is harmless.
  */
-export async function setHabitDone(user: User, habitIdInput: unknown, done: boolean, dateInput: unknown): Promise<TickResult> {
+export async function setHabitDone(user: User, habitIdInput: unknown, done: boolean, dateInput: unknown, atInput?: unknown): Promise<TickResult> {
+  // When the tick was really made, for one that waited offline: it counts for its day. Believed for up to a week back, no further.
+  const at = typeof atInput === "number" && atInput <= Date.now() && atInput >= Date.now() - 7 * 86_400_000 ? atInput / 1000 : null;
   const habitId = toId(habitIdInput);
   // a day of slack: the device may be a timezone ahead of the profile setting
   const latest = todayIn("Pacific/Kiritimati");
@@ -24,8 +26,8 @@ export async function setHabitDone(user: User, habitIdInput: unknown, done: bool
 
   if (done) {
     await execute(
-      "INSERT INTO habit_logs (habit_id, user_id, log_date, completed_count) VALUES (?, ?, ?, 1) ON CONFLICT (habit_id, user_id, log_date) DO UPDATE SET completed_count = 1",
-      [habitId, user.id, dateInput],
+      "INSERT INTO habit_logs (habit_id, user_id, log_date, completed_count, completed_at) VALUES (?, ?, ?, 1, COALESCE(to_timestamp(?::double precision)::timestamp, NOW())) ON CONFLICT (habit_id, user_id, log_date) DO UPDATE SET completed_count = 1, completed_at = CASE WHEN habit_logs.completed_count > 0 THEN habit_logs.completed_at ELSE EXCLUDED.completed_at END",
+      [habitId, user.id, dateInput, at],
     );
   } else {
     // Keep the row if it carries a note or mood — only the completion is undone.

@@ -106,7 +106,7 @@ export async function flush(): Promise<boolean> {
     const response = await fetch("/api/sync", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ops: batch.map(({ habitId, date, done }) => ({ habitId, date, done })) }),
+      body: JSON.stringify({ ops: batch.map(({ habitId, date, done, at }) => ({ habitId, date, done, at })) }),
     });
     if (response.status === 401) {
       status = "signed-out";

@@ -193,6 +193,8 @@ CREATE TABLE IF NOT EXISTS arc_pack_habits (
 ALTER TABLE winter_arc_members ADD COLUMN IF NOT EXISTS pack_id INT REFERENCES arc_packs(id) ON DELETE SET NULL;
 ALTER TABLE habits ADD COLUMN IF NOT EXISTS arc_habit_id INT REFERENCES arc_pack_habits(id) ON DELETE SET NULL;
 ALTER TABLE habits ADD COLUMN IF NOT EXISTS arc_season INT;
+ALTER TABLE habits ADD COLUMN IF NOT EXISTS arc_until DATE; -- the day a habit was taken out of a pack
+ALTER TABLE habits ADD COLUMN IF NOT EXISTS arc_from DATE;  -- the day a habit that already existed joined one
 -- Packs come in two kinds. 'arc': chosen when joining the Winter Arc (one per
 -- member per season, recorded in winter_arc_members.pack_id). 'open': any
 -- member can add it from their Today screen at any time (pack_members).
@@ -342,7 +344,7 @@ You are not starting over. You are continuing, with one gap in the middle.')
   WHERE NOT EXISTS (SELECT 1 FROM blog_posts);
 
 -- ── Notification and app-icon preferences ────────────────────
--- notify_motivation: motivation notifications a day (0 = none, up to 3).
+-- notify_motivation: motivation notifications a day (0 = none, up to 12).
 -- notify_comeback:   1 = nudge me when I have been away for a few days.
 -- app_icon:          'auto' (Winter Arc icon while in the arc), 'classic' or 'arc'.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_motivation SMALLINT NOT NULL DEFAULT 2;

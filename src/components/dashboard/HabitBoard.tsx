@@ -1,6 +1,7 @@
 "use client";
 
 import { InstallApp } from "@/components/InstallApp";
+import { useLiveDay } from "@/lib/live-day";
 import { dayLevel } from "@/lib/day-level";
 import { DaysCalendar } from "./DaysCalendar";
 import { useCallback, useEffect, useOptimistic, useRef, useState, useTransition } from "react";
@@ -39,7 +40,9 @@ export function HabitBoard({ data }: { data: Awaited<ReturnType<typeof getDashbo
   // shown at once; what you see is the server's data with the queue on top.
   const queue = useOfflineQueue();
   const [optimistic, apply] = useOptimistic(data.habits, reduce);
-  const everything = optimistic.map((h) => ({ ...h, doneToday: resolveDone(queue, h.id, data.today, h.doneToday) }));
+  const today = useLiveDay(data.today, data.timezone);
+  // (past midnight on a page loaded yesterday, nothing is done yet today)
+  const everything = optimistic.map((h) => ({ ...h, doneToday: resolveDone(queue, h.id, today, today === data.today && h.doneToday) }));
   // Winter Arc habits live on the Winter Arc screen, not here: Today shows a
   // banner that leads there, and lists only the person's own habits.
   const arcHabits = everything.filter((h) => h.arc);
@@ -98,7 +101,7 @@ export function HabitBoard({ data }: { data: Awaited<ReturnType<typeof getDashbo
     const done = !habit.doneToday;
     interacted.current = true;
     if (done) setBursts((b) => ({ ...b, [habit.id]: Date.now() }));
-    setDone(habit.id, data.today, done);
+    setDone(habit.id, today, done);
   }
 
   function remove(habit: HabitView) {
@@ -149,7 +152,7 @@ export function HabitBoard({ data }: { data: Awaited<ReturnType<typeof getDashbo
   return (
     <>
       <PageHeader title="Today's Habits">
-        <span className="rounded-xl border border-line bg-card px-3.5 py-2 text-[13px] font-medium text-muted">{data.todayLabel}</span>
+        <span className="rounded-xl border border-line bg-card px-3.5 py-2 text-[13px] font-medium text-muted">{today === data.today ? data.todayLabel : new Date(`${today}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" })}</span>
         <motion.button type="button" className={btnPrimary} onClick={() => setAdding(true)} whileTap={{ scale: 0.95 }} whileHover={{ y: -1 }}>
           <span className="text-base leading-none">+</span> Add Habit
         </motion.button>
@@ -209,8 +212,8 @@ export function HabitBoard({ data }: { data: Awaited<ReturnType<typeof getDashbo
           animate="shown"
           variants={{ shown: { transition: { staggerChildren: 0.07 } } }}
         >
-          <StatTile className="col-span-2 lg:col-span-1">
-            <div className="flex items-center gap-4">
+          <StatTile>
+            <div className="flex items-center gap-3 lg:gap-4">
               <ProgressRing value={total ? doneCount / total : 0}>
                 <span className="text-[13px] font-bold">
                   <AnimatedNumber value={rate} />%
@@ -233,14 +236,14 @@ export function HabitBoard({ data }: { data: Awaited<ReturnType<typeof getDashbo
             <div className={eyebrow}>Best streak (days)</div>
             <div className="mt-2 text-xs font-medium text-brand">{bestStreak > 0 ? "Keep it going!" : "Start one today"}</div>
           </StatTile>
-          <StatTile>
+          <StatTile className="hidden lg:block">
             <div className="text-3xl font-semibold tracking-tight">
               <AnimatedNumber value={checkins} />
             </div>
             <div className={eyebrow}>Total check-ins</div>
             <div className="mt-2 text-xs font-medium text-brand">All time</div>
           </StatTile>
-          <StatTile className="col-span-2 lg:col-span-1">
+          <StatTile className="hidden lg:block">
             <div className="text-3xl font-semibold tracking-tight">
               <AnimatedNumber value={total} />
             </div>
@@ -283,7 +286,7 @@ export function HabitBoard({ data }: { data: Awaited<ReturnType<typeof getDashbo
             )}
           </AnimatePresence>
 
-          <SupportNudge show={allDone} today={data.today} />
+          <SupportNudge show={allDone} today={today} />
 
           {/* ── packs the member has added: a section each ── */}
           {myPacks.map((pack) => {
@@ -366,18 +369,18 @@ export function HabitBoard({ data }: { data: Awaited<ReturnType<typeof getDashbo
           )}
         </section>
 
-        {/* ── Trend + month ── */}
-        {total > 0 && (
+        {/* ── Trend + month (a member with only their Winter Arc pack has days to show too) ── */}
+        {total + arcHabits.length > 0 && (
           <div className="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
             <Reveal className="min-w-0">
               <section className={`${card} p-5`}>
                 <h2 className="text-sm font-bold">30-day completion</h2>
                 <p className="mb-3 text-xs text-muted">Habits completed per day</p>
-                <TrendChart data={[...data.trend, { label: "Today", value: doneCount }]} unit="habits" caption="Habits completed per day over the last 30 days" />
+                <TrendChart data={[...data.trend, { label: "Today", value: doneCount + arcDone }]} unit="habits" caption="Habits completed per day over the last 30 days" />
               </section>
             </Reveal>
             <Reveal delay={0.08} className="min-w-0">
-              <DaysCalendar from={data.calendar.from} levels={data.calendar.levels} today={data.today} todayLevel={dayLevel(doneCount, total)} />
+              <DaysCalendar view="month" from={data.calendar.from} levels={data.calendar.levels} today={today} todayLevel={dayLevel(doneCount + arcDone, total + arcHabits.length)} />
             </Reveal>
           </div>
         )}

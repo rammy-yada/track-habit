@@ -146,3 +146,31 @@ export function arcEveningMessage(lang: Lang, name: string, f: DayFacts, arc: { 
   const body = ne ? `बाँकी: ${openList(f, ne)}।${points} मध्यरात अघि पूरा गर्नुहोस्।${streak}` : `Still open: ${openList(f, ne)}.${points} Finish before midnight.${streak}`;
   return { title: inTurn(titles, `${seed}:arc`, turn), body };
 }
+
+// ── Something to discover ────────────────────────────────────────────────────
+// Not every notification should say "do your habits". Some of the day's
+// notifications bring something instead: a new blog post, a tip, a quote, a
+// habit worth trying, or a nudge to share how far they've come.
+
+export type Discovery =
+  | { kind: "quote"; line: string }
+  | { kind: "tip"; title: string; body: string }
+  | { kind: "blog"; title: string; slug: string; excerpt: string }
+  | { kind: "habit"; name: string; icon: string }
+  | { kind: "share"; day: number };
+
+export function discoveryMessage(lang: Lang, name: string, d: Discovery, seed: string, turn: number): { title: string; body: string; icon: string; url: string; tag: string } {
+  const ne = lang === "ne";
+  switch (d.kind) {
+    case "quote":
+      return { title: inTurn(ne ? ["आजको विचार 💭", `${name}, यो सम्झनुहोस् 💭`] : ["A thought for today 💭", `Something to keep in mind, ${name} 💭`, "Worth remembering 💭"], `${seed}:thought`, turn), body: d.line, icon: "/icons/n-heart.png", url: "/dashboard", tag: "quote-day" };
+    case "tip":
+      return { title: `💡 ${d.title}`, body: d.body, icon: "/icons/n-target.png", url: "/arc", tag: "tip" };
+    case "blog":
+      return { title: ne ? `📖 पढ्नुहोस्: ${d.title}` : `📖 Worth a read: ${d.title}`, body: d.excerpt || (ne ? "HabitFlow ब्लगमा नयाँ लेख।" : "A short read from the HabitFlow blog."), icon: "/app-icon/logo?s=192", url: `/blog/${d.slug}`, tag: "blog" };
+    case "habit":
+      return { title: ne ? `यो बानी प्रयास गर्ने? ${d.icon} ${d.name}` : `Try this one? ${d.icon} ${d.name}`, body: ne ? "धेरैले गरिरहेका बानीहरू Popular मा हेर्नुहोस्। एक ट्यापमा थप्न सकिन्छ।" : "It's one tap to add, and you can see what else people are doing in Popular.", icon: "/icons/n-flame.png", url: "/popular", tag: "try-habit" };
+    case "share":
+      return { title: ne ? `दिन ${d.day}, ${name}। सबैलाई देखाउने? 📸` : `Day ${d.day}, ${name}. Show them? 📸`, body: ne ? "तपाईंको Winter Arc कार्ड तयार छ। साथीलाई पठाउनुभयो भने छोड्न गाह्रो हुन्छ।" : "Your Winter Arc card is ready. People who share their progress find it harder to quit.", icon: "/icons/n-crown.png", url: "/arc", tag: "share" };
+  }
+}

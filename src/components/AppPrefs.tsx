@@ -1,5 +1,6 @@
 "use client";
 
+import { MAX_MOTIVATION } from "@/lib/constants";
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateAppPrefs } from "@/lib/actions/profile";
@@ -7,12 +8,8 @@ import { whenOnline } from "@/lib/offline";
 
 export type Prefs = { motivation: number; comeback: boolean; care: boolean; appIcon: "auto" | "classic" | "arc" };
 
-const MOTIVATION = [
-  { value: 0, label: "Off", note: "No motivation messages. Reminders you set on a habit still arrive." },
-  { value: 1, label: "1 a day", note: "A quote each morning." },
-  { value: 2, label: "2 a day", note: "The morning quote, and one in the afternoon if habits are still open." },
-  { value: 3, label: "3 a day", note: "Morning, midday and late afternoon — the later ones only while habits are still open." },
-];
+const motivationNote = (n: number) =>
+  n === 0 ? "No motivation messages. Reminders you set on a habit still arrive." : n === 1 ? "One line each morning." : `A line each morning, then ${n - 1} more through the day: reminders for open habits, plus quotes, tips, new blog posts and habits to try.`;
 
 const ICONS = [
   { value: "auto", label: "Automatic", note: "Winter Arc icon while you're in the arc", src: null },
@@ -82,14 +79,18 @@ export function AppPrefs({ prefs, arcMember }: { prefs: Prefs; arcMember: boolea
 
       <fieldset>
         <legend className={heading}>Motivation notifications</legend>
-        <div className="mt-2 grid grid-cols-4 gap-1 rounded-xl border border-line p-1" role="radiogroup" aria-label="Motivation notifications a day">
-          {MOTIVATION.map((option) => (
-            <button key={option.value} type="button" role="radio" aria-checked={value.motivation === option.value} onClick={() => save({ ...value, motivation: option.value })} className={`rounded-lg px-1 py-2 text-xs font-semibold transition-colors ${value.motivation === option.value ? "bg-brand-solid text-on-brand" : "text-muted hover:text-ink"}`}>
-              {option.label}
-            </button>
-          ))}
+        <div className="mt-2 flex items-center gap-3" data-motivation-stepper>
+          <button type="button" aria-label="Fewer" disabled={value.motivation <= 0} onClick={() => save({ ...value, motivation: value.motivation - 1 })} className="grid h-11 w-11 place-items-center rounded-xl border border-line text-lg font-bold hover:border-brand hover:text-brand disabled:opacity-40">
+            −
+          </button>
+          <span className="min-w-20 text-center text-sm font-bold tabular-nums" aria-live="polite">
+            {value.motivation === 0 ? "Off" : `${value.motivation} a day`}
+          </span>
+          <button type="button" aria-label="More" disabled={value.motivation >= MAX_MOTIVATION} onClick={() => save({ ...value, motivation: value.motivation + 1 })} className="grid h-11 w-11 place-items-center rounded-xl border border-line text-lg font-bold hover:border-brand hover:text-brand disabled:opacity-40">
+            +
+          </button>
         </div>
-        <p className="mt-1.5 text-xs text-muted">{MOTIVATION[value.motivation]?.note}</p>
+        <p className="mt-1.5 text-xs text-muted">{motivationNote(value.motivation)}</p>
       </fieldset>
 
       <Toggle on={value.care} onClick={() => save({ ...value, care: !value.care })} title="Daily care reminders" note="Wake up, drink water (twice), one good thing to do today, and time to sleep. Each arrives at a slightly different time every day." />

@@ -145,6 +145,38 @@ export async function enablePush(publicKey: string): Promise<PushState> {
   return "on";
 }
 
+const OWNER_KEY = "habitflow:push-owner";
+
+/**
+ * If this device already has notifications on, make sure they go to the person
+ * signed in now, not whoever used it before. Asked once per change of person.
+ */
+export async function claimDevicePush(userId: number): Promise<void> {
+  try {
+    if (localStorage.getItem(OWNER_KEY) === String(userId) || Notification.permission !== "granted") return;
+    const subscription = await (await registration())?.pushManager.getSubscription();
+    if (!subscription) return;
+    const saved = await fetch("/api/push", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(subscription.toJSON()) });
+    if (saved.ok) localStorage.setItem(OWNER_KEY, String(userId));
+  } catch {}
+}
+
+/**
+ * Signing out: the account's notifications stop reaching this device (they show
+ * habit names on the lock screen). The device stays set up, so the next person
+ * to sign in gets theirs without being asked again (see claimDevicePush).
+ */
+export async function releaseDevicePush(): Promise<void> {
+  try {
+    localStorage.removeItem(OWNER_KEY);
+  } catch {}
+  const release = async () => {
+    const subscription = await (await registration())?.pushManager.getSubscription();
+    if (subscription) await fetch("/api/push", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ endpoint: subscription.endpoint }) });
+  };
+  await Promise.race([release().catch(() => {}), new Promise((resolve) => setTimeout(resolve, 2500))]);
+}
+
 export async function disablePush(): Promise<PushState> {
   const subscription = await (await registration())?.pushManager.getSubscription();
   if (subscription) {
