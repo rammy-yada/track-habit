@@ -91,10 +91,12 @@ them after five idle seconds, and retries once if none is free.
 
 ### 3. Check it: `/api/health`
 
-Open `https://your-site/api/health`. It answers `200 {"status":"ok"}` when the
-session secret and database are both usable, and `503` with a plain-language
-reason when they aren't. It never prints hosts, usernames or secrets. If the
-site shows a generic server error, look here first.
+Sign in as an administrator and open `https://your-site/api/health` (Admin →
+Overview links to it). It answers `200 {"status":"ok"}` when the session secret
+and database are both usable, and `503` with a plain-language reason when they
+aren't. Everyone else gets a 404. If the database is down you can't sign in, so
+call it with `Authorization: Bearer CRON_SECRET` instead. It never prints hosts,
+usernames or secrets.
 
 ### Email (optional)
 
@@ -193,8 +195,7 @@ their password instead.
 ### Load balancing
 
 The app runs as several identical copies behind a load balancer: the session
-is an encrypted cookie (no sticky sessions), all data is in Postgres, and
-`/api/health` tells the balancer which copies may receive traffic. Every copy
+is an encrypted cookie (no sticky sessions), and all data is in Postgres. Every copy
 must have the same `SESSION_SECRET` and run the same build.
 
 On Vercel, Render, Railway and similar, this is done for you. To run it

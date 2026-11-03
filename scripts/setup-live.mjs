@@ -100,5 +100,5 @@ Next:
   1. Add the settings saved in .env.live.local to your hosting provider's
      environment variables (it contains your database password — keep it private).
   2. Redeploy the site.
-  3. Open your site's address followed by /api/health — it should say "status":"ok".
+  3. Sign in as an administrator and open your site's address followed by /api/health — it should say "status":"ok".
 `);
